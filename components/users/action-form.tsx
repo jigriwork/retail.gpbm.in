@@ -67,7 +67,7 @@ export function CreateManagerForm({
       </Button>
       {disabled ? (
         <p className="text-sm leading-6 text-muted">
-          Manager creation requires service role key in server environment.
+          Manager creation requires server service key.
         </p>
       ) : null}
       {state.message ? (

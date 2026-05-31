@@ -31,6 +31,9 @@ export default async function LoginPage() {
               <h2 className="mt-2 text-3xl font-semibold tracking-normal">
                 Welcome back.
               </h2>
+              <p className="mt-3 text-sm leading-6 text-muted">
+                Private access for GPBM Retail users only.
+              </p>
             </div>
             <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background">
               <LockKeyhole className="size-5" />

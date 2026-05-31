@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -76,12 +75,6 @@ export function LoginForm() {
         Continue
         <ArrowRight className="size-4" />
       </Button>
-      <p className="text-center text-sm text-muted">
-        New here?{" "}
-        <Link className="font-semibold text-foreground" href="/signup">
-          Create an account
-        </Link>
-      </p>
     </form>
   );
 }

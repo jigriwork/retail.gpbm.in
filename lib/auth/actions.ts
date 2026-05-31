@@ -29,7 +29,7 @@ export async function createManager(formData: FormData) {
   if (!admin) {
     return {
       ok: false,
-      message: "Manager creation requires service role key in server environment.",
+      message: "Manager creation requires server service key.",
     };
   }
 

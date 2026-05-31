@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Settings, ShieldCheck } from "lucide-react";
+import { LockKeyhole, Settings, ShieldCheck } from "lucide-react";
 
 import { BottomNav } from "@/components/app/bottom-nav";
 import { LiveClock } from "@/components/app/live-clock";
@@ -21,10 +21,28 @@ export default async function ProtectedAppLayout({
           <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-foreground text-background">
             <ShieldCheck className="size-5" />
           </div>
-          <h1 className="text-2xl font-semibold">Signed in successfully.</h1>
+          <h1 className="text-2xl font-semibold">Access issue</h1>
           <p className="mt-3 text-sm leading-6 text-muted">
-            If this is the owner account, run the owner bootstrap SQL once.
-            Your profile is still being prepared, so refresh in a moment.
+            Your account is not fully activated. Contact owner/admin.
+          </p>
+          <form action={signOut} className="mt-6">
+            <Button variant="secondary">Log out</Button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
+  if (profile.is_active === false) {
+    return (
+      <main className="min-h-dvh bg-background px-5 py-6 text-foreground">
+        <div className="mx-auto max-w-xl rounded-[1.35rem] border border-border bg-card p-6 shadow-sm">
+          <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-foreground text-background">
+            <LockKeyhole className="size-5" />
+          </div>
+          <h1 className="text-2xl font-semibold">Account blocked</h1>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            Your account is inactive. Contact owner/admin.
           </p>
           <form action={signOut} className="mt-6">
             <Button variant="secondary">Log out</Button>
