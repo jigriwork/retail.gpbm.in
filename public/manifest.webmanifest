@@ -1,0 +1,17 @@
+{
+  "name": "GPBM Retail",
+  "short_name": "GPBM",
+  "description": "Retail command center for GPBM stores.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAFAF7",
+  "theme_color": "#FAFAF7",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}
