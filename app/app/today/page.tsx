@@ -4,18 +4,24 @@ import {
   ClipboardCheck,
   HeartPulse,
   LineChart,
+  ListTodo,
   Sparkles,
   SprayCan,
   Store,
+  TriangleAlert,
   WalletCards,
 } from "lucide-react";
 
 import { StatusCard } from "@/components/app/status-card";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { getTaskSummary } from "@/lib/tasks/queries";
 
 export default async function TodayPage() {
   const { profile } = await requireProfile();
   const stores = await getAccessibleStores(profile);
+  const taskSummary = profile
+    ? await getTaskSummary(profile)
+    : { todayCount: 0, urgentCount: 0, privateCount: 0, storeCounts: [] };
 
   return (
     <div className="space-y-5">
@@ -28,6 +34,37 @@ export default async function TodayPage() {
           Signed in as <span className="font-semibold capitalize">{profile?.role}</span>.
           Store data below follows your role and assignments.
         </p>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Link
+          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
+          href="/app/tasks"
+        >
+          <ListTodo className="mb-5 size-5 text-muted" />
+          <p className="text-sm text-muted">Today tasks</p>
+          <p className="mt-1 text-3xl font-semibold">{taskSummary.todayCount}</p>
+        </Link>
+        <Link
+          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
+          href="/app/tasks?tab=today"
+        >
+          <TriangleAlert className="mb-5 size-5 text-muted" />
+          <p className="text-sm text-muted">Urgent today</p>
+          <p className="mt-1 text-3xl font-semibold">{taskSummary.urgentCount}</p>
+        </Link>
+        {profile?.role === "owner" ? (
+          <Link
+            className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
+            href="/app/tasks?tab=today"
+          >
+            <HeartPulse className="mb-5 size-5 text-muted" />
+            <p className="text-sm text-muted">Personal/private</p>
+            <p className="mt-1 text-3xl font-semibold">
+              {taskSummary.privateCount}
+            </p>
+          </Link>
+        ) : null}
       </section>
 
       <section>
@@ -45,6 +82,16 @@ export default async function TodayPage() {
               >
                 <p className="text-lg font-semibold">{store.name}</p>
                 <p className="mt-1 text-sm text-muted">{store.code}</p>
+                <p className="mt-6 text-sm font-medium text-muted">
+                  {taskSummary.storeCounts.find((item) => item.store.id === store.id)
+                    ?.count ?? 0}{" "}
+                  task
+                  {(taskSummary.storeCounts.find((item) => item.store.id === store.id)
+                    ?.count ?? 0) === 1
+                    ? ""
+                    : "s"}{" "}
+                  today
+                </p>
               </Link>
             ))}
           </div>
