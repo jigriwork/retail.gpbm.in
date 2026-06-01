@@ -9,6 +9,7 @@ import { getPreviousWeekRangeAsiaKolkata, getWeeklyAuditSummaries, isWeeklyAudit
 import { getTaskSummary } from "@/lib/tasks/queries";
 import { getTodayUpdateSummary } from "@/lib/updates/queries";
 import { createClient } from "@/lib/supabase/server";
+import { getLifeFlowSummary } from "@/lib/life/queries";
 
 const maxImportantUpdates = 5;
 const maxMemories = 8;
@@ -64,6 +65,7 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
     updateSummary,
     memories,
     latestStockMonth,
+    lifeFlow,
   ] = await Promise.all([
     getAccessibleChecklists(profile),
     getStoreSalesStatuses(stores),
@@ -75,6 +77,7 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
     getTodayUpdateSummary(stores),
     getActiveAiMemories(profile.id),
     getLatestStockMonth(),
+    profile.role === "owner" ? getLifeFlowSummary() : Promise.resolve(null),
   ]);
 
   const stockPulse = latestStockMonth
@@ -140,6 +143,15 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
     ),
     "",
     `Tasks: urgent today ${taskSummary.urgentCount}, today total ${taskSummary.todayCount}, owner/private ${profile.role === "owner" ? taskSummary.privateCount : 0}.`,
+    profile.role === "owner"
+      ? [
+          "",
+          "Owner Life Flow:",
+          `- Mood ${lifeFlow?.todayLog?.mood ?? "not set"}, energy ${lifeFlow?.todayLog?.energy ?? "not set"}.`,
+          `- Wake ${lifeFlow?.todayLog?.wake_time ? "marked" : "not marked"}, gym ${lifeFlow?.todayLog?.gym_done ? "done" : "open"}, sports ${lifeFlow?.todayLog?.sports_done ? "done" : "open"}, sleep ${lifeFlow?.todayLog?.sleep_time ? "marked" : "not marked"}.`,
+          `- Estimated sleep duration ${lifeFlow?.sleepDurationText ?? "not clear"}.`,
+        ].join("\n")
+      : "",
     "",
     `Salary attendance: ${salaryOverview.uploadedCount} uploaded, ${salaryOverview.missingCount} missing for ${salaryOverview.periodMonth}.`,
     `Stock report: ${stockOverview.uploadedCount} uploaded, ${stockOverview.missingCount} missing for ${stockOverview.periodMonth}.`,

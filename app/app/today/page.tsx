@@ -39,6 +39,7 @@ import {
   getStaffSalesSummary,
 } from "@/lib/analytics/sales";
 import { getLatestStockMonth, getStockSummary } from "@/lib/analytics/stock";
+import { getLifeFlowSummary } from "@/lib/life/queries";
 
 function formatMoney(value?: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -46,6 +47,16 @@ function formatMoney(value?: number) {
     maximumFractionDigits: 0,
     style: "currency",
   }).format(value ?? 0);
+}
+
+function formatLifeTime(value?: string | null) {
+  if (!value) return "Open";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Asia/Kolkata",
+  }).format(new Date(value));
 }
 
 export default async function TodayPage() {
@@ -94,6 +105,7 @@ export default async function TodayPage() {
     (sum, audit) => sum + audit.missingSalesReports.length,
     0,
   );
+  const lifeFlow = profile?.role === "owner" ? await getLifeFlowSummary() : null;
 
   return (
     <div className="space-y-5">
@@ -125,6 +137,53 @@ export default async function TodayPage() {
               <Bot className="size-4" />
               Open Secretary
             </Link>
+          </div>
+        </section>
+      ) : null}
+
+      {profile?.role === "owner" ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted">Life Flow</p>
+              <h2 className="mt-2 text-2xl font-semibold">
+                {lifeFlow?.todayLog?.mood ?? "A light check-in is open"}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                {lifeFlow?.todayLog?.gym_done
+                  ? "Gym is marked done today. Nice and steady."
+                  : "Gym is still open for today. Even 20 minutes counts."}
+              </p>
+            </div>
+            <Link
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              href="/app/life"
+            >
+              <HeartPulse className="size-4" />
+              Open Life Flow
+            </Link>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Energy</p>
+              <p className="mt-1 font-semibold">{lifeFlow?.todayLog?.energy ?? "Open"}</p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Wake</p>
+              <p className="mt-1 font-semibold">{formatLifeTime(lifeFlow?.todayLog?.wake_time)}</p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Gym</p>
+              <p className="mt-1 font-semibold">{lifeFlow?.todayLog?.gym_done ? "Done" : "Open"}</p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Sports</p>
+              <p className="mt-1 font-semibold">{lifeFlow?.todayLog?.sports_done ? "Done" : "Open"}</p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Sleep</p>
+              <p className="mt-1 font-semibold">{formatLifeTime(lifeFlow?.todayLog?.sleep_time)}</p>
+            </div>
           </div>
         </section>
       ) : null}
