@@ -13,19 +13,20 @@ import { StatusCard } from "@/components/app/status-card";
 import { ChecklistCard } from "@/components/checklist/checklist-card";
 import { SalesReportList } from "@/components/reports/sales-report-list";
 import { SalaryAttendanceReportList } from "@/components/reports/salary-attendance-report-list";
+import { StockReportList } from "@/components/reports/stock-report-list";
 import { ReviewHistoryList } from "@/components/reviews/review-history-list";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { UpdateCard } from "@/components/updates/update-card";
 import { canAccessStore, requireProfile } from "@/lib/auth/session";
 import { getStoreSalesStatuses } from "@/lib/reports/sales-queries";
 import { getStoreSalaryAttendanceStatuses } from "@/lib/reports/salary-queries";
+import { getStoreStockStatuses } from "@/lib/reports/stock-queries";
 import { getReviewStatuses } from "@/lib/reviews/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreUpdateSummary } from "@/lib/updates/queries";
 import { getStoreChecklist } from "@/lib/checklist/queries";
 
 const storeSections = [
-  { title: "Stock", body: "Stock workspace placeholder.", icon: PackageSearch },
   { title: "Tasks", body: "Store task shell placeholder.", icon: ClipboardList },
   { title: "Staff Sales", body: "Staff sales placeholder.", icon: UserRoundCheck },
 ];
@@ -62,15 +63,17 @@ export default async function StoreDetailPage({
     notFound();
   }
 
-  const [salesStatuses, salaryStatuses, reviewStatuses, updateSummary, checklist] = await Promise.all([
+  const [salesStatuses, salaryStatuses, stockStatuses, reviewStatuses, updateSummary, checklist] = await Promise.all([
     getStoreSalesStatuses([{ id: store.id, name: store.name, code: store.code }]),
     getStoreSalaryAttendanceStatuses([{ id: store.id, name: store.name, code: store.code }]),
+    getStoreStockStatuses([{ id: store.id, name: store.name, code: store.code }]),
     getReviewStatuses([{ id: store.id, name: store.name, code: store.code, type: store.type }]),
     getStoreUpdateSummary(store.id),
     getStoreChecklist(store),
   ]);
   const [salesStatus] = salesStatuses;
   const [salaryStatus] = salaryStatuses;
+  const [stockStatus] = stockStatuses;
   const [reviewStatus] = reviewStatuses;
 
   return (
@@ -219,6 +222,94 @@ export default async function StoreDetailPage({
             <SalaryAttendanceReportList
               emptyText="No salary attendance reports uploaded for this store yet."
               reports={salaryStatus.recentReports}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {stockStatus ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted">Stock</p>
+              <h2 className="mt-2 text-2xl font-semibold">Monthly stock status</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Stock report for {stockStatus.periodMonth}:{" "}
+                <span
+                  className={
+                    stockStatus.report
+                      ? "font-semibold text-success"
+                      : "font-semibold text-danger"
+                  }
+                >
+                  {stockStatus.report ? "uploaded" : "missing"}
+                </span>
+              </p>
+            </div>
+            <Link
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              href={`/app/reports/stock?storeId=${store.id}`}
+            >
+              <PackageSearch className="size-4" />
+              Upload/view
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Uploaded date</p>
+              <p className="mt-1 font-semibold">
+                {stockStatus.report?.report_date ?? "No upload"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Uploaded by</p>
+              <p className="mt-1 font-semibold">
+                {stockStatus.report?.profiles?.full_name ??
+                  stockStatus.report?.profiles?.email ??
+                  "No upload"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Rows</p>
+              <p className="mt-1 font-semibold">{stockStatus.report?.row_count ?? 0}</p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Total quantity</p>
+              <p className="mt-1 font-semibold">
+                {stockStatus.report?.summary?.totalQuantity ?? 0}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">File name</p>
+              <p className="mt-1 break-words font-semibold">
+                {stockStatus.report?.file_name ?? "No file"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Brands found</p>
+              <p className="mt-1 text-sm font-semibold">
+                {(stockStatus.report?.summary?.brandsFound ?? []).slice(0, 6).join(", ") ||
+                  "No brand data"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Categories found</p>
+              <p className="mt-1 text-sm font-semibold">
+                {(stockStatus.report?.summary?.categoriesFound ?? []).slice(0, 6).join(", ") ||
+                  "No category data"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <h3 className="text-lg font-semibold">Recent stock report history</h3>
+            <StockReportList
+              emptyText="No stock reports uploaded for this store yet."
+              reports={stockStatus.recentReports}
             />
           </div>
         </section>

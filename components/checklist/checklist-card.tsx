@@ -55,6 +55,11 @@ export function ChecklistCard({ checklist }: { checklist: StoreChecklist }) {
           Salary attendance missing
         </span>
       ) : null}
+      {checklist.stockReportMissing ? (
+        <span className="mt-3 inline-flex rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger">
+          Stock report missing
+        </span>
+      ) : null}
     </Link>
   );
 }

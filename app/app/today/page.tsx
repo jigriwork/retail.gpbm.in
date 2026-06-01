@@ -6,6 +6,7 @@ import {
   LineChart,
   ListTodo,
   MessageSquareText,
+  PackageSearch,
   Sparkles,
   SprayCan,
   Store,
@@ -19,6 +20,7 @@ import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { getStoreSalesStatuses } from "@/lib/reports/sales-queries";
 import { getSalaryAttendanceOverview } from "@/lib/reports/salary-queries";
+import { getStockOverview } from "@/lib/reports/stock-queries";
 import { getReviewStatuses } from "@/lib/reviews/queries";
 import { getTaskSummary } from "@/lib/tasks/queries";
 import { getTodayUpdateSummary } from "@/lib/updates/queries";
@@ -39,9 +41,10 @@ export default async function TodayPage() {
   const taskSummary = profile
     ? await getTaskSummary(profile)
     : { todayCount: 0, urgentCount: 0, privateCount: 0, storeCounts: [] };
-  const [salesStatuses, salaryOverview, reviewStatuses] = await Promise.all([
+  const [salesStatuses, salaryOverview, stockOverview, reviewStatuses] = await Promise.all([
     getStoreSalesStatuses(stores),
     getSalaryAttendanceOverview(stores),
+    getStockOverview(stores),
     getReviewStatuses(stores),
   ]);
   const [updateSummary, checklists] = await Promise.all([
@@ -60,6 +63,52 @@ export default async function TodayPage() {
           Signed in as <span className="font-semibold capitalize">{profile?.role}</span>.
           Store data below follows your role and assignments.
         </p>
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Monthly stock workflow</p>
+            <h2 className="mt-2 text-2xl font-semibold">{stockOverview.headline}</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Stock report due {stockOverview.dueDate}.
+            </p>
+          </div>
+          <Link
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            href="/app/reports/stock"
+          >
+            Open upload
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Uploaded</p>
+            <p className="mt-1 text-2xl font-semibold">{stockOverview.uploadedCount}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Missing</p>
+            <p className="mt-1 text-2xl font-semibold">{stockOverview.missingCount}</p>
+          </div>
+          {stockOverview.statuses.map((status) => (
+            <Link
+              className="rounded-2xl border border-border p-3 transition hover:border-foreground"
+              href={`/app/reports/stock?storeId=${status.store.id}`}
+              key={status.store.id}
+            >
+              <p className="text-xs font-medium text-muted">{status.store.name}</p>
+              <p
+                className={
+                  status.report
+                    ? "mt-1 text-lg font-semibold text-success"
+                    : "mt-1 text-lg font-semibold text-danger"
+                }
+              >
+                {status.report ? "Uploaded" : stockOverview.dayOfMonth === 1 ? "Due today" : "Pending"}
+              </p>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section>
@@ -251,6 +300,12 @@ export default async function TodayPage() {
           </Link>
           <Link
             className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
+            href="/app/reports/stock"
+          >
+            Upload stock
+          </Link>
+          <Link
+            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
             href="/app/reviews/rack"
           >
             Rack review
@@ -368,8 +423,8 @@ export default async function TodayPage() {
           title="Sales report status"
         />
         <StatusCard
-          body="Waiting for the next real stock upload or processing result."
-          icon={ClipboardCheck}
+          body={`${stockOverview.uploadedCount} uploaded, ${stockOverview.missingCount} missing for ${stockOverview.periodMonth}.`}
+          icon={PackageSearch}
           title="Stock report status"
         />
         <StatusCard

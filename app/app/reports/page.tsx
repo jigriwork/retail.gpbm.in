@@ -2,10 +2,10 @@ import Link from "next/link";
 import { BarChart3, CalendarClock, FileSpreadsheet, UploadCloud } from "lucide-react";
 
 import { SalesReportList } from "@/components/reports/sales-report-list";
-import { StatusCard } from "@/components/app/status-card";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { getRecentSalesReports, getStoreSalesStatuses } from "@/lib/reports/sales-queries";
 import { getSalaryAttendanceOverview } from "@/lib/reports/salary-queries";
+import { getStockOverview } from "@/lib/reports/stock-queries";
 
 function formatMoney(value?: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -18,10 +18,11 @@ function formatMoney(value?: number) {
 export default async function ReportsPage() {
   const { profile } = await requireProfile();
   const stores = await getAccessibleStores(profile);
-  const [statuses, recentReports, salaryOverview] = await Promise.all([
+  const [statuses, recentReports, salaryOverview, stockOverview] = await Promise.all([
     getStoreSalesStatuses(stores),
     getRecentSalesReports(6),
     getSalaryAttendanceOverview(stores),
+    getStockOverview(stores),
   ]);
   const missingStores = statuses.filter((status) => !status.yesterdayReport);
 
@@ -100,6 +101,34 @@ export default async function ReportsPage() {
         <div className="space-y-3">
           <Link
             className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            href="/app/reports/stock"
+          >
+            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+              <FileSpreadsheet className="size-5" />
+            </div>
+            <h2 className="text-2xl font-semibold">Monthly Stock Report</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Due day 1. Current month: {stockOverview.periodMonth}.
+            </p>
+            <div className="mt-4 space-y-2">
+              {stockOverview.statuses.map((status) => (
+                <div className="flex items-center justify-between gap-3 text-sm" key={status.store.id}>
+                  <span className="font-medium">{status.store.name}</span>
+                  <span
+                    className={
+                      status.report
+                        ? "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success"
+                        : "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger"
+                    }
+                  >
+                    {status.report ? "Uploaded" : "Missing"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Link>
+          <Link
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
             href="/app/reports/salary-attendance"
           >
             <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
@@ -126,11 +155,6 @@ export default async function ReportsPage() {
               ))}
             </div>
           </Link>
-          <StatusCard
-            body="Placeholder only. Monthly stock upload will use the existing reports and stock rows tables later."
-            icon={FileSpreadsheet}
-            title="Monthly Stock Report"
-          />
         </div>
       </section>
 
