@@ -26,6 +26,12 @@ import { getTaskSummary } from "@/lib/tasks/queries";
 import { getTodayUpdateSummary } from "@/lib/updates/queries";
 import { UpdateCard } from "@/components/updates/update-card";
 import { getAccessibleChecklists } from "@/lib/checklist/queries";
+import {
+  currentMonthRange,
+  getDateRangeForPeriod,
+  getSalesSummary,
+  getStaffSalesSummary,
+} from "@/lib/analytics/sales";
 
 function formatMoney(value?: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -51,6 +57,20 @@ export default async function TodayPage() {
     getTodayUpdateSummary(stores),
     getAccessibleChecklists(profile),
   ]);
+  const [yesterdaySalesPulse, monthSalesPulse, yesterdayStaffPulse] = await Promise.all([
+    getSalesSummary(
+      { storeIds: stores.map((store) => store.id), dateRange: getDateRangeForPeriod("yesterday") },
+      stores,
+    ),
+    getSalesSummary(
+      { storeIds: stores.map((store) => store.id), dateRange: currentMonthRange() },
+      stores,
+    ),
+    getStaffSalesSummary({
+      storeIds: stores.map((store) => store.id),
+      dateRange: getDateRangeForPeriod("yesterday"),
+    }),
+  ]);
 
   return (
     <div className="space-y-5">
@@ -63,6 +83,62 @@ export default async function TodayPage() {
           Signed in as <span className="font-semibold capitalize">{profile?.role}</span>.
           Store data below follows your role and assignments.
         </p>
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Sales pulse</p>
+            <h2 className="mt-2 text-2xl font-semibold">Yesterday and month view</h2>
+          </div>
+          <Link
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            href="/app/reports/sales/analytics"
+          >
+            Full analytics
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {stores.map((store) => {
+            const yesterday = yesterdaySalesPulse.storeSummaries.find((item) => item.store.id === store.id);
+            const month = monthSalesPulse.storeSummaries.find((item) => item.store.id === store.id);
+            const salesStatus = salesStatuses.find((item) => item.store.id === store.id);
+
+            return (
+              <div className="rounded-2xl border border-border p-3" key={store.id}>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold">{store.name}</p>
+                  <span
+                    className={
+                      salesStatus?.yesterdayReport
+                        ? "rounded-full border border-border px-2 py-1 text-xs font-semibold text-success"
+                        : "rounded-full border border-border px-2 py-1 text-xs font-semibold text-danger"
+                    }
+                  >
+                    {salesStatus?.yesterdayReport ? "Uploaded" : "Missing"}
+                  </span>
+                </div>
+                <p className="mt-4 text-xs font-medium text-muted">Yesterday</p>
+                <p className="mt-1 text-xl font-semibold">{formatMoney(yesterday?.totalNetSale)}</p>
+                <p className="mt-3 text-xs font-medium text-muted">This month</p>
+                <p className="mt-1 text-xl font-semibold">{formatMoney(month?.totalNetSale)}</p>
+              </div>
+            );
+          })}
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Top staff yesterday</p>
+            {yesterdayStaffPulse[0] ? (
+              <>
+                <p className="mt-2 text-xl font-semibold">{yesterdayStaffPulse[0].staffName}</p>
+                <p className="mt-1 text-sm font-medium text-muted">
+                  {formatMoney(yesterdayStaffPulse[0].totalSale)}
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm leading-6 text-muted">No staff sales found.</p>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">

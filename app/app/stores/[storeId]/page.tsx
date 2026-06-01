@@ -25,6 +25,14 @@ import { getReviewStatuses } from "@/lib/reviews/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreUpdateSummary } from "@/lib/updates/queries";
 import { getStoreChecklist } from "@/lib/checklist/queries";
+import {
+  calculateTargetProgress,
+  currentMonthRange,
+  currentWeekRange,
+  getDateRangeForPeriod,
+  getSalesSummary,
+  getStaffSalesSummary,
+} from "@/lib/analytics/sales";
 
 const storeSections = [
   { title: "Tasks", body: "Store task shell placeholder.", icon: ClipboardList },
@@ -63,18 +71,37 @@ export default async function StoreDetailPage({
     notFound();
   }
 
-  const [salesStatuses, salaryStatuses, stockStatuses, reviewStatuses, updateSummary, checklist] = await Promise.all([
+  const [
+    salesStatuses,
+    salaryStatuses,
+    stockStatuses,
+    reviewStatuses,
+    updateSummary,
+    checklist,
+    yesterdaySales,
+    weekSales,
+    monthSales,
+    weekStaff,
+  ] = await Promise.all([
     getStoreSalesStatuses([{ id: store.id, name: store.name, code: store.code }]),
     getStoreSalaryAttendanceStatuses([{ id: store.id, name: store.name, code: store.code }]),
     getStoreStockStatuses([{ id: store.id, name: store.name, code: store.code }]),
     getReviewStatuses([{ id: store.id, name: store.name, code: store.code, type: store.type }]),
     getStoreUpdateSummary(store.id),
     getStoreChecklist(store),
+    getSalesSummary(
+      { storeIds: [store.id], dateRange: getDateRangeForPeriod("yesterday") },
+      [store],
+    ),
+    getSalesSummary({ storeIds: [store.id], dateRange: currentWeekRange() }, [store]),
+    getSalesSummary({ storeIds: [store.id], dateRange: currentMonthRange() }, [store]),
+    getStaffSalesSummary({ storeIds: [store.id], dateRange: currentWeekRange() }),
   ]);
   const [salesStatus] = salesStatuses;
   const [salaryStatus] = salaryStatuses;
   const [stockStatus] = stockStatuses;
   const [reviewStatus] = reviewStatuses;
+  const targetProgress = calculateTargetProgress(store, monthSales.totalNetSale);
 
   return (
     <div className="space-y-5">
@@ -165,6 +192,79 @@ export default async function StoreDetailPage({
           </div>
         </section>
       ) : null}
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Sales analytics</p>
+            <h2 className="mt-2 text-2xl font-semibold">Store sales pulse</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Week leader: {weekStaff[0]?.staffName ?? "No staff data"}.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              href={`/app/reports/sales/analytics?storeId=${store.id}&period=week`}
+            >
+              Full analytics
+            </Link>
+            <Link
+              className="inline-flex h-11 items-center justify-center rounded-2xl border border-border px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
+              href={`/app/reports/staff?storeId=${store.id}&period=week`}
+            >
+              Staff sales
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Yesterday sale</p>
+            <p className="mt-1 font-semibold">{formatMoney(yesterdaySales.totalNetSale)}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">This week sale</p>
+            <p className="mt-1 font-semibold">{formatMoney(weekSales.totalNetSale)}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">This month sale</p>
+            <p className="mt-1 font-semibold">{formatMoney(monthSales.totalNetSale)}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Staff leader week</p>
+            <p className="mt-1 font-semibold">{weekStaff[0]?.staffName ?? "No staff data"}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Top category week</p>
+            <p className="mt-1 font-semibold">{weekSales.topCategories[0]?.name ?? "No category"}</p>
+          </div>
+        </div>
+
+        {targetProgress ? (
+          <div className="mt-5 rounded-2xl border border-border p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Monthly target</p>
+                <p className="mt-1 text-sm text-muted">
+                  {formatMoney(targetProgress.monthSale)} of {formatMoney(targetProgress.target)}
+                </p>
+              </div>
+              <p className="text-2xl font-semibold">{targetProgress.percentageAchieved}%</p>
+            </div>
+            <div className="mt-4 h-2 rounded-full bg-background">
+              <div
+                className="h-2 rounded-full bg-foreground"
+                style={{ width: `${Math.min(targetProgress.percentageAchieved, 100)}%` }}
+              />
+            </div>
+            <p className="mt-3 text-sm leading-6 text-muted">
+              Balance {formatMoney(targetProgress.balance)}. Required daily{" "}
+              {formatMoney(targetProgress.requiredDailySale)} for {targetProgress.daysLeftInMonth} days.
+            </p>
+          </div>
+        ) : null}
+      </section>
 
       {salaryStatus ? (
         <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">

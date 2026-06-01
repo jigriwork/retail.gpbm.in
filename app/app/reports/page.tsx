@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, CalendarClock, FileSpreadsheet, UploadCloud } from "lucide-react";
+import { BarChart3, CalendarClock, FileSpreadsheet, LineChart, UploadCloud, UserRoundCheck } from "lucide-react";
 
 import { SalesReportList } from "@/components/reports/sales-report-list";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
@@ -32,7 +32,7 @@ export default async function ReportsPage() {
         <p className="text-sm font-medium text-muted">Reports</p>
         <h1 className="mt-2 text-3xl font-semibold">Business uploads</h1>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Daily sales and salary attendance uploads are active. Monthly stock remains the next placeholder.
+          Daily sales, stock, salary attendance and practical sales analytics are active.
         </p>
       </section>
 
@@ -99,6 +99,30 @@ export default async function ReportsPage() {
         </div>
 
         <div className="space-y-3">
+          <Link
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            href="/app/reports/sales/analytics"
+          >
+            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+              <LineChart className="size-5" />
+            </div>
+            <h2 className="text-2xl font-semibold">Sales Analytics</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Store, staff, brand and category visibility from uploaded sales rows.
+            </p>
+          </Link>
+          <Link
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            href="/app/reports/staff"
+          >
+            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+              <UserRoundCheck className="size-5" />
+            </div>
+            <h2 className="text-2xl font-semibold">Staff Wise Sales</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Staff ranking, bill count, quantity, average bill, top brand and category.
+            </p>
+          </Link>
           <Link
             className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
             href="/app/reports/stock"
