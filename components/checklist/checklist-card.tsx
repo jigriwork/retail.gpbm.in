@@ -50,6 +50,11 @@ export function ChecklistCard({ checklist }: { checklist: StoreChecklist }) {
       ) : (
         <p className="mt-4 text-sm leading-6 text-muted">All required items are complete.</p>
       )}
+      {checklist.salaryAttendanceMissing ? (
+        <span className="mt-3 inline-flex rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger">
+          Salary attendance missing
+        </span>
+      ) : null}
     </Link>
   );
 }

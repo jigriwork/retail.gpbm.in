@@ -18,6 +18,7 @@ import { StatusCard } from "@/components/app/status-card";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { getStoreSalesStatuses } from "@/lib/reports/sales-queries";
+import { getSalaryAttendanceOverview } from "@/lib/reports/salary-queries";
 import { getReviewStatuses } from "@/lib/reviews/queries";
 import { getTaskSummary } from "@/lib/tasks/queries";
 import { getTodayUpdateSummary } from "@/lib/updates/queries";
@@ -38,8 +39,9 @@ export default async function TodayPage() {
   const taskSummary = profile
     ? await getTaskSummary(profile)
     : { todayCount: 0, urgentCount: 0, privateCount: 0, storeCounts: [] };
-  const [salesStatuses, reviewStatuses] = await Promise.all([
+  const [salesStatuses, salaryOverview, reviewStatuses] = await Promise.all([
     getStoreSalesStatuses(stores),
+    getSalaryAttendanceOverview(stores),
     getReviewStatuses(stores),
   ]);
   const [updateSummary, checklists] = await Promise.all([
@@ -128,6 +130,52 @@ export default async function TodayPage() {
         ) : null}
       </section>
 
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Monthly salary workflow</p>
+            <h2 className="mt-2 text-2xl font-semibold">{salaryOverview.headline}</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Attendance due {salaryOverview.dueDate}. Salary day {salaryOverview.salaryDate}.
+            </p>
+          </div>
+          <Link
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            href="/app/reports/salary-attendance"
+          >
+            Open upload
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Uploaded</p>
+            <p className="mt-1 text-2xl font-semibold">{salaryOverview.uploadedCount}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Missing</p>
+            <p className="mt-1 text-2xl font-semibold">{salaryOverview.missingCount}</p>
+          </div>
+          {salaryOverview.statuses.map((status) => (
+            <Link
+              className="rounded-2xl border border-border p-3 transition hover:border-foreground"
+              href={`/app/reports/salary-attendance?storeId=${status.store.id}`}
+              key={status.store.id}
+            >
+              <p className="text-xs font-medium text-muted">{status.store.name}</p>
+              <p
+                className={
+                  status.report
+                    ? "mt-1 text-lg font-semibold text-success"
+                    : "mt-1 text-lg font-semibold text-danger"
+                }
+              >
+                {status.report ? "Uploaded" : salaryOverview.dayOfMonth === 1 ? "Due today" : "Missing"}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-xl font-semibold">Manager updates</h2>
@@ -194,6 +242,12 @@ export default async function TodayPage() {
             href="/app/reports/sales"
           >
             Upload sales
+          </Link>
+          <Link
+            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
+            href="/app/reports/salary-attendance"
+          >
+            Salary attendance
           </Link>
           <Link
             className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
@@ -319,12 +373,12 @@ export default async function TodayPage() {
           title="Stock report status"
         />
         <StatusCard
-          body="Attendance reminder is based on app settings."
+          body={`${salaryOverview.uploadedCount} uploaded, ${salaryOverview.missingCount} missing for ${salaryOverview.periodMonth}.`}
           icon={CalendarCheck}
           title="Salary attendance"
         />
         <StatusCard
-          body="Salary day is configured in settings and shown read-only for now."
+          body={`Salary day is ${salaryOverview.salaryDate}.`}
           icon={WalletCards}
           title="Salary day"
         />

@@ -6,7 +6,7 @@ import type { Tables } from "@/lib/supabase/database.types";
 export type Profile = Tables<"profiles">;
 export type Store = Tables<"stores">;
 export type StoreAssignment = Tables<"store_users"> & {
-  stores: Pick<Store, "id" | "name" | "code"> | null;
+  stores: Store | null;
 };
 
 export async function getCurrentUser() {
@@ -72,12 +72,14 @@ export async function getAccessibleStores(profile?: Profile | null) {
   }
 
   const { data } = await supabase
-    .from("stores")
-    .select("*")
-    .eq("is_active", true)
-    .order("name");
+    .from("store_users")
+    .select("stores(*)")
+    .eq("user_id", currentProfile.id);
 
-  return data ?? [];
+  return ((data ?? []) as StoreAssignment[])
+    .map((assignment) => assignment.stores)
+    .filter((store): store is Store => Boolean(store?.is_active))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function requireOwner() {

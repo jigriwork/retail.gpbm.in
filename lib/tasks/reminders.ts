@@ -38,7 +38,14 @@ export function getMonthlyDueReminders(profile: Profile, stores: Store[]) {
           store.id,
         ),
       ),
-      baseTask("Prepare salary attendance report", "salary_attendance_due", profile.id),
+      ...stores.map((store) =>
+        baseTask(
+          `Upload salary attendance report for ${store.name}`,
+          "salary_attendance_due",
+          profile.id,
+          store.id,
+        ),
+      ),
     );
   }
 

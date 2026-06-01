@@ -31,3 +31,11 @@ export function isMondayInIndia(dateText = getIndiaToday()) {
 export function getIndiaDayOfMonth(dateText = getIndiaToday()) {
   return Number(dateText.slice(8, 10));
 }
+
+export function getIndiaMonthStart(dateText = getIndiaToday()) {
+  return `${dateText.slice(0, 7)}-01`;
+}
+
+export function getIndiaMonthInputValue(dateText = getIndiaToday()) {
+  return dateText.slice(0, 7);
+}

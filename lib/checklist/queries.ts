@@ -1,8 +1,9 @@
 import { getAccessibleStores, type Profile, type Store } from "@/lib/auth/session";
 import { getSalesReportForStoreDate } from "@/lib/reports/sales-queries";
+import { getSalaryAttendanceReportForStoreMonth } from "@/lib/reports/salary-queries";
 import { getCleaningReview, getRackReview } from "@/lib/reviews/queries";
 import { createClient } from "@/lib/supabase/server";
-import { addDays, getIndiaToday } from "@/lib/tasks/dates";
+import { addDays, getIndiaDayOfMonth, getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
 import { getManagerUpdates, type ManagerUpdate } from "@/lib/updates/queries";
 
 export type ChecklistItem = {
@@ -27,6 +28,7 @@ export type StoreChecklist = {
   status: "Complete" | "Partial" | "Missing" | "Needs attention";
   urgentOpenCount: number;
   pendingTaskCount: number;
+  salaryAttendanceMissing: boolean;
   todayUpdates: ManagerUpdate[];
 };
 
@@ -68,9 +70,12 @@ function checklistStatus(
 export async function getStoreChecklist(store: Store) {
   const today = getIndiaToday();
   const yesterday = addDays(today, -1);
-  const [salesReport, rackReview, cleaningReview, todayUpdates, pendingTaskCount] =
+  const periodMonth = getIndiaMonthStart(today);
+  const dayOfMonth = getIndiaDayOfMonth(today);
+  const [salesReport, salaryAttendanceReport, rackReview, cleaningReview, todayUpdates, pendingTaskCount] =
     await Promise.all([
       getSalesReportForStoreDate(store.id, yesterday),
+      getSalaryAttendanceReportForStoreMonth(store.id, periodMonth),
       getRackReview(store.id, today),
       getCleaningReview(store.id, today),
       getManagerUpdates({ storeId: store.id, period: "today", limit: 30 }),
@@ -84,6 +89,7 @@ export async function getStoreChecklist(store: Store) {
     (update) => update.urgency === "urgent" && (update.status ?? "open") === "open",
   ).length;
   const brandMark = store.code === "BM";
+  const showSalaryAttendance = dayOfMonth === 1 || (dayOfMonth > 1 && !salaryAttendanceReport);
   const items: ChecklistItem[] = [
     {
       key: "sales",
@@ -138,6 +144,19 @@ export async function getStoreChecklist(store: Store) {
       href: `/app/updates/new?storeId=${store.id}`,
       actionLabel: "Add update",
     },
+    ...(showSalaryAttendance
+      ? [
+          {
+            key: "salary-attendance",
+            title: "Monthly salary attendance",
+            description: `Required for ${periodMonth}. Due on the 1st; salary day is the 3rd.`,
+            done: Boolean(salaryAttendanceReport),
+            required: true,
+            href: `/app/reports/salary-attendance?storeId=${store.id}`,
+            actionLabel: salaryAttendanceReport ? "View" : "Upload",
+          } satisfies ChecklistItem,
+        ]
+      : []),
     {
       key: "urgent-updates",
       title: "Urgent updates acknowledged",
@@ -240,6 +259,7 @@ export async function getStoreChecklist(store: Store) {
     status: checklistStatus(completionPercent, missingItems.length, urgentOpenCount),
     urgentOpenCount,
     pendingTaskCount,
+    salaryAttendanceMissing: showSalaryAttendance && !salaryAttendanceReport,
     todayUpdates,
   } satisfies StoreChecklist;
 }

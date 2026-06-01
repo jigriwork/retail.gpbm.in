@@ -30,3 +30,47 @@ export async function completeMatchingTasks(
     .update({ status: "done", completed_at: new Date().toISOString() })
     .in("id", matchingIds);
 }
+
+export async function completeMatchingTasksAroundDate(
+  storeId: string,
+  dueDate: string,
+  matchWords: string[],
+  dayWindow = 2,
+) {
+  const supabase = await createClient();
+  const start = new Date(`${dueDate}T00:00:00+05:30`);
+  start.setDate(start.getDate() - dayWindow);
+  const end = new Date(`${dueDate}T00:00:00+05:30`);
+  end.setDate(end.getDate() + dayWindow);
+
+  const format = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+  });
+  const { data: tasks } = await supabase
+    .from("tasks")
+    .select("id,title,category,status")
+    .eq("store_id", storeId)
+    .gte("due_date", format.format(start))
+    .lte("due_date", format.format(end))
+    .in("status", ["pending", "in_progress", "waiting"]);
+
+  const normalizedWords = matchWords.map((word) => word.toLowerCase());
+  const matchingIds = (tasks ?? [])
+    .filter((task) => {
+      const haystack = `${task.title ?? ""} ${task.category ?? ""}`.toLowerCase();
+      return normalizedWords.some((word) => haystack.includes(word));
+    })
+    .map((task) => task.id);
+
+  if (!matchingIds.length) {
+    return;
+  }
+
+  await supabase
+    .from("tasks")
+    .update({ status: "done", completed_at: new Date().toISOString() })
+    .in("id", matchingIds);
+}

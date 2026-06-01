@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ClipboardList,
+  CalendarClock,
   PackageSearch,
   Sparkles,
   UserRoundCheck,
@@ -11,11 +12,13 @@ import { AccessDenied } from "@/components/app/access-denied";
 import { StatusCard } from "@/components/app/status-card";
 import { ChecklistCard } from "@/components/checklist/checklist-card";
 import { SalesReportList } from "@/components/reports/sales-report-list";
+import { SalaryAttendanceReportList } from "@/components/reports/salary-attendance-report-list";
 import { ReviewHistoryList } from "@/components/reviews/review-history-list";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { UpdateCard } from "@/components/updates/update-card";
 import { canAccessStore, requireProfile } from "@/lib/auth/session";
 import { getStoreSalesStatuses } from "@/lib/reports/sales-queries";
+import { getStoreSalaryAttendanceStatuses } from "@/lib/reports/salary-queries";
 import { getReviewStatuses } from "@/lib/reviews/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreUpdateSummary } from "@/lib/updates/queries";
@@ -59,13 +62,15 @@ export default async function StoreDetailPage({
     notFound();
   }
 
-  const [salesStatuses, reviewStatuses, updateSummary, checklist] = await Promise.all([
+  const [salesStatuses, salaryStatuses, reviewStatuses, updateSummary, checklist] = await Promise.all([
     getStoreSalesStatuses([{ id: store.id, name: store.name, code: store.code }]),
+    getStoreSalaryAttendanceStatuses([{ id: store.id, name: store.name, code: store.code }]),
     getReviewStatuses([{ id: store.id, name: store.name, code: store.code, type: store.type }]),
     getStoreUpdateSummary(store.id),
     getStoreChecklist(store),
   ]);
   const [salesStatus] = salesStatuses;
+  const [salaryStatus] = salaryStatuses;
   const [reviewStatus] = reviewStatuses;
 
   return (
@@ -153,6 +158,67 @@ export default async function StoreDetailPage({
             <SalesReportList
               emptyText="No sales reports uploaded for this store yet."
               reports={salesStatus.recentReports}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {salaryStatus ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted">Salary attendance</p>
+              <h2 className="mt-2 text-2xl font-semibold">Current month status</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Attendance for {salaryStatus.periodMonth}:{" "}
+                <span
+                  className={
+                    salaryStatus.report
+                      ? "font-semibold text-success"
+                      : "font-semibold text-danger"
+                  }
+                >
+                  {salaryStatus.report ? "uploaded" : "missing"}
+                </span>
+              </p>
+            </div>
+            <Link
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              href={`/app/reports/salary-attendance?storeId=${store.id}`}
+            >
+              <CalendarClock className="size-4" />
+              Upload/view
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Uploaded date</p>
+              <p className="mt-1 font-semibold">
+                {salaryStatus.report?.report_date ?? "No upload"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Uploaded by</p>
+              <p className="mt-1 font-semibold">
+                {salaryStatus.report?.profiles?.full_name ??
+                  salaryStatus.report?.profiles?.email ??
+                  "No upload"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">File name</p>
+              <p className="mt-1 break-words font-semibold">
+                {salaryStatus.report?.file_name ?? "No file"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <h3 className="text-lg font-semibold">Recent salary attendance history</h3>
+            <SalaryAttendanceReportList
+              emptyText="No salary attendance reports uploaded for this store yet."
+              reports={salaryStatus.recentReports}
             />
           </div>
         </section>
