@@ -12,9 +12,19 @@ export type SecretaryChatState = {
   message: string;
 };
 
-const geminiModel = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
+const defaultModel = "gemini-2.5-flash";
+const fallbackModels = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-flash-latest",
+  "gemini-2.0-flash",
+];
 const maxPromptLength = 600;
 const maxContextLength = 14000;
+
+function getConfiguredModel() {
+  return process.env.GEMINI_MODEL || defaultModel;
+}
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -30,6 +40,42 @@ function memoryTitle(prompt: string) {
   return prompt.replace(/^(remember|save this|note this)[:\s-]*/i, "").slice(0, 60) || "Secretary note";
 }
 
+function isModelNotFoundError(status: number) {
+  return status === 404;
+}
+
+function isRetryableModelError(status: number) {
+  // Only retry on 404 (model not found). Do NOT retry on:
+  // 400 (bad request), 401/403 (auth/permission), 429 (rate limit), 500+ (server errors)
+  return status === 404;
+}
+
+async function tryGenerateContent(model: string, apiKey: string, requestBody: object) {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      body: JSON.stringify(requestBody),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    },
+  );
+
+  if (!response.ok) {
+    return { ok: false as const, status: response.status, model };
+  }
+
+  const data = (await response.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+  const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("\n").trim();
+
+  if (!text) {
+    return { ok: false as const, status: 0, model };
+  }
+
+  return { ok: true as const, text, model };
+}
+
 async function callGemini(prompt: string, context: string) {
   const apiKey = process.env.GEMINI_API_KEY;
 
@@ -37,7 +83,7 @@ async function callGemini(prompt: string, context: string) {
     throw new Error("Gemini API key is not configured.");
   }
 
-  const body = {
+  const requestBody = {
     contents: [
       {
         role: "user",
@@ -62,29 +108,45 @@ async function callGemini(prompt: string, context: string) {
     },
   };
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`,
-    {
-      body: JSON.stringify(body),
-      headers: { "Content-Type": "application/json" },
-      method: "POST",
-    },
+  // Try configured model first
+  const primaryModel = getConfiguredModel();
+  const primaryResult = await tryGenerateContent(primaryModel, apiKey, requestBody);
+
+  if (primaryResult.ok) {
+    return { text: primaryResult.text, model: primaryResult.model };
+  }
+
+  // Only fallback on model-not-found (404), not on auth/safety/other errors
+  if (!isRetryableModelError(primaryResult.status)) {
+    if (primaryResult.status === 0) {
+      throw new Error("Gemini returned an empty response.");
+    }
+    throw new Error(
+      `Gemini request failed (${primaryResult.status}). Check API key and account permissions.`,
+    );
+  }
+
+  // Try fallback models (skip if same as primary)
+  for (const fallbackModel of fallbackModels) {
+    if (fallbackModel === primaryModel) continue;
+
+    const fallbackResult = await tryGenerateContent(fallbackModel, apiKey, requestBody);
+
+    if (fallbackResult.ok) {
+      return { text: fallbackResult.text, model: fallbackResult.model };
+    }
+
+    // Stop fallback chain if error is NOT model-related
+    if (!isModelNotFoundError(fallbackResult.status)) {
+      throw new Error(
+        `Gemini request failed (${fallbackResult.status}). Check API key and account permissions.`,
+      );
+    }
+  }
+
+  throw new Error(
+    "Gemini model is unavailable. Run npm run check:gemini and verify GEMINI_MODEL.",
   );
-
-  if (!response.ok) {
-    throw new Error(`Gemini request failed (${response.status}).`);
-  }
-
-  const data = (await response.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("\n").trim();
-
-  if (!text) {
-    throw new Error("Gemini returned an empty response.");
-  }
-
-  return text;
 }
 
 export async function sendSecretaryMessage(
@@ -124,27 +186,28 @@ export async function sendSecretaryMessage(
 
   try {
     const context = await buildSecretaryContext(session.profile, prompt);
-    const answer = await callGemini(prompt, context);
+    const { text: answer, model: usedModel } = await callGemini(prompt, context);
 
     await supabase.from("ai_chats").insert({
       user_id: session.profile.id,
       role: "assistant",
       content: answer,
-      metadata: { source: "secretary", model: geminiModel } satisfies Json,
+      metadata: { source: "secretary", model: usedModel } satisfies Json,
     });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? `I could not reach Gemini just now. ${error.message}`
-        : "I could not reach Gemini just now.";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unexpected error contacting Gemini.";
+    const userMessage = errorMessage.includes("unavailable")
+      ? errorMessage
+      : `I could not reach Gemini just now. ${errorMessage}`;
     await supabase.from("ai_chats").insert({
       user_id: session.profile.id,
       role: "assistant",
-      content: `${message}\n\nWant to try again in a minute?`,
+      content: `${userMessage}\n\nWant to try again in a minute?`,
       metadata: { source: "secretary", error: true } satisfies Json,
     });
     revalidatePath("/app/secretary");
-    return { ok: false, message };
+    return { ok: false, message: userMessage };
   }
 
   revalidatePath("/app/secretary");

@@ -1,120 +1,77 @@
-# AI Secretary Notes
-
-Date: 2026-06-01
-
-## What AI Secretary Can Answer
-
-AI Secretary is an owner-only chat page for calm GPBM Retail guidance.
-
-Route:
-
-- `/app/secretary`
-
-It can answer questions such as:
-
-- what needs attention today
-- how Go Planet is doing
-- how Brand Mark is doing
-- what is not selling
-- which staff performed best
-- what is pending
-- what to review today
-- Monday weekly audit summary
-- one content idea when useful
-
-## Data Used
-
-The AI receives compact summaries only, not raw report rows.
-
-Context can include:
-
-- India date/time
-- owner role/name
-- active stores
-- daily checklist status
-- yesterday sales status and latest sales amount
-- this month sales summary
-- staff leader summary
-- stock pulse counts
-- top stock categories
-- urgent manager updates
-- task counts
-- salary attendance status
-- stock report status
-- weekly audit summary when Monday or requested
-- active AI memories
+# AI Secretary — Technical Notes
 
 ## Gemini Integration
 
-Gemini is called from a server action only.
+### Default Model
+The AI Secretary uses **`gemini-2.5-flash`** by default. This is a stable, low-cost Gemini model suitable for business assistant use cases.
 
-Environment variables:
+### Model Override
+Set `GEMINI_MODEL` in `.env.local` or Vercel environment variables to use a different model:
 
-- `GEMINI_API_KEY`
-- optional `GEMINI_MODEL`
+```
+GEMINI_MODEL=gemini-2.5-flash-lite
+```
 
-Default model:
+If not set, the default `gemini-2.5-flash` is used.
 
-- `gemini-1.5-flash`
+### Fallback Logic
+If the configured model returns HTTP 404 (model not found/unavailable), the system automatically tries fallback models in this order:
 
-The key is never exposed to the client.
+1. `gemini-2.5-flash` (default)
+2. `gemini-2.5-flash-lite`
+3. `gemini-flash-latest`
+4. `gemini-2.0-flash`
 
-## Tone
+Fallback only triggers on 404 errors. Auth errors (401/403), rate limits (429), and other failures are NOT retried with different models.
 
-The system prompt tells AI Secretary to be:
+### Health Check
+Run the Gemini health check to verify your API key and model:
 
-- calm
-- practical
-- concise
-- non-bossy
-- choice-based
+```bash
+npm run check:gemini
+```
 
-It should not invent sales or stock data.
+This will:
+- Verify `GEMINI_API_KEY` is set (without printing it)
+- List available Gemini models that support `generateContent`
+- Test the configured model with a simple prompt
+- Try fallback models if the primary returns 404
+- Exit with code 0 (healthy) or 1 (broken)
 
-It should avoid commands such as "do this now" or "you must".
+### Common Issues
 
-## Cost Control
+| Error | Cause | Fix |
+|---|---|---|
+| 404 model not found | Model name is wrong or deprecated | Run `npm run check:gemini` to find working models |
+| 401/403 unauthorized | API key is invalid or disabled | Regenerate key at console.cloud.google.com |
+| Empty response | Model returned no candidates | Usually transient — retry |
+| "API key is not configured" | `GEMINI_API_KEY` not in environment | Add to `.env.local` or Vercel env vars |
 
-Gemini is not called on dashboard load.
+### Cost Control
+- AI calls are **manual only** — the owner must explicitly send a message
+- No background/scheduled AI calls
+- `maxOutputTokens: 700` limits per-call cost
+- `temperature: 0.35` keeps responses focused
+- Context is capped at 14,000 characters
+- Gemini Flash models are the lowest-cost tier
 
-Gemini is called only when the owner:
+### API Endpoint
+```
+POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+```
 
-- sends a chat message
-- taps a quick prompt
-- taps a top summary button on `/app/secretary`
-
-Context is compact and capped before being sent.
-
-Responses are capped with a small output token limit.
-
-## Chat History
-
-User and assistant messages are saved in:
-
-- `ai_chats`
-
-The page shows recent chat history for the owner.
-
-## Memory Behavior
-
-Active memories are read from:
-
-- `ai_memories`
-
-For v1, if the owner says "remember", "save this", or "note this", the message is saved as an active owner note.
-
-The owner can hide/deactivate a memory from the Secretary page.
-
-Future improvement: add confirmation before saving memories.
-
-## Known Limitations
-
-- Owner-only in v1.
-- No streaming response yet.
-- Memory save confirmation is not built yet.
-- Context is summarized and may omit low-priority details.
-- AI quality depends on uploaded reports and checklist data.
-
-## Next Recommended Step
-
-Build Life Flow or deployment/polish. A later AI Secretary version can connect business audit data with personal routines and weekly planning.
+### Context Sent to AI
+Each AI Secretary call builds a real-time context from:
+- Current India time
+- Active stores and their status
+- Today's checklist completion
+- Yesterday's sales status
+- This month's sales summaries
+- Staff rankings
+- Stock pulse (slow/dead/fast-low candidates)
+- Open manager updates
+- Task summary
+- Salary/stock report status
+- Active AI memories
+- Owner Life Flow (mood, energy, gym, etc.)
+- Weekly audit (on Mondays or when asked)
