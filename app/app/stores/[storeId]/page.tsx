@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ClipboardList,
-  MessageSquareText,
   PackageSearch,
   Sparkles,
   UserRoundCheck,
@@ -13,20 +12,17 @@ import { StatusCard } from "@/components/app/status-card";
 import { SalesReportList } from "@/components/reports/sales-report-list";
 import { ReviewHistoryList } from "@/components/reviews/review-history-list";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
+import { UpdateCard } from "@/components/updates/update-card";
 import { canAccessStore, requireProfile } from "@/lib/auth/session";
 import { getStoreSalesStatuses } from "@/lib/reports/sales-queries";
 import { getReviewStatuses } from "@/lib/reviews/queries";
 import { createClient } from "@/lib/supabase/server";
+import { getStoreUpdateSummary } from "@/lib/updates/queries";
 
 const storeSections = [
   { title: "Stock", body: "Stock workspace placeholder.", icon: PackageSearch },
   { title: "Tasks", body: "Store task shell placeholder.", icon: ClipboardList },
   { title: "Staff Sales", body: "Staff sales placeholder.", icon: UserRoundCheck },
-  {
-    title: "Manager Updates",
-    body: "Manager update placeholder.",
-    icon: MessageSquareText,
-  },
 ];
 
 function formatMoney(value?: number) {
@@ -61,9 +57,10 @@ export default async function StoreDetailPage({
     notFound();
   }
 
-  const [salesStatuses, reviewStatuses] = await Promise.all([
+  const [salesStatuses, reviewStatuses, updateSummary] = await Promise.all([
     getStoreSalesStatuses([{ id: store.id, name: store.name, code: store.code }]),
     getReviewStatuses([{ id: store.id, name: store.name, code: store.code, type: store.type }]),
+    getStoreUpdateSummary(store.id),
   ]);
   const [salesStatus] = salesStatuses;
   const [reviewStatus] = reviewStatuses;
@@ -189,6 +186,44 @@ export default async function StoreDetailPage({
           </div>
         </section>
       ) : null}
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Manager updates</p>
+            <h2 className="mt-2 text-2xl font-semibold">Store attention feed</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Open updates: <span className="font-semibold text-foreground">{updateSummary.openCount}</span>{" "}
+              · Urgent: <span className="font-semibold text-danger">{updateSummary.urgentCount}</span>
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              href={`/app/updates/new?storeId=${store.id}`}
+            >
+              Add update
+            </Link>
+            <Link
+              className="inline-flex h-11 items-center justify-center rounded-2xl border border-border px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
+              href={`/app/updates?storeId=${store.id}`}
+            >
+              View all
+            </Link>
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+          {updateSummary.latest.length ? (
+            updateSummary.latest.map((update) => (
+              <UpdateCard compact key={update.id} update={update} />
+            ))
+          ) : (
+            <div className="rounded-2xl border border-border p-4 text-sm leading-6 text-muted">
+              No manager updates submitted for this store yet.
+            </div>
+          )}
+        </div>
+      </section>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {storeSections.map((section) => (
