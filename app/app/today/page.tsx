@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 
 import { StatusCard } from "@/components/app/status-card";
+import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { getStoreSalesStatuses } from "@/lib/reports/sales-queries";
+import { getReviewStatuses } from "@/lib/reviews/queries";
 import { getTaskSummary } from "@/lib/tasks/queries";
 
 function formatMoney(value?: number) {
@@ -31,7 +33,10 @@ export default async function TodayPage() {
   const taskSummary = profile
     ? await getTaskSummary(profile)
     : { todayCount: 0, urgentCount: 0, privateCount: 0, storeCounts: [] };
-  const salesStatuses = await getStoreSalesStatuses(stores);
+  const [salesStatuses, reviewStatuses] = await Promise.all([
+    getStoreSalesStatuses(stores),
+    getReviewStatuses(stores),
+  ]);
 
   return (
     <div className="space-y-5">
@@ -44,6 +49,31 @@ export default async function TodayPage() {
           Signed in as <span className="font-semibold capitalize">{profile?.role}</span>.
           Store data below follows your role and assignments.
         </p>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Today store reviews</h2>
+          <Sparkles className="size-5 text-muted" />
+        </div>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {reviewStatuses.map((status) => (
+            <div className="grid gap-3" key={status.store.id}>
+              <ReviewStatusCard
+                href={`/app/reviews/rack?storeId=${status.store.id}`}
+                review={status.rackReview}
+                storeName={status.store.name}
+                title="Rack review"
+              />
+              <ReviewStatusCard
+                href={`/app/reviews/cleaning?storeId=${status.store.id}`}
+                review={status.cleaningReview}
+                storeName={status.store.name}
+                title="Cleaning review"
+              />
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -184,12 +214,12 @@ export default async function TodayPage() {
           title="Salary day"
         />
         <StatusCard
-          body="Rack review workflow shell is ready for the next build step."
+          body="Daily rack review is active from Reviews."
           icon={Sparkles}
           title="Rack review"
         />
         <StatusCard
-          body="Cleaning review workflow shell is ready for the next build step."
+          body="Daily cleaning review is active from Reviews."
           icon={SprayCan}
           title="Cleaning review"
         />

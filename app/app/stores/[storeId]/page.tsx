@@ -4,24 +4,23 @@ import {
   ClipboardList,
   MessageSquareText,
   PackageSearch,
-  Shirt,
   Sparkles,
-  SprayCan,
   UserRoundCheck,
 } from "lucide-react";
 
 import { AccessDenied } from "@/components/app/access-denied";
 import { StatusCard } from "@/components/app/status-card";
 import { SalesReportList } from "@/components/reports/sales-report-list";
+import { ReviewHistoryList } from "@/components/reviews/review-history-list";
+import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { canAccessStore, requireProfile } from "@/lib/auth/session";
 import { getStoreSalesStatuses } from "@/lib/reports/sales-queries";
+import { getReviewStatuses } from "@/lib/reviews/queries";
 import { createClient } from "@/lib/supabase/server";
 
 const storeSections = [
   { title: "Stock", body: "Stock workspace placeholder.", icon: PackageSearch },
   { title: "Tasks", body: "Store task shell placeholder.", icon: ClipboardList },
-  { title: "Rack Review", body: "Rack review placeholder.", icon: Shirt },
-  { title: "Cleaning Review", body: "Cleaning review placeholder.", icon: SprayCan },
   { title: "Staff Sales", body: "Staff sales placeholder.", icon: UserRoundCheck },
   {
     title: "Manager Updates",
@@ -62,9 +61,12 @@ export default async function StoreDetailPage({
     notFound();
   }
 
-  const [salesStatus] = await getStoreSalesStatuses([
-    { id: store.id, name: store.name, code: store.code },
+  const [salesStatuses, reviewStatuses] = await Promise.all([
+    getStoreSalesStatuses([{ id: store.id, name: store.name, code: store.code }]),
+    getReviewStatuses([{ id: store.id, name: store.name, code: store.code, type: store.type }]),
   ]);
+  const [salesStatus] = salesStatuses;
+  const [reviewStatus] = reviewStatuses;
 
   return (
     <div className="space-y-5">
@@ -148,6 +150,42 @@ export default async function StoreDetailPage({
               emptyText="No sales reports uploaded for this store yet."
               reports={salesStatus.recentReports}
             />
+          </div>
+        </section>
+      ) : null}
+
+      {reviewStatus ? (
+        <section className="space-y-5">
+          <div className="grid gap-3 lg:grid-cols-2">
+            <ReviewStatusCard
+              href={`/app/reviews/rack?storeId=${store.id}`}
+              review={reviewStatus.rackReview}
+              storeName={store.name}
+              title="Today rack review"
+            />
+            <ReviewStatusCard
+              href={`/app/reviews/cleaning?storeId=${store.id}`}
+              review={reviewStatus.cleaningReview}
+              storeName={store.name}
+              title="Today cleaning review"
+            />
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">Recent rack reviews</h3>
+              <ReviewHistoryList
+                emptyText="No rack reviews submitted for this store yet."
+                reviews={reviewStatus.recentRackReviews}
+              />
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">Recent cleaning reviews</h3>
+              <ReviewHistoryList
+                emptyText="No cleaning reviews submitted for this store yet."
+                reviews={reviewStatus.recentCleaningReviews}
+              />
+            </div>
           </div>
         </section>
       ) : null}
