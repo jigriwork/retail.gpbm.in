@@ -12,6 +12,7 @@ import {
   Store,
   TriangleAlert,
   WalletCards,
+  Bot,
 } from "lucide-react";
 
 import { ChecklistCard } from "@/components/checklist/checklist-card";
@@ -106,6 +107,27 @@ export default async function TodayPage() {
           Store data below follows your role and assignments.
         </p>
       </section>
+
+      {profile?.role === "owner" ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted">AI Secretary</p>
+              <h2 className="mt-2 text-2xl font-semibold">Ask what needs attention today</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Opens the AI chat only when you ask, so Gemini is not called on dashboard load.
+              </p>
+            </div>
+            <Link
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              href="/app/secretary"
+            >
+              <Bot className="size-4" />
+              Open Secretary
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
