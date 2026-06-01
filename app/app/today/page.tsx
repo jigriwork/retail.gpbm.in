@@ -27,6 +27,11 @@ import { getTodayUpdateSummary } from "@/lib/updates/queries";
 import { UpdateCard } from "@/components/updates/update-card";
 import { getAccessibleChecklists } from "@/lib/checklist/queries";
 import {
+  getPreviousWeekRangeAsiaKolkata,
+  getWeeklyAuditSummaries,
+  isWeeklyAuditDay,
+} from "@/lib/audit/weekly";
+import {
   currentMonthRange,
   getDateRangeForPeriod,
   getSalesSummary,
@@ -81,6 +86,13 @@ export default async function TodayPage() {
         stores,
       })
     : null;
+  const previousWeekRange = getPreviousWeekRangeAsiaKolkata();
+  const weeklyAuditDay = isWeeklyAuditDay();
+  const weeklyAudits = weeklyAuditDay ? await getWeeklyAuditSummaries(stores, previousWeekRange) : [];
+  const weeklyMissingSalesReports = weeklyAudits.reduce(
+    (sum, audit) => sum + audit.missingSalesReports.length,
+    0,
+  );
 
   return (
     <div className="space-y-5">
@@ -93,6 +105,31 @@ export default async function TodayPage() {
           Signed in as <span className="font-semibold capitalize">{profile?.role}</span>.
           Store data below follows your role and assignments.
         </p>
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">
+              {weeklyAuditDay ? "Weekly Audit Day" : "Weekly audit"}
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">
+              {weeklyAuditDay ? "Review previous week" : "View weekly audit"}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Previous week: {previousWeekRange.startDate} to {previousWeekRange.endDate}.
+              {weeklyAuditDay
+                ? ` Missing sales report days: ${weeklyMissingSalesReports}.`
+                : ""}
+            </p>
+          </div>
+          <Link
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            href="/app/audit"
+          >
+            Open audit
+          </Link>
+        </div>
       </section>
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">

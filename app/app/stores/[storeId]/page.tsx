@@ -26,6 +26,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getStoreUpdateSummary } from "@/lib/updates/queries";
 import { getStoreChecklist } from "@/lib/checklist/queries";
 import {
+  getPreviousWeekRangeAsiaKolkata,
+  getStoreWeeklyAuditSummary,
+} from "@/lib/audit/weekly";
+import {
   getLatestStockMonth,
   getStockSummary,
 } from "@/lib/analytics/stock";
@@ -115,6 +119,8 @@ export default async function StoreDetailPage({
         stores: [store],
       })
     : null;
+  const previousWeekRange = getPreviousWeekRangeAsiaKolkata();
+  const weeklyAudit = await getStoreWeeklyAuditSummary(store, previousWeekRange);
 
   return (
     <div className="space-y-5">
@@ -146,6 +152,47 @@ export default async function StoreDetailPage({
 
       <section>
         <ChecklistCard checklist={checklist} />
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Weekly audit</p>
+            <h2 className="mt-2 text-2xl font-semibold">Previous week summary</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              {previousWeekRange.startDate} to {previousWeekRange.endDate}
+            </p>
+          </div>
+          <Link
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            href={`/app/audit/${store.id}?week=${previousWeekRange.startDate}`}
+          >
+            Store audit
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Last week sale</p>
+            <p className="mt-1 font-semibold">{formatMoney(weeklyAudit.sales.totalNetSale)}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Missing reports</p>
+            <p className="mt-1 font-semibold">{weeklyAudit.missingSalesReports.length}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Reviews</p>
+            <p className="mt-1 font-semibold">
+              Rack {weeklyAudit.reviews.rackCompletedDays}/7 · Cleaning{" "}
+              {weeklyAudit.reviews.cleaningCompletedDays}/7
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Checklist estimate</p>
+            <p className="mt-1 font-semibold">
+              {weeklyAudit.checklist.estimatedCompletionPercent}%
+            </p>
+          </div>
+        </div>
       </section>
 
       {salesStatus ? (
