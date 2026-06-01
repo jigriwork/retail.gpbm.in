@@ -1,15 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  ClipboardList,
   CalendarClock,
+  ClipboardList,
   PackageSearch,
   Sparkles,
   UserRoundCheck,
 } from "lucide-react";
 
 import { AccessDenied } from "@/components/app/access-denied";
-import { StatusCard } from "@/components/app/status-card";
 import { ChecklistCard } from "@/components/checklist/checklist-card";
 import { SalesReportList } from "@/components/reports/sales-report-list";
 import { SalaryAttendanceReportList } from "@/components/reports/salary-attendance-report-list";
@@ -42,10 +41,7 @@ import {
   getStaffSalesSummary,
 } from "@/lib/analytics/sales";
 
-const storeSections = [
-  { title: "Tasks", body: "Store task shell placeholder.", icon: ClipboardList },
-  { title: "Staff Sales", body: "Staff sales placeholder.", icon: UserRoundCheck },
-];
+
 
 function formatMoney(value?: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -90,6 +86,7 @@ export default async function StoreDetailPage({
     weekSales,
     monthSales,
     weekStaff,
+    storeTasks,
   ] = await Promise.all([
     getStoreSalesStatuses([{ id: store.id, name: store.name, code: store.code }]),
     getStoreSalaryAttendanceStatuses([{ id: store.id, name: store.name, code: store.code }]),
@@ -104,6 +101,11 @@ export default async function StoreDetailPage({
     getSalesSummary({ storeIds: [store.id], dateRange: currentWeekRange() }, [store]),
     getSalesSummary({ storeIds: [store.id], dateRange: currentMonthRange() }, [store]),
     getStaffSalesSummary({ storeIds: [store.id], dateRange: currentWeekRange() }),
+    supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("store_id", storeId)
+      .in("status", ["pending", "in_progress"]),
   ]);
   const [salesStatus] = salesStatuses;
   const [salaryStatus] = salaryStatuses;
@@ -595,10 +597,29 @@ export default async function StoreDetailPage({
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {storeSections.map((section) => (
-          <StatusCard {...section} key={section.title} />
-        ))}
+      <section className="grid gap-3 sm:grid-cols-2">
+        <Link
+          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
+          href={`/app/tasks?storeId=${store.id}`}
+        >
+          <ClipboardList className="mb-5 size-5 text-muted" />
+          <h3 className="text-base font-semibold">Tasks</h3>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            {storeTasks.count
+              ? `${storeTasks.count} pending or in-progress task${storeTasks.count === 1 ? "" : "s"}.`
+              : "No pending tasks for this store."}
+          </p>
+        </Link>
+        <Link
+          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
+          href={`/app/reports/staff?storeId=${store.id}&period=week`}
+        >
+          <UserRoundCheck className="mb-5 size-5 text-muted" />
+          <h3 className="text-base font-semibold">Staff Sales</h3>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Staff ranking and performance from uploaded sales reports.
+          </p>
+        </Link>
       </section>
     </div>
   );

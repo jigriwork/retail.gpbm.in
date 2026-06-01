@@ -86,7 +86,7 @@ export default async function ProtectedAppLayout({
       </header>
 
       <main className="mx-auto w-full max-w-5xl px-4 py-5">{children}</main>
-      <BottomNav />
+      <BottomNav role={profile.role} />
     </div>
   );
 }

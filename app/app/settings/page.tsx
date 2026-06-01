@@ -4,6 +4,7 @@ const labels: Record<string, string> = {
   salary_day: "Salary day",
   salary_attendance_due_day: "Salary attendance due day",
   stock_report_due_day: "Stock report due day",
+  weekly_audit_day: "Weekly audit day",
   timezone: "Timezone",
 };
 
@@ -44,7 +45,7 @@ export default async function SettingsPage() {
             key={key}
           >
             <p className="text-sm font-medium text-muted">{label}</p>
-            <p className="mt-3 text-2xl font-semibold">
+            <p className="mt-3 text-2xl font-semibold capitalize">
               {settingValue(key, values.get(key))}
             </p>
           </div>
