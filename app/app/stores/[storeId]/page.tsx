@@ -26,6 +26,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getStoreUpdateSummary } from "@/lib/updates/queries";
 import { getStoreChecklist } from "@/lib/checklist/queries";
 import {
+  getLatestStockMonth,
+  getStockSummary,
+} from "@/lib/analytics/stock";
+import {
   calculateTargetProgress,
   currentMonthRange,
   currentWeekRange,
@@ -102,6 +106,15 @@ export default async function StoreDetailPage({
   const [stockStatus] = stockStatuses;
   const [reviewStatus] = reviewStatuses;
   const targetProgress = calculateTargetProgress(store, monthSales.totalNetSale);
+  const latestStockMonth = await getLatestStockMonth(store.id);
+  const stockAnalytics = latestStockMonth
+    ? await getStockSummary({
+        storeIds: [store.id],
+        stockMonth: latestStockMonth,
+        lookbackDays: 30,
+        stores: [store],
+      })
+    : null;
 
   return (
     <div className="space-y-5">
@@ -414,6 +427,52 @@ export default async function StoreDetailPage({
           </div>
         </section>
       ) : null}
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Stock analytics</p>
+            <h2 className="mt-2 text-2xl font-semibold">
+              {latestStockMonth ? `Latest stock ${latestStockMonth}` : "No stock report yet"}
+            </h2>
+          </div>
+          <Link
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            href={`/app/reports/stock/analytics?storeId=${store.id}`}
+          >
+            Full stock analytics
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Stock quantity</p>
+            <p className="mt-1 font-semibold">{stockAnalytics?.totalStockQuantity ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Top category</p>
+            <p className="mt-1 font-semibold">{stockAnalytics?.topCategories[0]?.name ?? "No category"}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Slow/dead</p>
+            <p className="mt-1 font-semibold">
+              {(stockAnalytics?.slowStockCandidates.length ?? 0) +
+                (stockAnalytics?.deadStockCandidates.length ?? 0)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Fast low stock</p>
+            <p className="mt-1 font-semibold">
+              {stockAnalytics?.fastMovingLowStockCandidates.length ?? 0}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">High stock low sale</p>
+            <p className="mt-1 font-semibold">
+              {stockAnalytics?.highStockLowSaleCandidates.length ?? 0}
+            </p>
+          </div>
+        </div>
+      </section>
 
       {reviewStatus ? (
         <section className="space-y-5">

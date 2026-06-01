@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { BarChart3, CalendarClock, FileSpreadsheet, LineChart, UploadCloud, UserRoundCheck } from "lucide-react";
+import {
+  BarChart3,
+  CalendarClock,
+  FileSpreadsheet,
+  LineChart,
+  PackageSearch,
+  UploadCloud,
+  UserRoundCheck,
+} from "lucide-react";
 
 import { SalesReportList } from "@/components/reports/sales-report-list";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
@@ -150,6 +158,18 @@ export default async function ReportsPage() {
                 </div>
               ))}
             </div>
+          </Link>
+          <Link
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            href="/app/reports/stock/analytics"
+          >
+            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+              <PackageSearch className="size-5" />
+            </div>
+            <h2 className="text-2xl font-semibold">Stock Analytics</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Slow/dead stock dashboard, high-stock low-sale and reorder signals.
+            </p>
           </Link>
           <Link
             className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"

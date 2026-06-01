@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PackageSearch } from "lucide-react";
 
 import { StockReportList } from "@/components/reports/stock-report-list";
 import { StockUploadForm } from "@/components/reports/stock-upload-form";
@@ -33,6 +34,18 @@ export default async function StockReportsPage({
       </div>
 
       <section className="grid gap-3 sm:grid-cols-2">
+        <Link
+          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
+          href="/app/reports/stock/analytics"
+        >
+          <div className="mb-4 flex size-10 items-center justify-center rounded-2xl border border-border">
+            <PackageSearch className="size-5" />
+          </div>
+          <h2 className="text-xl font-semibold">Stock analytics</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Slow stock, dead stock signals and fast moving low-stock candidates.
+          </p>
+        </Link>
         {overview.statuses.map((status) => (
           <div className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm" key={status.store.id}>
             <div className="flex items-start justify-between gap-3">

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { Loader2, PackageSearch, UploadCloud } from "lucide-react";
 
@@ -151,6 +152,12 @@ export function StockUploadForm({
               </div>
             </div>
           </div>
+          <Link
+            className="mt-5 inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
+            href={`/app/reports/stock/analytics?storeId=${defaultStoreId ?? ""}&stockMonth=${state.summary.periodMonth}`}
+          >
+            Open stock analytics
+          </Link>
         </section>
       ) : null}
     </div>

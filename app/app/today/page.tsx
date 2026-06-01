@@ -32,6 +32,7 @@ import {
   getSalesSummary,
   getStaffSalesSummary,
 } from "@/lib/analytics/sales";
+import { getLatestStockMonth, getStockSummary } from "@/lib/analytics/stock";
 
 function formatMoney(value?: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -57,6 +58,7 @@ export default async function TodayPage() {
     getTodayUpdateSummary(stores),
     getAccessibleChecklists(profile),
   ]);
+  const latestStockMonth = await getLatestStockMonth();
   const [yesterdaySalesPulse, monthSalesPulse, yesterdayStaffPulse] = await Promise.all([
     getSalesSummary(
       { storeIds: stores.map((store) => store.id), dateRange: getDateRangeForPeriod("yesterday") },
@@ -71,6 +73,14 @@ export default async function TodayPage() {
       dateRange: getDateRangeForPeriod("yesterday"),
     }),
   ]);
+  const stockPulse = latestStockMonth
+    ? await getStockSummary({
+        storeIds: stores.map((store) => store.id),
+        stockMonth: latestStockMonth,
+        lookbackDays: 30,
+        stores,
+      })
+    : null;
 
   return (
     <div className="space-y-5">
@@ -83,6 +93,47 @@ export default async function TodayPage() {
           Signed in as <span className="font-semibold capitalize">{profile?.role}</span>.
           Store data below follows your role and assignments.
         </p>
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Stock pulse</p>
+            <h2 className="mt-2 text-2xl font-semibold">
+              {latestStockMonth ? `Latest stock ${latestStockMonth}` : "No stock report yet"}
+            </h2>
+          </div>
+          <Link
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            href="/app/reports/stock/analytics"
+          >
+            Stock analytics
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Dead candidates</p>
+            <p className="mt-1 text-2xl font-semibold">{stockPulse?.deadStockCandidates.length ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Slow candidates</p>
+            <p className="mt-1 text-2xl font-semibold">{stockPulse?.slowStockCandidates.length ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Fast low stock</p>
+            <p className="mt-1 text-2xl font-semibold">
+              {stockPulse?.fastMovingLowStockCandidates.length ?? 0}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Stock report status</p>
+            <p className="mt-1 text-sm font-semibold">
+              {stockOverview.missingCount
+                ? `${stockOverview.missingCount} missing`
+                : `${stockOverview.uploadedCount} uploaded`}
+            </p>
+          </div>
+        </div>
       </section>
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
