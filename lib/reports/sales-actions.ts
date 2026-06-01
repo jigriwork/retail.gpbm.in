@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { canAccessStore, getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { parseSalesFile, matchesStoreName, summarizeSalesRows } from "@/lib/reports/sales-parser";
 import { createClient } from "@/lib/supabase/server";
+import { completeMatchingTasks } from "@/lib/tasks/auto-complete";
+import { getIndiaToday } from "@/lib/tasks/dates";
 import type { Json, TablesInsert } from "@/lib/supabase/database.types";
 
 export type SalesUploadState = {
@@ -211,7 +213,7 @@ export async function uploadSalesReport(
     };
   }
 
-  // TODO: Connect successful uploads to generated daily sales reminder completion.
+  await completeMatchingTasks(storeId, getIndiaToday(), ["sales report", "daily_sales"]);
   revalidatePath("/app/reports");
   revalidatePath("/app/reports/sales");
   revalidatePath("/app/today");

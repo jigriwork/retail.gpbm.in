@@ -8,9 +8,9 @@ import { createClient } from "@/lib/supabase/server";
 export default async function NewUpdatePage({
   searchParams,
 }: {
-  searchParams: Promise<{ storeId?: string }>;
+  searchParams: Promise<{ storeId?: string; category?: string }>;
 }) {
-  const { storeId } = await searchParams;
+  const { storeId, category } = await searchParams;
   const { profile } = await requireProfile();
   const stores = await getAccessibleStores(profile);
   const defaultStoreId = stores.some((store) => store.id === storeId) ? storeId : stores[0]?.id;
@@ -41,6 +41,7 @@ export default async function NewUpdatePage({
           <ManagerUpdateForm
             action={createManagerUpdate}
             assignableUsers={profiles ?? []}
+            defaultCategory={category}
             defaultStoreId={defaultStoreId}
             mode="create"
             stores={stores}

@@ -9,6 +9,7 @@ import {
 
 import { AccessDenied } from "@/components/app/access-denied";
 import { StatusCard } from "@/components/app/status-card";
+import { ChecklistCard } from "@/components/checklist/checklist-card";
 import { SalesReportList } from "@/components/reports/sales-report-list";
 import { ReviewHistoryList } from "@/components/reviews/review-history-list";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
@@ -18,6 +19,7 @@ import { getStoreSalesStatuses } from "@/lib/reports/sales-queries";
 import { getReviewStatuses } from "@/lib/reviews/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreUpdateSummary } from "@/lib/updates/queries";
+import { getStoreChecklist } from "@/lib/checklist/queries";
 
 const storeSections = [
   { title: "Stock", body: "Stock workspace placeholder.", icon: PackageSearch },
@@ -57,10 +59,11 @@ export default async function StoreDetailPage({
     notFound();
   }
 
-  const [salesStatuses, reviewStatuses, updateSummary] = await Promise.all([
+  const [salesStatuses, reviewStatuses, updateSummary, checklist] = await Promise.all([
     getStoreSalesStatuses([{ id: store.id, name: store.name, code: store.code }]),
     getReviewStatuses([{ id: store.id, name: store.name, code: store.code, type: store.type }]),
     getStoreUpdateSummary(store.id),
+    getStoreChecklist(store),
   ]);
   const [salesStatus] = salesStatuses;
   const [reviewStatus] = reviewStatuses;
@@ -91,6 +94,10 @@ export default async function StoreDetailPage({
             </p>
           </div>
         </div>
+      </section>
+
+      <section>
+        <ChecklistCard checklist={checklist} />
       </section>
 
       {salesStatus ? (

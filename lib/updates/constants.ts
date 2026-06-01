@@ -9,6 +9,8 @@ export const updateCategories = [
   "Cash / account note",
   "Owner attention needed",
   "Pending work",
+  "Opening status",
+  "No issues today",
   "Other",
 ];
 

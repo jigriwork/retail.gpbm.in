@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { canAccessStore, getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { completeMatchingTasks } from "@/lib/tasks/auto-complete";
 import { getIndiaToday } from "@/lib/tasks/dates";
 import type { TablesUpdate } from "@/lib/supabase/database.types";
 
@@ -96,36 +97,6 @@ async function uploadReviewPhoto(
   return { path, error };
 }
 
-async function completeMatchingReviewTasks(
-  storeId: string,
-  reviewDate: string,
-  matchText: "rack" | "cleaning",
-) {
-  const supabase = await createClient();
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("id,title,category,status")
-    .eq("store_id", storeId)
-    .eq("due_date", reviewDate);
-
-  const matchingIds = (tasks ?? [])
-    .filter((task) => task.status !== "done" && task.status !== "cancelled")
-    .filter((task) => {
-      const haystack = `${task.title ?? ""} ${task.category ?? ""}`.toLowerCase();
-      return haystack.includes(matchText);
-    })
-    .map((task) => task.id);
-
-  if (!matchingIds.length) {
-    return;
-  }
-
-  await supabase
-    .from("tasks")
-    .update({ status: "done", completed_at: new Date().toISOString() })
-    .in("id", matchingIds);
-}
-
 export async function saveRackReview(
   _previous: ReviewActionState,
   formData: FormData,
@@ -179,7 +150,7 @@ export async function saveRackReview(
     return { ok: false, message: error.message };
   }
 
-  await completeMatchingReviewTasks(storeId, reviewDate, "rack");
+  await completeMatchingTasks(storeId, reviewDate, ["rack"]);
   revalidatePath("/app/reviews");
   revalidatePath("/app/reviews/rack");
   revalidatePath("/app/today");
@@ -244,7 +215,7 @@ export async function saveCleaningReview(
     return { ok: false, message: error.message };
   }
 
-  await completeMatchingReviewTasks(storeId, reviewDate, "cleaning");
+  await completeMatchingTasks(storeId, reviewDate, ["cleaning"]);
   revalidatePath("/app/reviews");
   revalidatePath("/app/reviews/cleaning");
   revalidatePath("/app/today");

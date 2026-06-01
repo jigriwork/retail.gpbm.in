@@ -13,6 +13,7 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import { ChecklistCard } from "@/components/checklist/checklist-card";
 import { StatusCard } from "@/components/app/status-card";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
@@ -21,6 +22,7 @@ import { getReviewStatuses } from "@/lib/reviews/queries";
 import { getTaskSummary } from "@/lib/tasks/queries";
 import { getTodayUpdateSummary } from "@/lib/updates/queries";
 import { UpdateCard } from "@/components/updates/update-card";
+import { getAccessibleChecklists } from "@/lib/checklist/queries";
 
 function formatMoney(value?: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -40,7 +42,10 @@ export default async function TodayPage() {
     getStoreSalesStatuses(stores),
     getReviewStatuses(stores),
   ]);
-  const updateSummary = await getTodayUpdateSummary(stores);
+  const [updateSummary, checklists] = await Promise.all([
+    getTodayUpdateSummary(stores),
+    getAccessibleChecklists(profile),
+  ]);
 
   return (
     <div className="space-y-5">
@@ -53,6 +58,18 @@ export default async function TodayPage() {
           Signed in as <span className="font-semibold capitalize">{profile?.role}</span>.
           Store data below follows your role and assignments.
         </p>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Daily checklist</h2>
+          <ClipboardCheck className="size-5 text-muted" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {checklists.map((checklist) => (
+            <ChecklistCard checklist={checklist} key={checklist.store.id} />
+          ))}
+        </div>
       </section>
 
       <section>
@@ -165,7 +182,13 @@ export default async function TodayPage() {
           <h2 className="text-xl font-semibold">Manager quick actions</h2>
           <ListTodo className="size-5 text-muted" />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <Link
+            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
+            href="/app/checklist"
+          >
+            My checklist
+          </Link>
           <Link
             className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
             href="/app/reports/sales"

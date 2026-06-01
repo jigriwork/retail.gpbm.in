@@ -18,6 +18,7 @@ export function ManagerUpdateForm({
   action,
   assignableUsers,
   defaultStoreId,
+  defaultCategory,
   mode,
   stores,
   update,
@@ -25,6 +26,7 @@ export function ManagerUpdateForm({
   action: (previous: UpdateActionState, formData: FormData) => Promise<UpdateActionState>;
   assignableUsers: Pick<Profile, "id" | "full_name" | "email">[];
   defaultStoreId?: string;
+  defaultCategory?: string;
   mode: "create" | "edit";
   stores: Store[];
   update?: ManagerUpdate | null;
@@ -61,7 +63,7 @@ export function ManagerUpdateForm({
           <span className="mb-2 block text-sm font-medium text-muted">Category</span>
           <select
             className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
-            defaultValue={update?.category ?? "Owner attention needed"}
+            defaultValue={update?.category ?? defaultCategory ?? "Owner attention needed"}
             name="category"
             required
           >
