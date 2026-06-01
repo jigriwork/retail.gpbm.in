@@ -569,6 +569,12 @@ export default async function TodayPage() {
           </Link>
           <Link
             className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
+            href="/app/tasks/new"
+          >
+            Add task
+          </Link>
+          <Link
+            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
             href="/app/tasks"
           >
             Assigned tasks

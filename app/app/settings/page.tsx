@@ -1,4 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { StoreTargetForm } from "@/components/stores/store-target-form";
+import { updateStoreTarget } from "@/lib/stores/target-actions";
 
 const labels: Record<string, string> = {
   salary_day: "Salary day",
@@ -22,8 +25,19 @@ function settingValue(key: string, value: unknown) {
   return String(record.day ?? "Not configured");
 }
 
+function formatMoney(value?: number | null) {
+  if (!value) return "Not set";
+  return new Intl.NumberFormat("en-IN", {
+    currency: "INR",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(value);
+}
+
 export default async function SettingsPage() {
   const supabase = await createClient();
+  const { profile } = await requireProfile();
+  const stores = await getAccessibleStores(profile);
   const { data: settings } = await supabase
     .from("app_settings")
     .select("key,value")
@@ -51,6 +65,55 @@ export default async function SettingsPage() {
           </div>
         ))}
       </section>
+
+      {profile?.role === "owner" ? (
+        <>
+          <div className="pt-2">
+            <h2 className="text-2xl font-semibold">Store monthly targets</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Set a monthly sales target per store. When enabled, target progress is shown in sales analytics and the Today page.
+            </p>
+          </div>
+          <section className="grid gap-3 sm:grid-cols-2">
+            {stores.map((store) => (
+              <div
+                className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm"
+                key={store.id}
+              >
+                <StoreTargetForm
+                  action={updateStoreTarget}
+                  enabled={store.monthly_target_enabled ?? false}
+                  storeId={store.id}
+                  storeName={store.name}
+                  target={store.monthly_target ?? null}
+                />
+              </div>
+            ))}
+          </section>
+        </>
+      ) : (
+        stores.some((store) => store.monthly_target_enabled) ? (
+          <>
+            <div className="pt-2">
+              <h2 className="text-2xl font-semibold">Store targets</h2>
+            </div>
+            <section className="grid gap-3 sm:grid-cols-2">
+              {stores.filter((store) => store.monthly_target_enabled).map((store) => (
+                <div
+                  className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm"
+                  key={store.id}
+                >
+                  <p className="font-semibold">{store.name}</p>
+                  <p className="mt-1 text-xs text-muted">Monthly sales target</p>
+                  <p className="mt-3 text-2xl font-semibold">
+                    {formatMoney(store.monthly_target)}
+                  </p>
+                </div>
+              ))}
+            </section>
+          </>
+        ) : null
+      )}
     </div>
   );
 }

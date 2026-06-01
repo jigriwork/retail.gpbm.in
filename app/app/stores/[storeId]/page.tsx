@@ -144,9 +144,11 @@ export default async function StoreDetailPage({
             <p className="mt-1 font-semibold capitalize">{store.type ?? "store"}</p>
           </div>
           <div className="rounded-2xl border border-border p-3">
-            <p className="text-muted">Target</p>
+            <p className="text-muted">Monthly target</p>
             <p className="mt-1 font-semibold">
-              {store.monthly_target_enabled ? "Enabled" : "Disabled"}
+              {store.monthly_target_enabled && store.monthly_target
+                ? formatMoney(store.monthly_target)
+                : "Not set"}
             </p>
           </div>
         </div>

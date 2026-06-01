@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ClipboardCheck } from "lucide-react";
 
 import { ChecklistCard } from "@/components/checklist/checklist-card";
@@ -37,6 +38,27 @@ export default async function ChecklistPage() {
           </p>
         </section>
       )}
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        <Link
+          className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
+          href="/app/tasks/new"
+        >
+          Add task
+        </Link>
+        <Link
+          className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
+          href="/app/updates/new"
+        >
+          Add store issue
+        </Link>
+        <Link
+          className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
+          href="/app/updates/new?category=No+issues+today"
+        >
+          No issues today
+        </Link>
+      </section>
     </div>
   );
 }
