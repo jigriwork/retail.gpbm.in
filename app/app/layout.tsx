@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { LockKeyhole, Settings, ShieldCheck } from "lucide-react";
 
@@ -57,7 +58,8 @@ export default async function ProtectedAppLayout({
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
           <div>
-            <Link className="text-lg font-semibold tracking-normal" href="/app/today">
+            <Link className="flex items-center gap-2 text-lg font-semibold tracking-normal" href="/app/today">
+              <Image alt="" className="rounded-lg" height={28} src="/icon-192.png" width={28} />
               GPBM Retail
             </Link>
             <div className="mt-1 flex items-center gap-2 text-xs font-medium text-muted">

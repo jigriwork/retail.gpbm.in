@@ -22,6 +22,14 @@ export const metadata: Metadata = {
     "Mobile-first retail command center for GPBM sales, stock, attendance, tasks, reviews, and AI secretary workflows.",
   applicationName: "GPBM Retail",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-48.png", sizes: "48x48", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
