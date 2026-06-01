@@ -14,7 +14,16 @@ import {
 
 import { StatusCard } from "@/components/app/status-card";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { getStoreSalesStatuses } from "@/lib/reports/sales-queries";
 import { getTaskSummary } from "@/lib/tasks/queries";
+
+function formatMoney(value?: number) {
+  return new Intl.NumberFormat("en-IN", {
+    currency: "INR",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(value ?? 0);
+}
 
 export default async function TodayPage() {
   const { profile } = await requireProfile();
@@ -22,6 +31,7 @@ export default async function TodayPage() {
   const taskSummary = profile
     ? await getTaskSummary(profile)
     : { todayCount: 0, urgentCount: 0, privateCount: 0, storeCounts: [] };
+  const salesStatuses = await getStoreSalesStatuses(stores);
 
   return (
     <div className="space-y-5">
@@ -102,9 +112,59 @@ export default async function TodayPage() {
         )}
       </section>
 
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Yesterday sales reports</h2>
+          <LineChart className="size-5 text-muted" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {salesStatuses.map((status) => (
+            <div
+              className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm"
+              key={status.store.id}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-lg font-semibold">{status.store.name}</p>
+                  <p className="mt-1 text-xs font-medium text-muted">
+                    Due for {status.yesterdayDate}
+                  </p>
+                </div>
+                <span
+                  className={
+                    status.yesterdayReport
+                      ? "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success"
+                      : "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger"
+                  }
+                >
+                  {status.yesterdayReport ? "Uploaded" : "Missing"}
+                </span>
+              </div>
+              <p className="mt-5 text-2xl font-semibold">
+                {formatMoney(status.latestReport?.summary?.totalNetSale)}
+              </p>
+              <p className="mt-1 text-xs font-medium text-muted">
+                Latest upload: {status.latestReport?.report_date ?? "None yet"}
+              </p>
+              {!status.yesterdayReport ? (
+                <p className="mt-3 text-sm font-medium text-danger">
+                  Missing yesterday sales report.
+                </p>
+              ) : null}
+              <Link
+                className="mt-4 inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
+                href={`/app/reports/sales?storeId=${status.store.id}`}
+              >
+                Upload report
+              </Link>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatusCard
-          body="Waiting for the next real sales upload or processing result."
+          body="Daily sales upload is active from Reports."
           icon={LineChart}
           title="Sales report status"
         />

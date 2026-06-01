@@ -1,7 +1,7 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ClipboardList,
-  LineChart,
   MessageSquareText,
   PackageSearch,
   Shirt,
@@ -12,11 +12,12 @@ import {
 
 import { AccessDenied } from "@/components/app/access-denied";
 import { StatusCard } from "@/components/app/status-card";
+import { SalesReportList } from "@/components/reports/sales-report-list";
 import { canAccessStore, requireProfile } from "@/lib/auth/session";
+import { getStoreSalesStatuses } from "@/lib/reports/sales-queries";
 import { createClient } from "@/lib/supabase/server";
 
 const storeSections = [
-  { title: "Sales", body: "Sales workspace placeholder.", icon: LineChart },
   { title: "Stock", body: "Stock workspace placeholder.", icon: PackageSearch },
   { title: "Tasks", body: "Store task shell placeholder.", icon: ClipboardList },
   { title: "Rack Review", body: "Rack review placeholder.", icon: Shirt },
@@ -28,6 +29,14 @@ const storeSections = [
     icon: MessageSquareText,
   },
 ];
+
+function formatMoney(value?: number) {
+  return new Intl.NumberFormat("en-IN", {
+    currency: "INR",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(value ?? 0);
+}
 
 export default async function StoreDetailPage({
   params,
@@ -52,6 +61,10 @@ export default async function StoreDetailPage({
   if (!store) {
     notFound();
   }
+
+  const [salesStatus] = await getStoreSalesStatuses([
+    { id: store.id, name: store.name, code: store.code },
+  ]);
 
   return (
     <div className="space-y-5">
@@ -80,6 +93,64 @@ export default async function StoreDetailPage({
           </div>
         </div>
       </section>
+
+      {salesStatus ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted">Sales</p>
+              <h2 className="mt-2 text-2xl font-semibold">Daily sales status</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Yesterday sales report for {salesStatus.yesterdayDate}:{" "}
+                <span
+                  className={
+                    salesStatus.yesterdayReport
+                      ? "font-semibold text-success"
+                      : "font-semibold text-danger"
+                  }
+                >
+                  {salesStatus.yesterdayReport ? "uploaded" : "missing"}
+                </span>
+              </p>
+            </div>
+            <Link
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              href={`/app/reports/sales?storeId=${store.id}`}
+            >
+              Upload sales
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Last uploaded date</p>
+              <p className="mt-1 font-semibold">
+                {salesStatus.latestReport?.report_date ?? "No upload"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Latest total sale</p>
+              <p className="mt-1 font-semibold">
+                {formatMoney(salesStatus.latestReport?.summary?.totalNetSale)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Latest rows</p>
+              <p className="mt-1 font-semibold">
+                {salesStatus.latestReport?.row_count ?? 0}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <h3 className="text-lg font-semibold">Recent sales reports</h3>
+            <SalesReportList
+              emptyText="No sales reports uploaded for this store yet."
+              reports={salesStatus.recentReports}
+            />
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {storeSections.map((section) => (
