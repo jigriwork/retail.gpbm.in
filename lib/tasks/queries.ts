@@ -67,11 +67,7 @@ export function filterTasksByTab(tasks: TaskWithRelations[], tab: string) {
       return active && (!dueDate || dueDate < today);
     }
 
-    return (
-      active &&
-      (dueDate === today ||
-        (dueDate !== null && dueDate < today && task.carry_forward))
-    );
+    return active && dueDate === today;
   });
 }
 
