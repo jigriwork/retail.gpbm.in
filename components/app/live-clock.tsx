@@ -15,7 +15,7 @@ const timeFormatter = new Intl.DateTimeFormat("en-IN", {
 });
 
 export function LiveClock() {
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 1000);
@@ -24,8 +24,8 @@ export function LiveClock() {
 
   return (
     <div className="text-right text-xs leading-5 text-muted">
-      <p>{dateFormatter.format(now)}</p>
-      <p className="font-semibold text-foreground">{timeFormatter.format(now)}</p>
+      <p>{now ? dateFormatter.format(now) : "\u00a0"}</p>
+      <p className="font-semibold text-foreground">{now ? timeFormatter.format(now) : "\u00a0"}</p>
     </div>
   );
 }

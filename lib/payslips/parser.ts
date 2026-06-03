@@ -9,13 +9,13 @@ export type ParsedPayslipRow = TablesInsert<"payslip_rows">;
 const columnAliases = {
   name: ["name", "staff name", "employee name"],
   salary_amount: ["salary amount", "salary", "monthly salary", "salary amt"],
-  divided_by_days: ["divided by days", "one day salary", "per day salary", "day salary"],
+  divided_by_days: ["divided by days", "devided by days", "one day salary", "per day salary", "day salary"],
   abs_days: ["abs days", "absent days", "abs", "absent"],
   abs_amount: ["abs amount", "absent amount", "absent deduction"],
   sunday_pay: ["sunday pay", "sunday pay rate"],
   sunday_present: ["sunday present", "sundays present", "sunday worked"],
   advance: ["advance", "advance deduction"],
-  commission: ["commission", "incentive"],
+  commission: ["commission", "comission", "incentive"],
   total_amount: ["total amount", "net payable", "total", "payable", "net salary"],
   store: ["store", "store name", "branch"],
 } as const;
@@ -66,6 +66,55 @@ function rowHasContent(row: Record<string, unknown>) {
   return Object.values(row).some((value) => String(value ?? "").trim() !== "");
 }
 
+function isFormatReferenceSheet(sheetName: string) {
+  const normalized = normalize(sheetName);
+  return normalized.includes("format") || normalized.includes("sample");
+}
+
+function findHeaderRow(rows: unknown[][]) {
+  const headerKeys = [
+    ...columnAliases.name,
+    ...columnAliases.salary_amount,
+    ...columnAliases.total_amount,
+  ].map(normalize);
+
+  return rows.findIndex((row) => {
+    const cells = row.map(normalize);
+    const hasName = cells.some((cell) => columnAliases.name.map(normalize).includes(cell));
+    const hasSalary = cells.some((cell) => columnAliases.salary_amount.map(normalize).includes(cell));
+    const hasAnyKnownHeader = cells.some((cell) => headerKeys.includes(cell));
+
+    return hasName && hasSalary && hasAnyKnownHeader;
+  });
+}
+
+function rowsFromSheet(worksheet: XLSX.WorkSheet) {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+    defval: "",
+    header: 1,
+    raw: false,
+  });
+  const headerIndex = findHeaderRow(matrix);
+
+  if (headerIndex < 0) {
+    return [];
+  }
+
+  const headers = matrix[headerIndex].map((header) => String(header ?? "").trim());
+
+  return matrix.slice(headerIndex + 1).map((cells) => {
+    const row: Record<string, unknown> = {};
+
+    headers.forEach((header, index) => {
+      if (header) {
+        row[header] = cells[index] ?? "";
+      }
+    });
+
+    return row;
+  });
+}
+
 export function parsePayslipWorkbook({
   buffer,
   salaryMonth,
@@ -82,11 +131,10 @@ export function parsePayslipWorkbook({
   const rows: ParsedPayslipRow[] = [];
 
   for (const sheetName of workbook.SheetNames) {
+    if (isFormatReferenceSheet(sheetName)) continue;
+
     const worksheet = workbook.Sheets[sheetName];
-    const sheetRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
-      defval: "",
-      raw: false,
-    });
+    const sheetRows = rowsFromSheet(worksheet);
     const sheetStore = detectStoreFromText(sheetName, stores);
 
     for (const rawRow of sheetRows) {
