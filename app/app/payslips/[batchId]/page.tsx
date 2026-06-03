@@ -3,9 +3,9 @@ import { Download, Eye } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { AccessDenied } from "@/components/app/access-denied";
-import { GenerateAllPayslipsForm, GeneratePayslipRowForm } from "@/components/payslips/action-buttons";
+import { GenerateBatchPayslipsProgress, GeneratePayslipRowForm } from "@/components/payslips/action-buttons";
 import { requireProfile } from "@/lib/auth/session";
-import { generateAllPayslips, generatePayslipForRow } from "@/lib/payslips/actions";
+import { generatePayslipForRow } from "@/lib/payslips/actions";
 import { getPayslipBatch, getPayslipRows } from "@/lib/payslips/queries";
 import { formatMoney, formatMonth } from "@/lib/payslips/utils";
 
@@ -20,6 +20,10 @@ function statusClass(status?: string | null) {
   if (status === "ready" || status === "generated") return "text-success";
   if (status === "total_mismatch") return "text-warning";
   return "text-danger";
+}
+
+function canGenerate(status?: string | null) {
+  return status === "ready" || status === "total_mismatch" || status === "generated";
 }
 
 export default async function PayslipBatchPage({
@@ -39,6 +43,14 @@ export default async function PayslipBatchPage({
   if (!batch) {
     notFound();
   }
+
+  const generatableRows = rows
+    .filter((row) => canGenerate(row.status))
+    .map((row) => ({
+      id: row.id,
+      staffName: row.staff_name ?? "Unnamed staff",
+      storeName: row.store_name,
+    }));
 
   return (
     <div className="space-y-5">
@@ -76,7 +88,7 @@ export default async function PayslipBatchPage({
           </div>
         </div>
         <div className="mt-5 flex flex-wrap items-start gap-3">
-          <GenerateAllPayslipsForm action={generateAllPayslips} batchId={batch.id} />
+          <GenerateBatchPayslipsProgress action={generatePayslipForRow} rows={generatableRows} />
           {(batch.generated_count ?? 0) > 0 ? (
             <Link
               className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
