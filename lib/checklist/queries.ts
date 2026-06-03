@@ -290,7 +290,7 @@ export async function getStoreChecklist(store: Store) {
   } satisfies StoreChecklist;
 }
 
-export async function getAccessibleChecklists(profile?: Profile | null) {
-  const stores = await getAccessibleStores(profile);
+export async function getAccessibleChecklists(profile?: Profile | null, accessibleStores?: Store[]) {
+  const stores = accessibleStores ?? (await getAccessibleStores(profile));
   return Promise.all(stores.map((store) => getStoreChecklist(store)));
 }

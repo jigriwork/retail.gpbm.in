@@ -71,7 +71,10 @@ export function filterTasksByTab(tasks: TaskWithRelations[], tab: string) {
   });
 }
 
-export async function getTaskSummary(profile: Profile) {
+export async function getTaskSummary(
+  profile: Profile,
+  accessibleStores?: Awaited<ReturnType<typeof getAccessibleStores>>,
+) {
   const tasks = await getTasksForProfile();
   const todayTasks = filterTasksByTab(tasks, "today");
   const urgentTasks = todayTasks.filter((task) => task.priority === "urgent");
@@ -79,7 +82,7 @@ export async function getTaskSummary(profile: Profile) {
     profile.role === "owner"
       ? todayTasks.filter((task) => task.is_private || !task.store_id)
       : [];
-  const stores = await getAccessibleStores(profile);
+  const stores = accessibleStores ?? (await getAccessibleStores(profile));
   const storeCounts = stores.map((store) => ({
     store,
     count: todayTasks.filter((task) => task.store_id === store.id).length,

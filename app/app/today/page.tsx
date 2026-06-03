@@ -63,50 +63,61 @@ function formatLifeTime(value?: string | null) {
 export default async function TodayPage() {
   const { profile } = await requireProfile();
   const stores = await getAccessibleStores(profile);
-  const taskSummary = profile
-    ? await getTaskSummary(profile)
-    : { todayCount: 0, urgentCount: 0, privateCount: 0, storeCounts: [] };
-  const [salesStatuses, salaryOverview, stockOverview, reviewStatuses] = await Promise.all([
+  const storeIds = stores.map((store) => store.id);
+  const defaultTaskSummary = { todayCount: 0, urgentCount: 0, privateCount: 0, storeCounts: [] };
+  const previousWeekRange = getPreviousWeekRangeAsiaKolkata();
+  const weeklyAuditDay = isWeeklyAuditDay();
+  const yesterdayRange = getDateRangeForPeriod("yesterday");
+  const monthRange = currentMonthRange();
+  const [
+    taskSummary,
+    salesStatuses,
+    salaryOverview,
+    stockOverview,
+    reviewStatuses,
+    updateSummary,
+    checklists,
+    latestStockMonth,
+    yesterdaySalesPulse,
+    monthSalesPulse,
+    yesterdayStaffPulse,
+    lifeFlow,
+  ] = await Promise.all([
+    profile ? getTaskSummary(profile, stores) : Promise.resolve(defaultTaskSummary),
     getStoreSalesStatuses(stores),
     getSalaryAttendanceOverview(stores),
     getStockOverview(stores),
     getReviewStatuses(stores),
-  ]);
-  const [updateSummary, checklists] = await Promise.all([
     getTodayUpdateSummary(stores),
-    getAccessibleChecklists(profile),
-  ]);
-  const latestStockMonth = await getLatestStockMonth();
-  const [yesterdaySalesPulse, monthSalesPulse, yesterdayStaffPulse] = await Promise.all([
+    getAccessibleChecklists(profile, stores),
+    getLatestStockMonth(),
     getSalesSummary(
-      { storeIds: stores.map((store) => store.id), dateRange: getDateRangeForPeriod("yesterday") },
+      { storeIds, dateRange: yesterdayRange },
       stores,
     ),
     getSalesSummary(
-      { storeIds: stores.map((store) => store.id), dateRange: currentMonthRange() },
+      { storeIds, dateRange: monthRange },
       stores,
     ),
     getStaffSalesSummary({
-      storeIds: stores.map((store) => store.id),
-      dateRange: getDateRangeForPeriod("yesterday"),
+      storeIds,
+      dateRange: yesterdayRange,
     }),
+    profile?.role === "owner" ? getLifeFlowSummary() : Promise.resolve(null),
   ]);
   const stockPulse = latestStockMonth
     ? await getStockSummary({
-        storeIds: stores.map((store) => store.id),
+        storeIds,
         stockMonth: latestStockMonth,
         lookbackDays: 30,
         stores,
       })
     : null;
-  const previousWeekRange = getPreviousWeekRangeAsiaKolkata();
-  const weeklyAuditDay = isWeeklyAuditDay();
   const weeklyAudits = weeklyAuditDay ? await getWeeklyAuditSummaries(stores, previousWeekRange) : [];
   const weeklyMissingSalesReports = weeklyAudits.reduce(
     (sum, audit) => sum + audit.missingSalesReports.length,
     0,
   );
-  const lifeFlow = profile?.role === "owner" ? await getLifeFlowSummary() : null;
 
   return (
     <div className="space-y-5">
