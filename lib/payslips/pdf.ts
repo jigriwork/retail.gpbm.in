@@ -1,7 +1,7 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 import type { Tables } from "@/lib/supabase/database.types";
-import { formatMoney, formatMonth, storePayslipHeading } from "@/lib/payslips/utils";
+import { formatMonth, storePayslipHeading } from "@/lib/payslips/utils";
 
 export type PayslipRow = Tables<"payslip_rows">;
 
@@ -28,30 +28,39 @@ function drawCenteredText({
   });
 }
 
+function formatPdfMoney(value?: number | null) {
+  const amount = new Intl.NumberFormat("en-IN", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: Number.isInteger(value ?? 0) ? 0 : 2,
+  }).format(value ?? 0);
+
+  return `Rs ${amount}`;
+}
+
 function tableRows(row: PayslipRow) {
   const rows = [
     ["Firm", row.firm_name],
     ["Store Name", row.store_name],
     ["Salary Month", formatMonth(row.salary_month)],
     ["Name", row.staff_name ?? ""],
-    ["Salary Amount", formatMoney(row.salary_amount)],
-    ["Divided by Days", formatMoney(row.divided_by_days)],
+    ["Salary Amount", formatPdfMoney(row.salary_amount)],
+    ["Divided by Days", formatPdfMoney(row.divided_by_days)],
     ["Absent Days", String(row.abs_days ?? 0)],
-    ["Absent Amount", formatMoney(row.abs_amount)],
+    ["Absent Amount", formatPdfMoney(row.abs_amount)],
   ];
 
   if ((row.sunday_present ?? 0) > 0 || (row.sunday_pay_amount ?? 0) > 0) {
     rows.push(
-      ["Sunday Pay Rate", formatMoney(row.sunday_pay)],
+      ["Sunday Pay Rate", formatPdfMoney(row.sunday_pay)],
       ["Sunday Present", String(row.sunday_present ?? 0)],
-      ["Sunday Pay Amount", formatMoney(row.sunday_pay_amount)],
+      ["Sunday Pay Amount", formatPdfMoney(row.sunday_pay_amount)],
     );
   }
 
   rows.push(
-    ["Advance Deduction", formatMoney(row.advance)],
-    ["Commission", formatMoney(row.commission)],
-    ["Net Payable", formatMoney(row.net_payable)],
+    ["Advance Deduction", formatPdfMoney(row.advance)],
+    ["Commission", formatPdfMoney(row.commission)],
+    ["Net Payable", formatPdfMoney(row.net_payable)],
   );
 
   return rows;
