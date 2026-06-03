@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -217,6 +217,76 @@ export type Database = {
           },
         ]
       }
+      generated_payslips: {
+        Row: {
+          batch_id: string | null
+          created_at: string | null
+          firm_name: string
+          id: string
+          payslip_row_id: string | null
+          pdf_file_name: string | null
+          pdf_file_path: string | null
+          salary_month: string
+          staff_name: string
+          status: string | null
+          store_id: string | null
+          store_name: string
+          zip_file_path: string | null
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string | null
+          firm_name: string
+          id?: string
+          payslip_row_id?: string | null
+          pdf_file_name?: string | null
+          pdf_file_path?: string | null
+          salary_month: string
+          staff_name: string
+          status?: string | null
+          store_id?: string | null
+          store_name: string
+          zip_file_path?: string | null
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string | null
+          firm_name?: string
+          id?: string
+          payslip_row_id?: string | null
+          pdf_file_name?: string | null
+          pdf_file_path?: string | null
+          salary_month?: string
+          staff_name?: string
+          status?: string | null
+          store_id?: string | null
+          store_name?: string
+          zip_file_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_payslips_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "payslip_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_payslips_payslip_row_id_fkey"
+            columns: ["payslip_row_id"]
+            isOneToOne: false
+            referencedRelation: "payslip_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_payslips_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       life_logs: {
         Row: {
           created_at: string | null
@@ -336,6 +406,158 @@ export type Database = {
           },
           {
             foreignKeyName: "manager_updates_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payslip_batches: {
+        Row: {
+          created_at: string | null
+          generated_count: number | null
+          id: string
+          salary_month: string
+          source_file_name: string | null
+          source_file_path: string | null
+          status: string | null
+          summary: Json | null
+          total_rows: number | null
+          updated_at: string | null
+          uploaded_by: string | null
+          valid_rows: number | null
+          warning_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          generated_count?: number | null
+          id?: string
+          salary_month: string
+          source_file_name?: string | null
+          source_file_path?: string | null
+          status?: string | null
+          summary?: Json | null
+          total_rows?: number | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+          valid_rows?: number | null
+          warning_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          generated_count?: number | null
+          id?: string
+          salary_month?: string
+          source_file_name?: string | null
+          source_file_path?: string | null
+          status?: string | null
+          summary?: Json | null
+          total_rows?: number | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+          valid_rows?: number | null
+          warning_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payslip_batches_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payslip_rows: {
+        Row: {
+          abs_amount: number | null
+          abs_days: number | null
+          advance: number | null
+          batch_id: string | null
+          calculated_total_amount: number | null
+          commission: number | null
+          created_at: string | null
+          divided_by_days: number | null
+          firm_name: string
+          id: string
+          net_payable: number | null
+          raw_data: Json | null
+          salary_amount: number | null
+          salary_month: string
+          staff_name: string | null
+          status: string | null
+          store_id: string | null
+          store_name: string
+          sunday_pay: number | null
+          sunday_pay_amount: number | null
+          sunday_present: number | null
+          updated_at: string | null
+          uploaded_total_amount: number | null
+          warning_message: string | null
+        }
+        Insert: {
+          abs_amount?: number | null
+          abs_days?: number | null
+          advance?: number | null
+          batch_id?: string | null
+          calculated_total_amount?: number | null
+          commission?: number | null
+          created_at?: string | null
+          divided_by_days?: number | null
+          firm_name: string
+          id?: string
+          net_payable?: number | null
+          raw_data?: Json | null
+          salary_amount?: number | null
+          salary_month: string
+          staff_name?: string | null
+          status?: string | null
+          store_id?: string | null
+          store_name: string
+          sunday_pay?: number | null
+          sunday_pay_amount?: number | null
+          sunday_present?: number | null
+          updated_at?: string | null
+          uploaded_total_amount?: number | null
+          warning_message?: string | null
+        }
+        Update: {
+          abs_amount?: number | null
+          abs_days?: number | null
+          advance?: number | null
+          batch_id?: string | null
+          calculated_total_amount?: number | null
+          commission?: number | null
+          created_at?: string | null
+          divided_by_days?: number | null
+          firm_name?: string
+          id?: string
+          net_payable?: number | null
+          raw_data?: Json | null
+          salary_amount?: number | null
+          salary_month?: string
+          staff_name?: string | null
+          status?: string | null
+          store_id?: string | null
+          store_name?: string
+          sunday_pay?: number | null
+          sunday_pay_amount?: number | null
+          sunday_present?: number | null
+          updated_at?: string | null
+          uploaded_total_amount?: number | null
+          warning_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payslip_rows_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "payslip_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payslip_rows_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -714,6 +936,7 @@ export type Database = {
           code: string
           created_at: string | null
           dead_stock_days: number | null
+          firm_name: string | null
           id: string
           is_active: boolean | null
           location: string | null
@@ -728,6 +951,7 @@ export type Database = {
           code: string
           created_at?: string | null
           dead_stock_days?: number | null
+          firm_name?: string | null
           id?: string
           is_active?: boolean | null
           location?: string | null
@@ -742,6 +966,7 @@ export type Database = {
           code?: string
           created_at?: string | null
           dead_stock_days?: number | null
+          firm_name?: string | null
           id?: string
           is_active?: boolean | null
           location?: string | null
