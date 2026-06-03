@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { FirmMappingForm } from "@/components/stores/firm-mapping-form";
 import { StoreTargetForm } from "@/components/stores/store-target-form";
+import { updateStoreFirmName } from "@/lib/stores/firm-actions";
 import { updateStoreTarget } from "@/lib/stores/target-actions";
 
 const labels: Record<string, string> = {
@@ -86,6 +88,28 @@ export default async function SettingsPage() {
                   storeId={store.id}
                   storeName={store.name}
                   target={store.monthly_target ?? null}
+                />
+              </div>
+            ))}
+          </section>
+
+          <div className="pt-2">
+            <h2 className="text-2xl font-semibold">Store Master / Firm Mapping</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Payslip rows snapshot the current firm and store names when a salary sheet is uploaded.
+            </p>
+          </div>
+          <section className="grid gap-3 sm:grid-cols-2">
+            {stores.map((store) => (
+              <div
+                className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm"
+                key={store.id}
+              >
+                <FirmMappingForm
+                  action={updateStoreFirmName}
+                  firmName={store.firm_name}
+                  storeId={store.id}
+                  storeName={store.name}
                 />
               </div>
             ))}

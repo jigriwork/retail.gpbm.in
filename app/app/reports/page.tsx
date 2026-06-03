@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   BarChart3,
   CalendarClock,
+  FileText,
   FileSpreadsheet,
   LineChart,
   PackageSearch,
@@ -199,6 +200,20 @@ export default async function ReportsPage() {
               ))}
             </div>
           </Link>
+          {profile?.role === "owner" ? (
+            <Link
+              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+              href="/app/payslips"
+            >
+              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+                <FileText className="size-5" />
+              </div>
+              <h2 className="text-2xl font-semibold">Payslip Generation</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Owner-only salary sheet upload, review, PDF generation and ZIP download.
+              </p>
+            </Link>
+          ) : null}
         </div>
       </section>
 

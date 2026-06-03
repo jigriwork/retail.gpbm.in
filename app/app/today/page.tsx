@@ -13,6 +13,7 @@ import {
   TriangleAlert,
   WalletCards,
   Bot,
+  FileText,
 } from "lucide-react";
 
 import { ChecklistCard } from "@/components/checklist/checklist-card";
@@ -136,6 +137,27 @@ export default async function TodayPage() {
             >
               <Bot className="size-4" />
               Open Secretary
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
+      {profile?.role === "owner" ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted">Payslips</p>
+              <h2 className="mt-2 text-2xl font-semibold">Generate salary slips</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Upload salary Excel, review warnings, and download PDFs.
+              </p>
+            </div>
+            <Link
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              href="/app/payslips"
+            >
+              <FileText className="size-4" />
+              Open Payslips
             </Link>
           </div>
         </section>
