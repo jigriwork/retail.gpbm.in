@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -217,10 +217,71 @@ export type Database = {
           },
         ]
       }
+      employee_contacts: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          normalized_phone: string | null
+          normalized_staff_name: string
+          notes: string | null
+          phone: string | null
+          staff_name: string
+          store_id: string | null
+          updated_at: string | null
+          whatsapp_phone: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          normalized_phone?: string | null
+          normalized_staff_name: string
+          notes?: string | null
+          phone?: string | null
+          staff_name: string
+          store_id?: string | null
+          updated_at?: string | null
+          whatsapp_phone?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          normalized_phone?: string | null
+          normalized_staff_name?: string
+          notes?: string | null
+          phone?: string | null
+          staff_name?: string
+          store_id?: string | null
+          updated_at?: string | null
+          whatsapp_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_contacts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_contacts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_payslips: {
         Row: {
           batch_id: string | null
           created_at: string | null
+          employee_phone: string | null
           firm_name: string
           id: string
           payslip_row_id: string | null
@@ -231,11 +292,13 @@ export type Database = {
           status: string | null
           store_id: string | null
           store_name: string
+          whatsapp_phone: string | null
           zip_file_path: string | null
         }
         Insert: {
           batch_id?: string | null
           created_at?: string | null
+          employee_phone?: string | null
           firm_name: string
           id?: string
           payslip_row_id?: string | null
@@ -246,11 +309,13 @@ export type Database = {
           status?: string | null
           store_id?: string | null
           store_name: string
+          whatsapp_phone?: string | null
           zip_file_path?: string | null
         }
         Update: {
           batch_id?: string | null
           created_at?: string | null
+          employee_phone?: string | null
           firm_name?: string
           id?: string
           payslip_row_id?: string | null
@@ -261,6 +326,7 @@ export type Database = {
           status?: string | null
           store_id?: string | null
           store_name?: string
+          whatsapp_phone?: string | null
           zip_file_path?: string | null
         }
         Relationships: [
@@ -479,6 +545,7 @@ export type Database = {
           commission: number | null
           created_at: string | null
           divided_by_days: number | null
+          employee_phone: string | null
           firm_name: string
           id: string
           net_payable: number | null
@@ -495,6 +562,7 @@ export type Database = {
           updated_at: string | null
           uploaded_total_amount: number | null
           warning_message: string | null
+          whatsapp_phone: string | null
         }
         Insert: {
           abs_amount?: number | null
@@ -505,6 +573,7 @@ export type Database = {
           commission?: number | null
           created_at?: string | null
           divided_by_days?: number | null
+          employee_phone?: string | null
           firm_name: string
           id?: string
           net_payable?: number | null
@@ -521,6 +590,7 @@ export type Database = {
           updated_at?: string | null
           uploaded_total_amount?: number | null
           warning_message?: string | null
+          whatsapp_phone?: string | null
         }
         Update: {
           abs_amount?: number | null
@@ -531,6 +601,7 @@ export type Database = {
           commission?: number | null
           created_at?: string | null
           divided_by_days?: number | null
+          employee_phone?: string | null
           firm_name?: string
           id?: string
           net_payable?: number | null
@@ -547,6 +618,7 @@ export type Database = {
           updated_at?: string | null
           uploaded_total_amount?: number | null
           warning_message?: string | null
+          whatsapp_phone?: string | null
         }
         Relationships: [
           {
