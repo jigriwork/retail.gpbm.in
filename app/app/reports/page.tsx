@@ -201,20 +201,20 @@ export default async function ReportsPage() {
               ))}
             </div>
           </Link>
+          <Link
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            href="/app/employees"
+          >
+            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+              <Phone className="size-5" />
+            </div>
+            <h2 className="text-2xl font-semibold">Staff Phone Directory</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Phone numbers for assigned store staff.
+            </p>
+          </Link>
           {profile?.role === "owner" ? (
             <>
-              <Link
-                className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
-                href="/app/employees"
-              >
-                <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-                  <Phone className="size-5" />
-                </div>
-                <h2 className="text-2xl font-semibold">Employee Directory</h2>
-                <p className="mt-2 text-sm leading-6 text-muted">
-                  Phone numbers for payslip WhatsApp sharing.
-                </p>
-              </Link>
               <Link
                 className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
                 href="/app/payslips"

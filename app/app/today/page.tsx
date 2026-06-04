@@ -7,6 +7,7 @@ import {
   ListTodo,
   MessageSquareText,
   PackageSearch,
+  Phone,
   Sparkles,
   SprayCan,
   Store,
@@ -41,6 +42,7 @@ import {
 } from "@/lib/analytics/sales";
 import { getLatestStockMonth, getStockSummary } from "@/lib/analytics/stock";
 import { getLifeFlowSummary } from "@/lib/life/queries";
+import { getMissingEmployeePhoneCount } from "@/lib/employees/queries";
 
 function formatMoney(value?: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -82,6 +84,7 @@ export default async function TodayPage() {
     monthSalesPulse,
     yesterdayStaffPulse,
     lifeFlow,
+    missingPhoneCount,
   ] = await Promise.all([
     profile ? getTaskSummary(profile, stores) : Promise.resolve(defaultTaskSummary),
     getStoreSalesStatuses(stores),
@@ -104,6 +107,7 @@ export default async function TodayPage() {
       dateRange: yesterdayRange,
     }),
     profile?.role === "owner" ? getLifeFlowSummary() : Promise.resolve(null),
+    getMissingEmployeePhoneCount(storeIds),
   ]);
   const stockPulse = latestStockMonth
     ? await getStockSummary({
@@ -152,6 +156,29 @@ export default async function TodayPage() {
           </div>
         </section>
       ) : null}
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Staff phones</p>
+            <h2 className="mt-2 text-2xl font-semibold">
+              {missingPhoneCount ? `${missingPhoneCount} missing phone${missingPhoneCount === 1 ? "" : "s"}` : "Phone directory ready"}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              {profile?.role === "owner"
+                ? "Maintain staff phone numbers across active stores."
+                : "Maintain phone numbers for your assigned stores. Payslips stay owner-only."}
+            </p>
+          </div>
+          <Link
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            href={missingPhoneCount ? "/app/employees?missing=1" : "/app/employees"}
+          >
+            <Phone className="size-4" />
+            Staff Phone Directory
+          </Link>
+        </div>
+      </section>
 
       {profile?.role === "owner" ? (
         <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">

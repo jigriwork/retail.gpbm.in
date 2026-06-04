@@ -1,21 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAccessibleStores, type Profile } from "@/lib/auth/session";
 
-export async function getActiveEmployeeStores() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("stores")
-    .select("*")
-    .eq("is_active", true)
-    .in("code", ["GP", "BM"])
-    .order("name");
-
-  return data ?? [];
+export async function getActiveEmployeeStores(profile?: Profile | null) {
+  const stores = await getAccessibleStores(profile);
+  return stores.filter((store) => store.is_active && ["GP", "BM"].includes(store.code));
 }
 
 export async function getEmployeeContacts({
   query = "",
   storeId = "",
+  missingOnly = false,
 }: {
+  missingOnly?: boolean;
   query?: string;
   storeId?: string;
 }) {
@@ -31,7 +27,9 @@ export async function getEmployeeContacts({
 
   const { data } = await builder;
   const normalizedQuery = query.trim().toLowerCase();
-  const contacts = data ?? [];
+  const contacts = (data ?? []).filter((contact) =>
+    missingOnly ? contact.is_active !== false && !contact.whatsapp_phone : true,
+  );
 
   if (!normalizedQuery) {
     return contacts;
@@ -51,6 +49,20 @@ export async function getEmployeeContacts({
 
     return haystack.includes(normalizedQuery);
   });
+}
+
+export async function getMissingEmployeePhoneCount(storeIds: string[]) {
+  if (!storeIds.length) return 0;
+
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("employee_contacts")
+    .select("id", { count: "exact", head: true })
+    .in("store_id", storeIds)
+    .eq("is_active", true)
+    .is("whatsapp_phone", null);
+
+  return count ?? 0;
 }
 
 export async function getEmployeeContact(employeeId: string) {

@@ -2,12 +2,14 @@ import { AccessDenied } from "@/components/app/access-denied";
 import {
   AssignStoreForm,
   CreateManagerForm,
+  ManagerStoreAssignmentsForm,
   ProfileActiveForm,
 } from "@/components/users/action-form";
 import {
   assignManagerToStore,
   createManager,
   setProfileActive,
+  updateManagerStoreAssignments,
 } from "@/lib/auth/actions";
 import { requireOwner, requireProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -52,7 +54,10 @@ export default async function UsersPage() {
       </section>
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <h2 className="text-xl font-semibold">Assign manager to store</h2>
+        <h2 className="text-xl font-semibold">Quick assign manager to store</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Manager cards below support one or more assigned stores.
+        </p>
         <div className="mt-4">
           <AssignStoreForm
             action={assignManagerToStore}
@@ -90,21 +95,38 @@ export default async function UsersPage() {
                   </div>
                   <div className="mt-4 text-sm leading-6 text-muted">
                     {userAssignments.length ? (
-                      userAssignments.map((assignment) => {
-                        const store = Array.isArray(assignment.stores)
-                          ? assignment.stores[0]
-                          : assignment.stores;
+                      <div className="flex flex-wrap gap-2">
+                        {userAssignments.map((assignment) => {
+                          const store = Array.isArray(assignment.stores)
+                            ? assignment.stores[0]
+                            : assignment.stores;
 
-                        return (
-                          <p key={assignment.id}>
-                            {store?.name ?? "Store"} ({store?.code ?? "code"})
-                          </p>
-                        );
-                      })
+                          return (
+                            <span
+                              className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted"
+                              key={assignment.id}
+                            >
+                              {store?.name ?? "Store"}
+                            </span>
+                          );
+                        })}
+                      </div>
                     ) : (
                       <p>No store assignments.</p>
                     )}
                   </div>
+                  {userProfile.role === "manager" ? (
+                    <div className="mt-4">
+                      <ManagerStoreAssignmentsForm
+                        action={updateManagerStoreAssignments}
+                        assignedStoreIds={userAssignments
+                          .map((assignment) => assignment.store_id)
+                          .filter((storeId): storeId is string => Boolean(storeId))}
+                        managerId={userProfile.id}
+                        stores={stores ?? []}
+                      />
+                    </div>
+                  ) : null}
                 </div>
                 {userProfile.role === "manager" ? (
                   <ProfileActiveForm

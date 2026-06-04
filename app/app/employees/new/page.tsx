@@ -11,12 +11,13 @@ export default async function NewEmployeePage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { profile } = await requireProfile();
-  if (profile?.role !== "owner") {
-    return <AccessDenied message="Employee phone directory is reserved for the owner account." />;
+  if (!profile || !["owner", "manager"].includes(profile.role)) {
+    return <AccessDenied message="Staff phone directory is available to owner and assigned managers." />;
   }
 
   const { error } = await searchParams;
-  const stores = await getActiveEmployeeStores();
+  const stores = await getActiveEmployeeStores(profile);
+  const singleStore = stores.length === 1 ? stores[0] : null;
 
   return (
     <div className="space-y-5">
@@ -29,9 +30,12 @@ export default async function NewEmployeePage({
 
       <form action={createEmployeeContact} className="space-y-4 rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         {error ? <p className="text-sm font-semibold text-danger">{error}</p> : null}
+        {!stores.length ? (
+          <p className="text-sm leading-6 text-muted">No store assigned. Please contact owner.</p>
+        ) : null}
         <label className="block">
           <span className="text-sm font-semibold">Store</span>
-          <select className="mt-2 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-foreground" name="storeId" required>
+          <select className="mt-2 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-foreground" defaultValue={singleStore?.id ?? ""} name="storeId" required>
             <option value="">Select store</option>
             {stores.map((store) => (
               <option key={store.id} value={store.id}>{store.name}</option>
@@ -54,7 +58,7 @@ export default async function NewEmployeePage({
           <input className="size-4 accent-black" defaultChecked name="isActive" type="checkbox" />
           Active
         </label>
-        <button className="h-11 rounded-2xl bg-foreground px-5 text-sm font-semibold text-background" type="submit">
+        <button className="h-11 rounded-2xl bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50" disabled={!stores.length} type="submit">
           Save Employee
         </button>
       </form>

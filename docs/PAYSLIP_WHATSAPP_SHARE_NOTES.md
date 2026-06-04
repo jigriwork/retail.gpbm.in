@@ -2,7 +2,9 @@
 
 ## Employee Phone Directory
 
-- `/app/employees` is the owner-only Staff Phone Directory and lists employee contacts by active store.
+- `/app/employees` is the Staff Phone Directory and lists employee contacts by active assigned store.
+- Owners can manage all active Go Planet and Brand Mark contacts.
+- Managers can manage contacts only for their assigned stores.
 - Staff names are auto-created from existing payslip rows after the owner clicks `Sync staff from payslips`.
 - Staff names are also auto-created from future salary uploads even when phone is blank.
 - Owners can add and edit staff name, store, phone number, notes and active status.

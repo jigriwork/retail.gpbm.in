@@ -14,19 +14,22 @@ export default async function EditEmployeePage({
   searchParams: Promise<{ error?: string; saved?: string }>;
 }) {
   const { profile } = await requireProfile();
-  if (profile?.role !== "owner") {
-    return <AccessDenied message="Employee phone directory is reserved for the owner account." />;
+  if (!profile || !["owner", "manager"].includes(profile.role)) {
+    return <AccessDenied message="Staff phone directory is available to owner and assigned managers." />;
   }
 
   const { employeeId } = await params;
   const [{ error, saved }, stores, employee] = await Promise.all([
     searchParams,
-    getActiveEmployeeStores(),
+    getActiveEmployeeStores(profile),
     getEmployeeContact(employeeId),
   ]);
 
   if (!employee) {
     notFound();
+  }
+  if (employee.store_id && !stores.some((store) => store.id === employee.store_id)) {
+    return <AccessDenied message="This staff contact is outside your assigned stores." />;
   }
 
   return (

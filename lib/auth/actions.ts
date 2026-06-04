@@ -101,6 +101,79 @@ export async function assignManagerToStore(formData: FormData) {
   return { ok: true, message: "Store assignment updated." };
 }
 
+export async function updateManagerStoreAssignments(formData: FormData) {
+  const owner = await requireOwner();
+
+  if (!owner) {
+    return { ok: false, message: "Only owners can assign stores." };
+  }
+
+  const userId = readString(formData, "userId");
+  const selectedStoreIds = formData
+    .getAll("storeIds")
+    .filter((value): value is string => typeof value === "string" && Boolean(value));
+
+  if (!userId) {
+    return { ok: false, message: "Missing manager profile." };
+  }
+
+  const supabase = await createClient();
+  const { data: manager } = await supabase
+    .from("profiles")
+    .select("id,role")
+    .eq("id", userId)
+    .eq("role", "manager")
+    .maybeSingle();
+
+  if (!manager) {
+    return { ok: false, message: "Choose a valid manager." };
+  }
+
+  const { data: activeStores } = await supabase
+    .from("stores")
+    .select("id")
+    .eq("is_active", true)
+    .in("code", ["GP", "BM"]);
+  const activeStoreIds = new Set((activeStores ?? []).map((store) => store.id));
+  const validSelectedStoreIds = [...new Set(selectedStoreIds)].filter((storeId) =>
+    activeStoreIds.has(storeId),
+  );
+
+  if (validSelectedStoreIds.length) {
+    const { error: upsertError } = await supabase.from("store_users").upsert(
+      validSelectedStoreIds.map((storeId) => ({
+        role: "manager",
+        store_id: storeId,
+        user_id: userId,
+      })),
+      { onConflict: "store_id,user_id" },
+    );
+
+    if (upsertError) {
+      return { ok: false, message: upsertError.message };
+    }
+  }
+
+  const storesToRemove = [...activeStoreIds].filter(
+    (storeId) => !validSelectedStoreIds.includes(storeId),
+  );
+
+  if (storesToRemove.length) {
+    const { error: deleteError } = await supabase
+      .from("store_users")
+      .delete()
+      .eq("user_id", userId)
+      .in("store_id", storesToRemove);
+
+    if (deleteError) {
+      return { ok: false, message: deleteError.message };
+    }
+  }
+
+  revalidatePath("/app/users");
+  return { ok: true, message: "Store assignments saved." };
+}
+
 export async function setProfileActive(formData: FormData) {
   const owner = await requireOwner();
 

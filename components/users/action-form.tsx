@@ -134,6 +134,59 @@ export function AssignStoreForm({
   );
 }
 
+export function ManagerStoreAssignmentsForm({
+  action,
+  assignedStoreIds,
+  managerId,
+  stores,
+}: {
+  action: (formData: FormData) => Promise<ActionState>;
+  assignedStoreIds: string[];
+  managerId: string;
+  stores: Array<{ id: string; name: string; code: string }>;
+}) {
+  const [state, formAction, pending] = useActionState(
+    async (_previous: ActionState, formData: FormData) => action(formData),
+    initialState,
+  );
+  const assigned = new Set(assignedStoreIds);
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <input name="userId" type="hidden" value={managerId} />
+      <div className="space-y-2">
+        <p className="text-sm font-semibold">Assigned Stores</p>
+        <div className="flex flex-wrap gap-2">
+          {stores.map((store) => (
+            <label
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold"
+              key={store.id}
+            >
+              <input
+                className="size-4 accent-black"
+                defaultChecked={assigned.has(store.id)}
+                name="storeIds"
+                type="checkbox"
+                value={store.id}
+              />
+              {store.name}
+            </label>
+          ))}
+        </div>
+      </div>
+      <Button className="h-10 rounded-xl px-3 text-xs" disabled={pending} variant="secondary">
+        {pending ? <Loader2 className="size-4 animate-spin" /> : null}
+        Save Assignments
+      </Button>
+      {state.message ? (
+        <p className={state.ok ? "text-xs text-success" : "text-xs text-danger"}>
+          {state.message}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
 export function ProfileActiveForm({
   action,
   userId,

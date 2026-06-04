@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireOwner } from "@/lib/auth/session";
+import { getAccessibleStores, requireOwner, requireProfile, type Profile } from "@/lib/auth/session";
 import { normalizePhone, normalizeStaffName, staffNameKey } from "@/lib/employees/utils";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 export type EmployeeSyncState = {
   ok: boolean;
@@ -21,13 +21,28 @@ function readBoolean(formData: FormData, key: string) {
   return formData.get(key) === "on";
 }
 
-async function requireOwnerOrRedirect() {
-  const session = await requireOwner();
-  if (!session?.profile) {
+type ContactSession = Awaited<ReturnType<typeof requireProfile>> & {
+  profile: Profile;
+};
+
+async function requireContactUserOrRedirect(): Promise<ContactSession> {
+  const session = await requireProfile();
+  if (!session.profile || !["owner", "manager"].includes(session.profile.role)) {
     redirect("/app/employees");
   }
 
-  return session;
+  return session as ContactSession;
+}
+
+async function getWritableEmployeeStores(profile: Profile) {
+  return (await getAccessibleStores(profile)).filter(
+    (store) => store.is_active && ["GP", "BM"].includes(store.code),
+  );
+}
+
+async function canWriteEmployeeStore(storeId: string, profile: Profile) {
+  const stores = await getWritableEmployeeStores(profile);
+  return stores.some((store) => store.id === storeId);
 }
 
 export async function propagateEmployeePhone({
@@ -41,7 +56,7 @@ export async function propagateEmployeePhone({
   storeId: string;
   whatsappPhone: string | null;
 }) {
-  const supabase = await createClient();
+  const supabase = createAdminClient() ?? (await createClient());
   const { data: rows } = await supabase
     .from("payslip_rows")
     .select("id,batch_id,staff_name")
@@ -90,7 +105,7 @@ async function propagateContactPhone(storeId: string, staffName: string, phoneIn
 }
 
 export async function createEmployeeContact(formData: FormData) {
-  const session = await requireOwnerOrRedirect();
+  const session = await requireContactUserOrRedirect();
   const supabase = await createClient();
   const staffName = normalizeStaffName(readString(formData, "staffName"));
   const storeId = readString(formData, "storeId");
@@ -105,15 +120,7 @@ export async function createEmployeeContact(formData: FormData) {
     redirect("/app/employees/new?error=phone");
   }
 
-  const { data: store } = await supabase
-    .from("stores")
-    .select("id")
-    .eq("id", storeId)
-    .eq("is_active", true)
-    .in("code", ["GP", "BM"])
-    .maybeSingle();
-
-  if (!store) {
+  if (!(await canWriteEmployeeStore(storeId, session.profile))) {
     redirect("/app/employees/new?error=store");
   }
 
@@ -143,7 +150,7 @@ export async function createEmployeeContact(formData: FormData) {
 }
 
 export async function updateEmployeeContact(formData: FormData) {
-  await requireOwnerOrRedirect();
+  const session = await requireContactUserOrRedirect();
   const supabase = await createClient();
   const employeeId = readString(formData, "employeeId");
   const staffName = normalizeStaffName(readString(formData, "staffName"));
@@ -157,6 +164,20 @@ export async function updateEmployeeContact(formData: FormData) {
   }
   if (phoneInput && !phone.isValid) {
     redirect(`/app/employees/${employeeId}?error=phone`);
+  }
+
+  const { data: existing } = await supabase
+    .from("employee_contacts")
+    .select("id,store_id")
+    .eq("id", employeeId)
+    .maybeSingle();
+
+  if (!existing?.store_id || !(await canWriteEmployeeStore(existing.store_id, session.profile))) {
+    redirect(`/app/employees/${employeeId}?error=access`);
+  }
+
+  if (!(await canWriteEmployeeStore(storeId, session.profile))) {
+    redirect(`/app/employees/${employeeId}?error=store`);
   }
 
   const { error } = await supabase
@@ -184,7 +205,7 @@ export async function updateEmployeeContact(formData: FormData) {
 }
 
 export async function deactivateEmployeeContact(formData: FormData) {
-  await requireOwnerOrRedirect();
+  const session = await requireContactUserOrRedirect();
   const employeeId = readString(formData, "employeeId");
   const supabase = await createClient();
 
@@ -192,7 +213,20 @@ export async function deactivateEmployeeContact(formData: FormData) {
     redirect("/app/employees?error=missing");
   }
 
-  await supabase.from("employee_contacts").update({ is_active: false }).eq("id", employeeId);
+  const { data: existing } = await supabase
+    .from("employee_contacts")
+    .select("id,store_id,is_active")
+    .eq("id", employeeId)
+    .maybeSingle();
+
+  if (!existing?.store_id || !(await canWriteEmployeeStore(existing.store_id, session.profile))) {
+    redirect("/app/employees?error=access");
+  }
+
+  await supabase
+    .from("employee_contacts")
+    .update({ is_active: existing.is_active === false })
+    .eq("id", employeeId);
   revalidatePath("/app/employees");
   revalidatePath(`/app/employees/${employeeId}`);
 }
