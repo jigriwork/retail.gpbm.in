@@ -284,10 +284,17 @@ export type Database = {
           employee_phone: string | null
           firm_name: string
           id: string
+          last_share_attempt_at: string | null
+          last_share_method: string | null
           payslip_row_id: string | null
           pdf_file_name: string | null
           pdf_file_path: string | null
           salary_month: string
+          sent_at: string | null
+          sent_by: string | null
+          sent_method: string | null
+          sent_note: string | null
+          sent_status: string | null
           staff_name: string
           status: string | null
           store_id: string | null
@@ -301,10 +308,17 @@ export type Database = {
           employee_phone?: string | null
           firm_name: string
           id?: string
+          last_share_attempt_at?: string | null
+          last_share_method?: string | null
           payslip_row_id?: string | null
           pdf_file_name?: string | null
           pdf_file_path?: string | null
           salary_month: string
+          sent_at?: string | null
+          sent_by?: string | null
+          sent_method?: string | null
+          sent_note?: string | null
+          sent_status?: string | null
           staff_name: string
           status?: string | null
           store_id?: string | null
@@ -318,10 +332,17 @@ export type Database = {
           employee_phone?: string | null
           firm_name?: string
           id?: string
+          last_share_attempt_at?: string | null
+          last_share_method?: string | null
           payslip_row_id?: string | null
           pdf_file_name?: string | null
           pdf_file_path?: string | null
           salary_month?: string
+          sent_at?: string | null
+          sent_by?: string | null
+          sent_method?: string | null
+          sent_note?: string | null
+          sent_status?: string | null
           staff_name?: string
           status?: string | null
           store_id?: string | null
@@ -342,6 +363,13 @@ export type Database = {
             columns: ["payslip_row_id"]
             isOneToOne: false
             referencedRelation: "payslip_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_payslips_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
