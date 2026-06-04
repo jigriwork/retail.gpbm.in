@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download, Eye } from "lucide-react";
+import { AlertTriangle, Download, Eye } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { AccessDenied } from "@/components/app/access-denied";
@@ -175,6 +175,34 @@ export default async function PayslipBatchPage({
         </div>
       </section>
 
+      {/* Receivable warning summary for batch */}
+      {(() => {
+        const negRows = rows.filter((r) => (r.net_payable ?? 0) < 0);
+        if (!negRows.length) return null;
+        const totalReceivable = negRows.reduce((sum, r) => sum + Math.abs(r.net_payable ?? 0), 0);
+        return (
+          <section className="rounded-[1.35rem] border border-warning bg-yellow-50 p-4 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 size-4 text-warning" />
+                <div>
+                  <p className="text-sm font-semibold text-warning">
+                    This batch has {formatMoney(totalReceivable)} receivable from {negRows.length} staff.
+                  </p>
+                  <p className="mt-1 text-xs text-muted">Staff with negative net payable owe us money.</p>
+                </div>
+              </div>
+              <Link
+                className="inline-flex h-9 items-center rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
+                href={`/app/payslips/receivables?month=${batch.salary_month}`}
+              >
+                View Receivables
+              </Link>
+            </div>
+          </section>
+        );
+      })()}
+
       <section className="grid gap-3">
         {filteredRows.map((row) => {
           const generated = latestGenerated(row);
@@ -200,6 +228,11 @@ export default async function PayslipBatchPage({
                   <p>Uploaded total {row.uploaded_total_amount === null ? "Blank" : formatMoney(row.uploaded_total_amount)}</p>
                   <p>Calculated {formatMoney(row.calculated_total_amount)}</p>
                   <p className="font-semibold">Net {formatMoney(row.net_payable)}</p>
+                  {(row.net_payable ?? 0) < 0 ? (
+                    <span className="mt-1 inline-block rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-semibold text-yellow-800">
+                      Receivable {formatMoney(Math.abs(row.net_payable ?? 0))}
+                    </span>
+                  ) : null}
                 </div>
                 <div>
                   <p className={`text-sm font-semibold ${statusClass(row.status)}`}>{row.status}</p>

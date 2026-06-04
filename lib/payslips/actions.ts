@@ -8,6 +8,7 @@ import { propagateEmployeePhone } from "@/lib/employees/actions";
 import { appendWarning, normalizePhone, staffNameKey } from "@/lib/employees/utils";
 import { parsePayslipWorkbook } from "@/lib/payslips/parser";
 import { renderPayslipPdf } from "@/lib/payslips/pdf";
+import { autoSyncReceivablesForBatch } from "@/lib/payslips/receivables";
 import { payslipFileName } from "@/lib/payslips/utils";
 import { createClient } from "@/lib/supabase/server";
 
@@ -335,6 +336,11 @@ async function generateOne(rowId: string) {
       .eq("id", row.batch_id);
   }
 
+  // Auto-sync receivables for negative payslips
+  if (row.batch_id && (row.net_payable ?? 0) < 0) {
+    await autoSyncReceivablesForBatch(row.batch_id);
+  }
+
   await refreshPayslipPaths(row.batch_id, row.id);
   return { ok: true, message: "Payslip generated." };
 }
@@ -561,6 +567,9 @@ export async function generateAllPayslips(
     const result = await generateOne(row.id);
     if (result.ok) generated += 1;
   }
+
+  // Auto-sync receivables for any negative payslips in this batch
+  await autoSyncReceivablesForBatch(batchId);
 
   await refreshPayslipPaths(batchId);
   return { ok: true, message: `Generated ${generated} payslip${generated === 1 ? "" : "s"}.` };

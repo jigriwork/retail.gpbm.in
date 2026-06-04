@@ -1,10 +1,14 @@
 import Link from "next/link";
-import { Download, Eye, Phone, UploadCloud } from "lucide-react";
+import { AlertTriangle, Download, Eye, Phone, UploadCloud } from "lucide-react";
 
 import { AccessDenied } from "@/components/app/access-denied";
 import { requireProfile } from "@/lib/auth/session";
 import { getRecentPayslipBatches } from "@/lib/payslips/queries";
-import { formatMonth } from "@/lib/payslips/utils";
+import {
+  getAvailableReceivableMonths,
+  getReceivableSummaryForMonth,
+} from "@/lib/payslips/receivables-queries";
+import { formatMoney, formatMonth } from "@/lib/payslips/utils";
 
 export default async function PayslipsPage() {
   const { profile } = await requireProfile();
@@ -14,6 +18,13 @@ export default async function PayslipsPage() {
   }
 
   const batches = await getRecentPayslipBatches(12);
+
+  // Get latest receivable month summary
+  const receivableMonths = await getAvailableReceivableMonths();
+  const latestReceivableMonth = receivableMonths[0] ?? "";
+  const receivableSummary = latestReceivableMonth
+    ? await getReceivableSummaryForMonth(latestReceivableMonth)
+    : { pendingCount: 0, pendingTotal: 0 };
 
   return (
     <div className="space-y-5">
@@ -42,6 +53,32 @@ export default async function PayslipsPage() {
           </Link>
         </div>
       </section>
+
+      {/* Salary Receivables card */}
+      {latestReceivableMonth ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted">Salary Receivables</p>
+              <h2 className="mt-2 text-2xl font-semibold">
+                {receivableSummary.pendingCount
+                  ? `${receivableSummary.pendingCount} staff owe ${formatMoney(receivableSummary.pendingTotal)}`
+                  : "No pending receivables"}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                {formatMonth(latestReceivableMonth)} — Pending amounts from negative payslips.
+              </p>
+            </div>
+            <Link
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
+              href="/app/payslips/receivables"
+            >
+              <AlertTriangle className="size-4" />
+              View Receivables
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Recent payslip batches</h2>
