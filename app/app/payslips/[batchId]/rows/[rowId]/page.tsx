@@ -60,6 +60,11 @@ export default async function PayslipRowPage({
         <p className={row.whatsapp_phone ? "mt-2 text-sm font-semibold text-success" : "mt-2 text-sm font-semibold text-warning"}>
           {row.whatsapp_phone ? "Phone Ready" : row.warning_message?.toLowerCase().includes("invalid phone") ? "Invalid Phone" : "Phone Missing"}
         </p>
+        {!row.whatsapp_phone ? (
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Add phone once. Future payslips for this staff will auto-fill it.
+          </p>
+        ) : null}
       </section>
 
       {row.warning_message ? (

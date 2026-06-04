@@ -2,8 +2,12 @@
 
 ## Employee Phone Directory
 
-- `/app/employees` is owner-only and lists employee contacts by active store.
+- `/app/employees` is the owner-only Staff Phone Directory and lists employee contacts by active store.
+- Staff names are auto-created from existing payslip rows after the owner clicks `Sync staff from payslips`.
+- Staff names are also auto-created from future salary uploads even when phone is blank.
 - Owners can add and edit staff name, store, phone number, notes and active status.
+- Normal flow is to sync or upload payslips first, then add phone numbers beside auto-detected staff names.
+- Manual add employee is optional and is not the main flow.
 - Deleting is intentionally not part of the default flow. Mark employees inactive instead.
 
 ## Phone Normalization
@@ -18,9 +22,19 @@
 
 - Salary sheets can include phone columns using headers such as `phone`, `mobile`, `mobile no`, `contact number`, `staff phone`, `whatsapp` or `whatsapp number`.
 - Upload phone has first priority.
-- If a row has no uploaded phone, the app matches `employee_contacts` by `store_id` and normalized staff name.
-- If an uploaded phone is valid and no employee contact exists, the owner upload creates the contact automatically.
+- Matching is always by `store_id` plus normalized staff name.
+- If a row has no uploaded phone, the app matches `employee_contacts` by store and normalized staff name.
+- If no employee contact exists, the owner upload creates one even when phone is blank.
+- If an uploaded phone is valid and the employee contact phone is blank, the contact is updated.
 - If uploaded phone differs from the saved contact, the payslip row keeps the uploaded phone and shows a warning.
+
+## One-Time Phone Setup
+
+- Owners add the phone number once in the Staff Phone Directory, payslip review row or payslip preview page.
+- Saving phone permanently updates `employee_contacts`.
+- Matching current `payslip_rows` and generated payslip records are updated by store and normalized staff name.
+- Future uploads auto-fill phone using the saved employee contact.
+- Owner only edits the phone again when the staff phone number changes.
 
 ## Mobile Share PDF
 
