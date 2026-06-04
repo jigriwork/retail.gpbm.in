@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -820,6 +820,111 @@ export type Database = {
             columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salary_receivables: {
+        Row: {
+          balance_amount: number
+          batch_id: string | null
+          created_at: string | null
+          firm_name: string | null
+          generated_payslip_id: string | null
+          id: string
+          net_payable: number
+          normalized_staff_name: string | null
+          note: string | null
+          payslip_row_id: string | null
+          receivable_amount: number
+          received_amount: number | null
+          received_at: string | null
+          received_by: string | null
+          salary_month: string
+          staff_name: string
+          status: string | null
+          store_id: string | null
+          store_name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          balance_amount: number
+          batch_id?: string | null
+          created_at?: string | null
+          firm_name?: string | null
+          generated_payslip_id?: string | null
+          id?: string
+          net_payable: number
+          normalized_staff_name?: string | null
+          note?: string | null
+          payslip_row_id?: string | null
+          receivable_amount: number
+          received_amount?: number | null
+          received_at?: string | null
+          received_by?: string | null
+          salary_month: string
+          staff_name: string
+          status?: string | null
+          store_id?: string | null
+          store_name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          balance_amount?: number
+          batch_id?: string | null
+          created_at?: string | null
+          firm_name?: string | null
+          generated_payslip_id?: string | null
+          id?: string
+          net_payable?: number
+          normalized_staff_name?: string | null
+          note?: string | null
+          payslip_row_id?: string | null
+          receivable_amount?: number
+          received_amount?: number | null
+          received_at?: string | null
+          received_by?: string | null
+          salary_month?: string
+          staff_name?: string
+          status?: string | null
+          store_id?: string | null
+          store_name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_receivables_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "payslip_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_receivables_generated_payslip_id_fkey"
+            columns: ["generated_payslip_id"]
+            isOneToOne: false
+            referencedRelation: "generated_payslips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_receivables_payslip_row_id_fkey"
+            columns: ["payslip_row_id"]
+            isOneToOne: true
+            referencedRelation: "payslip_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_receivables_received_by_fkey"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_receivables_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
