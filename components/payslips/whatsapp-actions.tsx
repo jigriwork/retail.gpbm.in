@@ -1,16 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Download, ExternalLink, MessageCircle, Share2 } from "lucide-react";
+import { Copy, Download, ExternalLink, MessageCircle, Send, Share2 } from "lucide-react";
 
-import { payslipWhatsAppMessage, whatsAppLink } from "@/lib/payslips/whatsapp";
+import { payslipWhatsAppMessage, professionalSalaryWhatsAppMessage, whatsAppLink } from "@/lib/payslips/whatsapp";
 
 type ShareProps = {
+  absAmount?: number | null;
+  absDays?: number | null;
+  advance?: number | null;
+  commission?: number | null;
   downloadUrl: string;
   fileName: string;
+  firmName?: string | null;
+  netPayable?: number | null;
+  salaryAmount?: number | null;
   salaryMonth: string;
   staffName: string;
   storeName: string;
+  sundayPayAmount?: number | null;
+  sundayPresent?: number | null;
   whatsappPhone?: string | null;
 };
 
@@ -21,18 +30,42 @@ function actionClass(primary = false) {
 }
 
 export function PayslipWhatsAppActions({
+  absAmount,
+  absDays,
+  advance,
+  commission,
   downloadUrl,
   fileName,
+  firmName,
+  netPayable,
+  salaryAmount,
   salaryMonth,
   staffName,
   storeName,
+  sundayPayAmount,
+  sundayPresent,
   whatsappPhone,
 }: ShareProps) {
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState<"danger" | "success" | "muted">("muted");
   const [isSharing, setIsSharing] = useState(false);
   const message = payslipWhatsAppMessage({ salaryMonth, staffName, storeName });
+  const salaryMessage = professionalSalaryWhatsAppMessage({
+    absAmount,
+    absDays,
+    advance,
+    commission,
+    firmName,
+    netPayable,
+    salaryAmount,
+    salaryMonth,
+    staffName,
+    storeName,
+    sundayPayAmount,
+    sundayPresent,
+  });
   const chatUrl = whatsappPhone ? whatsAppLink(whatsappPhone, message) : "";
+  const salaryChatUrl = whatsappPhone ? whatsAppLink(whatsappPhone, salaryMessage) : "";
 
   function showStatus(messageText: string, tone: "danger" | "success" | "muted" = "muted") {
     setStatus(messageText);
@@ -41,10 +74,10 @@ export function PayslipWhatsAppActions({
 
   async function copyMessage() {
     try {
-      await navigator.clipboard.writeText(message);
-      showStatus("Message copied.", "success");
+      await navigator.clipboard.writeText(salaryMessage);
+      showStatus("Salary message copied.", "success");
     } catch {
-      showStatus("Could not copy message.", "danger");
+      showStatus("Could not copy salary message.", "danger");
     }
   }
 
@@ -100,13 +133,33 @@ export function PayslipWhatsAppActions({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-start gap-2">
+        {salaryChatUrl ? (
+          <a
+            aria-label="Send WhatsApp salary text without PDF attachment"
+            className={actionClass(true)}
+            href={salaryChatUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <Send className="size-4" />
+            Send WhatsApp Text
+          </a>
+        ) : (
+          <span className="inline-flex min-h-10 items-center rounded-xl border border-border px-3 text-xs font-semibold text-muted">
+            Phone missing. Add phone number once; future payslips will auto-fill it.
+          </span>
+        )}
+        <button className={actionClass(true)} disabled={isSharing} onClick={sharePdf} type="button">
+          <Share2 className="size-4" />
+          {isSharing ? "Preparing PDF" : "Share PDF"}
+        </button>
         <a className={actionClass()} href={downloadUrl}>
           <Download className="size-4" />
           Download PDF
         </a>
-        <button className={actionClass(true)} disabled={isSharing} onClick={sharePdf} type="button">
-          <Share2 className="size-4" />
-          {isSharing ? "Preparing PDF" : "Share PDF"}
+        <button className={actionClass()} onClick={copyMessage} type="button">
+          <Copy className="size-4" />
+          Copy Message
         </button>
         {chatUrl ? (
           <a
@@ -119,15 +172,7 @@ export function PayslipWhatsAppActions({
             <MessageCircle className="size-4" />
             Open WhatsApp
           </a>
-        ) : (
-          <span className="inline-flex min-h-10 items-center rounded-xl border border-border px-3 text-xs font-semibold text-muted">
-            Employee phone number is missing. Add phone number to open WhatsApp.
-          </span>
-        )}
-        <button className={actionClass()} onClick={copyMessage} type="button">
-          <Copy className="size-4" />
-          Copy Message
-        </button>
+        ) : null}
         <a className={actionClass()} href="https://web.whatsapp.com/" rel="noreferrer" target="_blank">
           <ExternalLink className="size-4" />
           Open WhatsApp Web

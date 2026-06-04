@@ -57,6 +57,17 @@
 - `Open WhatsApp` is the chat/message action. It opens WhatsApp with text only.
 - Helper wording in the app: `PDF attachment works only through mobile share sheet on supported browsers. WhatsApp chat link sends message text only.`
 
+## Professional WhatsApp Salary Text
+
+- `Send WhatsApp Text` is the fastest desktop/phone flow when the owner wants to share salary details without depending on PDF attachment support.
+- It opens the employee WhatsApp chat with full salary details from the payslip row snapshot: staff name, month, store, firm, salary amount, absent days, absent deduction, advance deduction, commission and net payable.
+- Sunday present and Sunday pay are included only when Sunday values exist for that payslip row.
+- The WhatsApp text does not attach the PDF, does not auto-send, and does not use WhatsApp Business API.
+- The owner reviews the prefilled message and presses Send manually in WhatsApp.
+- `Copy Message` copies the same professional salary text and shows `Salary message copied.`
+- The PDF remains available through `Download PDF` and `Share PDF` for the official record.
+- Fully automatic PDF or text sending still requires WhatsApp Business Cloud API V2 and is not implemented now.
+
 ## Desktop Fallback
 
 - `Open WhatsApp Web` opens `https://web.whatsapp.com/`.

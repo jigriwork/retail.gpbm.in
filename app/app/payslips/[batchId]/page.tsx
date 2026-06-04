@@ -164,11 +164,20 @@ export default async function PayslipBatchPage({
                 <PayslipRowPhoneForm action={updatePayslipRowPhone} phone={row.employee_phone} rowId={row.id} />
                 {generated?.id ? (
                   <PayslipWhatsAppActions
+                    absAmount={row.abs_amount}
+                    absDays={row.abs_days}
+                    advance={row.advance}
+                    commission={row.commission}
                     downloadUrl={downloadUrl}
                     fileName={generated.pdf_file_name ?? payslipFileName(row.store_name, row.staff_name ?? "Staff", row.salary_month)}
+                    firmName={row.firm_name}
+                    netPayable={row.net_payable}
+                    salaryAmount={row.salary_amount}
                     salaryMonth={row.salary_month}
                     staffName={row.staff_name ?? "Staff"}
                     storeName={row.store_name}
+                    sundayPayAmount={row.sunday_pay_amount}
+                    sundayPresent={row.sunday_present}
                     whatsappPhone={row.whatsapp_phone}
                   />
                 ) : null}
