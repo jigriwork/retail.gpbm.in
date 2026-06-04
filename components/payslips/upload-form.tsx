@@ -28,7 +28,7 @@ export function PayslipUploadForm({
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-muted">Store selection</span>
+          <span className="mb-2 block text-sm font-medium text-muted">Fallback store (if auto-detect fails)</span>
           <select
             className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
             defaultValue=""

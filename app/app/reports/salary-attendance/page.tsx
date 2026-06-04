@@ -32,6 +32,7 @@ export default async function SalaryAttendanceReportsPage({
         <h1 className="mt-2 text-3xl font-semibold">Salary attendance upload</h1>
         <p className="mt-2 text-sm leading-6 text-muted">
           Monthly attendance is due on the 1st. Salary day is the 3rd.
+          This is for store attendance files only. To generate payslips from the combined salary sheet, go to Payslips.
         </p>
       </div>
 
