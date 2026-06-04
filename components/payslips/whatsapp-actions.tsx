@@ -187,6 +187,9 @@ export function PayslipWhatsAppActions({
           <Share2 className="size-4" />
           {isSharing ? "Preparing PDF" : "Share PDF"}
         </button>
+      </div>
+
+      <div className="flex flex-wrap items-start gap-2">
         <a className={actionClass()} href={downloadUrl}>
           <Download className="size-4" />
           Download PDF
@@ -221,12 +224,12 @@ export function PayslipWhatsAppActions({
         </p>
       ) : null}
       {generatedPayslipId ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 pt-1">
           <button className={actionClass()} onClick={() => markSentAfterShare("whatsapp_text")} type="button">
-            Mark as Sent after sending
+            Mark Sent (Text)
           </button>
           <button className={actionClass()} onClick={() => markSentAfterShare("whatsapp_pdf_share")} type="button">
-            Mark as Sent after sharing
+            Mark Sent (PDF)
           </button>
         </div>
       ) : null}

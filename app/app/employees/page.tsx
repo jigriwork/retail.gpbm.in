@@ -83,7 +83,7 @@ export default async function EmployeesPage({
               href={`/app/employees/new?returnTo=${encodeURIComponent(returnTo)}`}
             >
               <Plus className="size-4" />
-              Manual Add Employee
+              Add Staff Contact
             </Link>
           </div>
         </div>
