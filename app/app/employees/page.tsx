@@ -1,40 +1,69 @@
 import Link from "next/link";
-import { Plus, Search, UserMinus, UserRoundPen } from "lucide-react";
+import { List, PencilLine, Plus, Search, UserMinus, UserRoundPen } from "lucide-react";
 
 import { AccessDenied } from "@/components/app/access-denied";
+import { BulkPhoneEditor } from "@/components/employees/bulk-phone-editor";
 import { SyncStaffButton } from "@/components/employees/sync-staff-button";
-import { deactivateEmployeeContact, syncStaffFromPayslips } from "@/lib/employees/actions";
+import { bulkUpdateEmployeePhones, deactivateEmployeeContact, syncStaffFromPayslips } from "@/lib/employees/actions";
 import { getActiveEmployeeStores, getEmployeeContacts } from "@/lib/employees/queries";
 import { requireProfile } from "@/lib/auth/session";
 
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ missing?: string; q?: string; store?: string }>;
+  searchParams: Promise<{
+    missing?: string;
+    mode?: string;
+    q?: string;
+    saved?: string;
+    status?: string;
+    store?: string;
+  }>;
 }) {
   const { profile } = await requireProfile();
   if (!profile || !["owner", "manager"].includes(profile.role)) {
     return <AccessDenied message="Staff phone directory is available to owner and assigned managers." />;
   }
 
-  const { missing = "", q = "", store = "" } = await searchParams;
+  const { missing = "", mode = "", q = "", saved = "", status = "active", store = "" } = await searchParams;
   const [stores, employees] = await Promise.all([
     getActiveEmployeeStores(profile),
-    getEmployeeContacts({ missingOnly: missing === "1", query: q, storeId: store }),
+    getEmployeeContacts({ query: q, storeId: store }),
   ]);
   const allowedStoreIds = new Set(stores.map((item) => item.id));
   const selectedStore = allowedStoreIds.has(store) ? store : "";
+  const selectedStatus = ["active", "inactive", "all"].includes(status) ? status : "active";
+  const isBulkMode = mode === "bulk";
   const visibleEmployees = employees.filter((employee) =>
     employee.store_id ? allowedStoreIds.has(employee.store_id) : profile.role === "owner",
   );
-  const filteredEmployees =
+  const storeFilteredEmployees =
     selectedStore || profile.role === "owner" || stores.length !== 1
       ? visibleEmployees
       : visibleEmployees.filter((employee) => employee.store_id === stores[0]?.id);
+  const filteredEmployees = storeFilteredEmployees.filter((employee) => {
+    if (selectedStatus === "active" && employee.is_active === false) return false;
+    if (selectedStatus === "inactive" && employee.is_active !== false) return false;
+    if (missing === "1" && employee.whatsapp_phone) return false;
+    return true;
+  });
   const helperText =
     profile.role === "owner"
       ? "Staff names are auto-created from salary sheet and payslip uploads. Add phone numbers once; future payslips will auto-fill them."
       : "Add or update staff phone numbers for your assigned store. Salary slips and salary details are owner-only.";
+  const directoryParams = new URLSearchParams();
+  if (q) directoryParams.set("q", q);
+  if (selectedStore) directoryParams.set("store", selectedStore);
+  if (missing === "1") directoryParams.set("missing", "1");
+  if (selectedStatus !== "active") directoryParams.set("status", selectedStatus);
+  if (isBulkMode) directoryParams.set("mode", "bulk");
+  const returnTo = `/app/employees${directoryParams.toString() ? `?${directoryParams}` : ""}`;
+  const listParams = new URLSearchParams(directoryParams);
+  listParams.delete("mode");
+  const bulkParams = new URLSearchParams(directoryParams);
+  bulkParams.set("mode", "bulk");
+  const listHref = `/app/employees${listParams.toString() ? `?${listParams}` : ""}`;
+  const bulkHref = `/app/employees?${bulkParams}`;
 
   return (
     <div className="space-y-5">
@@ -51,7 +80,7 @@ export default async function EmployeesPage({
             {profile.role === "owner" ? <SyncStaffButton action={syncStaffFromPayslips} /> : null}
             <Link
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
-              href="/app/employees/new"
+              href={`/app/employees/new?returnTo=${encodeURIComponent(returnTo)}`}
             >
               <Plus className="size-4" />
               Manual Add Employee
@@ -66,7 +95,39 @@ export default async function EmployeesPage({
         </div>
       ) : null}
 
-      <form className="grid gap-3 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm md:grid-cols-[1fr_12rem_auto_auto]" action="/app/employees">
+      {saved === "1" ? (
+        <div className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold text-success shadow-sm">
+          Phone saved. Continue with the next staff member.
+        </div>
+      ) : null}
+
+      <div className="grid gap-3 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-wrap gap-2">
+          <Link
+            className={
+              isBulkMode
+                ? "inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
+                : "inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-xs font-semibold text-background"
+            }
+            href={listHref}
+          >
+            <List className="size-4" />
+            List view
+          </Link>
+          <Link
+            className={
+              isBulkMode
+                ? "inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-xs font-semibold text-background"
+                : "inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
+            }
+            href={bulkHref}
+          >
+            <PencilLine className="size-4" />
+            Bulk edit numbers
+          </Link>
+        </div>
+        <form className="grid gap-3 md:grid-cols-[1fr_12rem_10rem_auto_auto]" action="/app/employees">
+          {isBulkMode ? <input name="mode" type="hidden" value="bulk" /> : null}
         <label className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
           <input
@@ -88,6 +149,15 @@ export default async function EmployeesPage({
             </option>
           ))}
         </select>
+        <select
+          className="h-11 rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-foreground"
+          defaultValue={selectedStatus}
+          name="status"
+        >
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="all">All status</option>
+        </select>
         <label className="flex min-h-11 items-center gap-2 rounded-2xl border border-border bg-background px-3 text-sm font-semibold">
           <input className="size-4 accent-black" defaultChecked={missing === "1"} name="missing" type="checkbox" value="1" />
           Missing phones
@@ -95,10 +165,25 @@ export default async function EmployeesPage({
         <button className="h-11 rounded-2xl bg-foreground px-5 text-sm font-semibold text-background" type="submit">
           Filter
         </button>
-      </form>
+        </form>
+      </div>
 
-      <section className="grid gap-3">
-        {filteredEmployees.length ? (
+      {isBulkMode ? (
+        <BulkPhoneEditor
+          action={bulkUpdateEmployeePhones}
+          contacts={filteredEmployees.map((employee) => ({
+            id: employee.id,
+            phone: employee.phone,
+            staffName: employee.staff_name,
+            storeName: employee.stores?.name ?? "No store",
+            whatsappPhone: employee.whatsapp_phone,
+          }))}
+        />
+      ) : null}
+
+      {!isBulkMode ? (
+        <section className="grid gap-3">
+          {filteredEmployees.length ? (
           filteredEmployees.map((employee) => (
             <div className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm" key={employee.id}>
               <div className="grid gap-4 md:grid-cols-[1.1fr_0.8fr_1fr_1fr_auto] md:items-center">
@@ -125,7 +210,7 @@ export default async function EmployeesPage({
                 <div className="flex flex-wrap gap-2">
                   <Link
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
-                    href={`/app/employees/${employee.id}`}
+                    href={`/app/employees/${employee.id}?returnTo=${encodeURIComponent(returnTo)}`}
                   >
                     <UserRoundPen className="size-4" />
                     Edit Phone
@@ -148,8 +233,9 @@ export default async function EmployeesPage({
           <div className="rounded-[1.35rem] border border-border bg-card p-5 text-sm text-muted shadow-sm">
             No employees found.
           </div>
-        )}
-      </section>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }

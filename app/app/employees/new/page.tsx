@@ -8,27 +8,29 @@ import { getActiveEmployeeStores } from "@/lib/employees/queries";
 export default async function NewEmployeePage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; returnTo?: string }>;
 }) {
   const { profile } = await requireProfile();
   if (!profile || !["owner", "manager"].includes(profile.role)) {
     return <AccessDenied message="Staff phone directory is available to owner and assigned managers." />;
   }
 
-  const { error } = await searchParams;
+  const { error, returnTo = "" } = await searchParams;
   const stores = await getActiveEmployeeStores(profile);
   const singleStore = stores.length === 1 ? stores[0] : null;
+  const backHref = returnTo.startsWith("/app/employees") ? returnTo : "/app/employees";
 
   return (
     <div className="space-y-5">
       <div>
-        <Link className="text-sm font-semibold text-muted" href="/app/employees">
-          Back to employees
+        <Link className="text-sm font-semibold text-muted" href={backHref}>
+          Back to Staff Phone Directory
         </Link>
         <h1 className="mt-2 text-3xl font-semibold">Add Employee</h1>
       </div>
 
       <form action={createEmployeeContact} className="space-y-4 rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <input name="returnTo" type="hidden" value={backHref} />
         {error ? <p className="text-sm font-semibold text-danger">{error}</p> : null}
         {!stores.length ? (
           <p className="text-sm leading-6 text-muted">No store assigned. Please contact owner.</p>
@@ -58,9 +60,14 @@ export default async function NewEmployeePage({
           <input className="size-4 accent-black" defaultChecked name="isActive" type="checkbox" />
           Active
         </label>
-        <button className="h-11 rounded-2xl bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50" disabled={!stores.length} type="submit">
-          Save Employee
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button className="h-11 rounded-2xl bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50" disabled={!stores.length} type="submit">
+            Save and Back
+          </button>
+          <Link className="inline-flex h-11 items-center justify-center rounded-2xl border border-border px-5 text-sm font-semibold transition hover:bg-black/[0.03]" href={backHref}>
+            Back
+          </Link>
+        </div>
       </form>
     </div>
   );

@@ -11,7 +11,7 @@ export default async function EditEmployeePage({
   searchParams,
 }: {
   params: Promise<{ employeeId: string }>;
-  searchParams: Promise<{ error?: string; saved?: string }>;
+  searchParams: Promise<{ error?: string; returnTo?: string; saved?: string }>;
 }) {
   const { profile } = await requireProfile();
   if (!profile || !["owner", "manager"].includes(profile.role)) {
@@ -19,7 +19,7 @@ export default async function EditEmployeePage({
   }
 
   const { employeeId } = await params;
-  const [{ error, saved }, stores, employee] = await Promise.all([
+  const [{ error, returnTo = "", saved }, stores, employee] = await Promise.all([
     searchParams,
     getActiveEmployeeStores(profile),
     getEmployeeContact(employeeId),
@@ -31,18 +31,20 @@ export default async function EditEmployeePage({
   if (employee.store_id && !stores.some((store) => store.id === employee.store_id)) {
     return <AccessDenied message="This staff contact is outside your assigned stores." />;
   }
+  const backHref = returnTo.startsWith("/app/employees") ? returnTo : "/app/employees";
 
   return (
     <div className="space-y-5">
       <div>
-        <Link className="text-sm font-semibold text-muted" href="/app/employees">
-          Back to employees
+        <Link className="text-sm font-semibold text-muted" href={backHref}>
+          Back to Staff Phone Directory
         </Link>
         <h1 className="mt-2 text-3xl font-semibold">Edit Employee</h1>
       </div>
 
       <form action={updateEmployeeContact} className="space-y-4 rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <input name="employeeId" type="hidden" value={employee.id} />
+        <input name="returnTo" type="hidden" value={backHref} />
         {saved ? <p className="text-sm font-semibold text-success">Employee saved.</p> : null}
         {error ? <p className="text-sm font-semibold text-danger">{error}</p> : null}
         <label className="block">
@@ -70,9 +72,14 @@ export default async function EditEmployeePage({
           <input className="size-4 accent-black" defaultChecked={employee.is_active !== false} name="isActive" type="checkbox" />
           Active
         </label>
-        <button className="h-11 rounded-2xl bg-foreground px-5 text-sm font-semibold text-background" type="submit">
-          Save Changes
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button className="h-11 rounded-2xl bg-foreground px-5 text-sm font-semibold text-background" type="submit">
+            Save and Back
+          </button>
+          <Link className="inline-flex h-11 items-center justify-center rounded-2xl border border-border px-5 text-sm font-semibold transition hover:bg-black/[0.03]" href={backHref}>
+            Back
+          </Link>
+        </div>
       </form>
     </div>
   );

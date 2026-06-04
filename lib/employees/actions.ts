@@ -12,6 +12,11 @@ export type EmployeeSyncState = {
   message: string;
 };
 
+export type EmployeeBulkPhoneState = {
+  ok: boolean;
+  message: string;
+};
+
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -19,6 +24,24 @@ function readString(formData: FormData, key: string) {
 
 function readBoolean(formData: FormData, key: string) {
   return formData.get(key) === "on";
+}
+
+function safeEmployeesReturnPath(value: string) {
+  if (!value || !value.startsWith("/app/employees")) {
+    return "/app/employees";
+  }
+
+  if (value.startsWith("/app/employees/new") || /^\/app\/employees\/[^/?#]+/.test(value)) {
+    return "/app/employees";
+  }
+
+  return value;
+}
+
+function withSavedFlag(path: string) {
+  const url = new URL(path, "http://local");
+  url.searchParams.set("saved", "1");
+  return `${url.pathname}${url.search}`;
 }
 
 type ContactSession = Awaited<ReturnType<typeof requireProfile>> & {
@@ -111,6 +134,7 @@ export async function createEmployeeContact(formData: FormData) {
   const storeId = readString(formData, "storeId");
   const phoneInput = readString(formData, "phone");
   const notes = readString(formData, "notes");
+  const returnTo = safeEmployeesReturnPath(readString(formData, "returnTo"));
   const phone = normalizePhone(phoneInput);
 
   if (!staffName || !storeId) {
@@ -146,7 +170,7 @@ export async function createEmployeeContact(formData: FormData) {
 
   await propagateContactPhone(storeId, staffName, phone.employeePhone);
   revalidatePath("/app/employees");
-  redirect(`/app/employees/${data.id}?saved=1`);
+  redirect(withSavedFlag(returnTo));
 }
 
 export async function updateEmployeeContact(formData: FormData) {
@@ -157,6 +181,7 @@ export async function updateEmployeeContact(formData: FormData) {
   const storeId = readString(formData, "storeId");
   const phoneInput = readString(formData, "phone");
   const notes = readString(formData, "notes");
+  const returnTo = safeEmployeesReturnPath(readString(formData, "returnTo"));
   const phone = normalizePhone(phoneInput);
 
   if (!employeeId || !staffName || !storeId) {
@@ -201,7 +226,7 @@ export async function updateEmployeeContact(formData: FormData) {
   await propagateContactPhone(storeId, staffName, phone.employeePhone);
   revalidatePath("/app/employees");
   revalidatePath(`/app/employees/${employeeId}`);
-  redirect(`/app/employees/${employeeId}?saved=1`);
+  redirect(withSavedFlag(returnTo));
 }
 
 export async function deactivateEmployeeContact(formData: FormData) {
@@ -229,6 +254,110 @@ export async function deactivateEmployeeContact(formData: FormData) {
     .eq("id", employeeId);
   revalidatePath("/app/employees");
   revalidatePath(`/app/employees/${employeeId}`);
+}
+
+export async function bulkUpdateEmployeePhones(
+  _previous: EmployeeBulkPhoneState,
+  formData: FormData,
+): Promise<EmployeeBulkPhoneState> {
+  void _previous;
+
+  const session = await requireContactUserOrRedirect();
+  const contactIds = formData
+    .getAll("contactIds")
+    .filter((value): value is string => typeof value === "string" && Boolean(value));
+
+  if (!contactIds.length) {
+    return { ok: false, message: "No staff contacts selected." };
+  }
+
+  const supabase = await createClient();
+  const { data: contacts, error } = await supabase
+    .from("employee_contacts")
+    .select("id,staff_name,store_id,phone,normalized_phone,whatsapp_phone")
+    .in("id", contactIds);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  const contactsById = new Map((contacts ?? []).map((contact) => [contact.id, contact]));
+  let saved = 0;
+  let skippedBlank = 0;
+  let skippedUnchanged = 0;
+  let invalid = 0;
+  let denied = 0;
+
+  for (const contactId of contactIds) {
+    const contact = contactsById.get(contactId);
+    const phoneInput = readString(formData, `phone:${contactId}`);
+
+    if (!contact || !contact.store_id) {
+      denied += 1;
+      continue;
+    }
+
+    if (!phoneInput) {
+      skippedBlank += 1;
+      continue;
+    }
+
+    if (!(await canWriteEmployeeStore(contact.store_id, session.profile))) {
+      denied += 1;
+      continue;
+    }
+
+    const phone = normalizePhone(phoneInput);
+    if (!phone.isValid) {
+      invalid += 1;
+      continue;
+    }
+
+    if (
+      contact.normalized_phone === phone.employeePhone &&
+      (contact.whatsapp_phone ?? contact.normalized_phone) === phone.whatsappPhone
+    ) {
+      skippedUnchanged += 1;
+      continue;
+    }
+
+    const { error: updateError } = await supabase
+      .from("employee_contacts")
+      .update({
+        normalized_phone: phone.employeePhone,
+        phone: phone.employeePhone,
+        whatsapp_phone: phone.whatsappPhone,
+      })
+      .eq("id", contact.id);
+
+    if (updateError) {
+      invalid += 1;
+      continue;
+    }
+
+    await propagateEmployeePhone({
+      employeePhone: phone.employeePhone,
+      normalizedStaffName: staffNameKey(contact.staff_name),
+      storeId: contact.store_id,
+      whatsappPhone: phone.whatsappPhone,
+    });
+    saved += 1;
+  }
+
+  revalidatePath("/app/employees");
+
+  const details = [
+    `Saved ${saved}`,
+    skippedBlank ? `blank skipped ${skippedBlank}` : "",
+    skippedUnchanged ? `unchanged ${skippedUnchanged}` : "",
+    invalid ? `invalid ${invalid}` : "",
+    denied ? `not allowed ${denied}` : "",
+  ].filter(Boolean);
+
+  return {
+    ok: invalid === 0 && denied === 0,
+    message: details.join(". ") || "No changes to save.",
+  };
 }
 
 export async function syncStaffFromPayslips(
