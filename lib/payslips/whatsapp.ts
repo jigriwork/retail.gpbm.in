@@ -5,12 +5,14 @@ type ProfessionalSalaryMessageInput = {
   absDays?: number | null;
   advance?: number | null;
   commission?: number | null;
+  dividedByDays?: number | null;
   firmName?: string | null;
   netPayable?: number | null;
   salaryAmount?: number | null;
   salaryMonth: string;
   staffName: string;
   storeName: string;
+  sundayPay?: number | null;
   sundayPayAmount?: number | null;
   sundayPresent?: number | null;
 };
@@ -41,18 +43,21 @@ export function professionalSalaryWhatsAppMessage({
   absDays,
   advance,
   commission,
+  dividedByDays,
   firmName,
   netPayable,
   salaryAmount,
   salaryMonth,
   staffName,
   storeName,
+  sundayPay,
   sundayPayAmount,
   sundayPresent,
 }: ProfessionalSalaryMessageInput) {
   const sundayLines =
     (sundayPresent ?? 0) > 0 || (sundayPayAmount ?? 0) > 0
       ? [
+          `Sunday Pay Rate: ${formatMoney(sundayPay)}`,
           `Sunday Present: ${sundayPresent ?? 0}`,
           `Sunday Pay Amount: ${formatMoney(sundayPayAmount)}`,
         ]
@@ -63,15 +68,21 @@ export function professionalSalaryWhatsAppMessage({
     "",
     `Your salary slip for ${formatMonth(salaryMonth)} is ready.`,
     "",
-    `Store: ${storeName}`,
     `Firm: ${firmName || storeName}`,
+    `Store Name: ${storeName}`,
+    `Salary Month: ${formatMonth(salaryMonth)}`,
+    `Name: ${staffName}`,
     "",
     `Salary Amount: ${formatMoney(salaryAmount)}`,
+    `Divided by Days: ${formatMoney(dividedByDays)}`,
     `Absent Days: ${absDays ?? 0}`,
-    `Absent Deduction: ${formatMoney(absAmount)}`,
+    `Absent Amount: ${formatMoney(absAmount)}`,
+    "",
     ...sundayLines,
+    ...(sundayLines.length ? [""] : []),
     `Advance Deduction: ${formatMoney(advance)}`,
     `Commission: ${formatMoney(commission)}`,
+    "",
     `Net Payable: ${formatMoney(netPayable)}`,
     "",
     "Please check and confirm once received.",

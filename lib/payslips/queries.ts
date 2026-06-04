@@ -4,7 +4,7 @@ export async function getRecentPayslipBatches(limit = 8) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("payslip_batches")
-    .select("*")
+    .select("*, generated_payslips(sent_status)")
     .order("created_at", { ascending: false })
     .limit(limit);
 

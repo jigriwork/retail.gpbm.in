@@ -17,6 +17,14 @@ export type PayslipActionState = {
 };
 
 const allowedExtensions = [".xlsx", ".xls", ".csv"];
+const sentMethods = new Set([
+  "whatsapp_text",
+  "whatsapp_pdf_share",
+  "copy_message",
+  "whatsapp_manual",
+  "download_only",
+  "other",
+]);
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -60,6 +68,157 @@ async function refreshPayslipPaths(batchId?: string | null, rowId?: string | nul
   if (batchId && rowId) revalidatePath(`/app/payslips/${batchId}/rows/${rowId}`);
   revalidatePath("/app/reports");
   revalidatePath("/app/today");
+}
+
+function cleanSentMethod(method?: string | null) {
+  return method && sentMethods.has(method) ? method : "other";
+}
+
+async function getGeneratedPayslipForOwner(generatedPayslipId: string) {
+  const session = await requireOwner();
+  if (!session?.profile) {
+    return { generated: null, message: "Only the owner can update payslip sent status.", profileId: null };
+  }
+
+  const supabase = await createClient();
+  const { data: generated, error } = await supabase
+    .from("generated_payslips")
+    .select("id,batch_id,payslip_row_id")
+    .eq("id", generatedPayslipId)
+    .maybeSingle();
+
+  if (error || !generated) {
+    return { generated: null, message: error?.message ?? "Generated payslip not found.", profileId: session.profile.id };
+  }
+
+  return { generated, message: "", profileId: session.profile.id };
+}
+
+export async function recordPayslipShareAttempt(generatedPayslipId: string, method: string) {
+  const { generated, message } = await getGeneratedPayslipForOwner(generatedPayslipId);
+  if (!generated) {
+    return { ok: false, message };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("generated_payslips")
+    .update({
+      last_share_attempt_at: new Date().toISOString(),
+      last_share_method: cleanSentMethod(method),
+    })
+    .eq("id", generatedPayslipId);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  await refreshPayslipPaths(generated.batch_id, generated.payslip_row_id);
+  return { ok: true, message: "Share attempt recorded." };
+}
+
+export async function markPayslipSent(generatedPayslipId: string, method = "whatsapp_manual") {
+  const { generated, message, profileId } = await getGeneratedPayslipForOwner(generatedPayslipId);
+  if (!generated || !profileId) {
+    return { ok: false, message };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("generated_payslips")
+    .update({
+      sent_at: new Date().toISOString(),
+      sent_by: profileId,
+      sent_method: cleanSentMethod(method),
+      sent_note: null,
+      sent_status: "sent",
+    })
+    .eq("id", generatedPayslipId);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  await refreshPayslipPaths(generated.batch_id, generated.payslip_row_id);
+  return { ok: true, message: "Payslip marked sent." };
+}
+
+export async function markPayslipNotSent(generatedPayslipId: string) {
+  const { generated, message } = await getGeneratedPayslipForOwner(generatedPayslipId);
+  if (!generated) {
+    return { ok: false, message };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("generated_payslips")
+    .update({
+      sent_at: null,
+      sent_by: null,
+      sent_method: null,
+      sent_note: null,
+      sent_status: "not_sent",
+    })
+    .eq("id", generatedPayslipId);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  await refreshPayslipPaths(generated.batch_id, generated.payslip_row_id);
+  return { ok: true, message: "Payslip marked not sent." };
+}
+
+export async function markPayslipFailed(generatedPayslipId: string, note?: string) {
+  const { generated, message, profileId } = await getGeneratedPayslipForOwner(generatedPayslipId);
+  if (!generated || !profileId) {
+    return { ok: false, message };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("generated_payslips")
+    .update({
+      sent_at: new Date().toISOString(),
+      sent_by: profileId,
+      sent_method: "other",
+      sent_note: note?.trim() || null,
+      sent_status: "failed",
+    })
+    .eq("id", generatedPayslipId);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  await refreshPayslipPaths(generated.batch_id, generated.payslip_row_id);
+  return { ok: true, message: "Payslip marked failed." };
+}
+
+export async function markPayslipSkipped(generatedPayslipId: string, note?: string) {
+  const { generated, message, profileId } = await getGeneratedPayslipForOwner(generatedPayslipId);
+  if (!generated || !profileId) {
+    return { ok: false, message };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("generated_payslips")
+    .update({
+      sent_at: new Date().toISOString(),
+      sent_by: profileId,
+      sent_method: "other",
+      sent_note: note?.trim() || null,
+      sent_status: "skipped",
+    })
+    .eq("id", generatedPayslipId);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  await refreshPayslipPaths(generated.batch_id, generated.payslip_row_id);
+  return { ok: true, message: "Payslip marked skipped." };
 }
 
 async function generateOne(rowId: string) {

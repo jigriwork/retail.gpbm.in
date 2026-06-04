@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AccessDenied } from "@/components/app/access-denied";
 import { GeneratePayslipRowForm, PayslipRowPhoneForm } from "@/components/payslips/action-buttons";
 import { PayslipPreview } from "@/components/payslips/preview";
+import { PayslipSentStatusActions } from "@/components/payslips/sent-status-actions";
 import { PayslipWhatsAppActions } from "@/components/payslips/whatsapp-actions";
 import { requireProfile } from "@/lib/auth/session";
 import { generatePayslipForRow, updatePayslipRowPhone } from "@/lib/payslips/actions";
@@ -47,14 +48,17 @@ export default async function PayslipRowPage({
               absDays={row.abs_days}
               advance={row.advance}
               commission={row.commission}
+              dividedByDays={row.divided_by_days}
               downloadUrl={`/app/payslips/${batch.id}/rows/${row.id}/download`}
               fileName={generated.pdf_file_name ?? payslipFileName(row.store_name, row.staff_name ?? "Staff", row.salary_month)}
               firmName={row.firm_name}
+              generatedPayslipId={generated.id}
               netPayable={row.net_payable}
               salaryAmount={row.salary_amount}
               salaryMonth={row.salary_month}
               staffName={row.staff_name ?? "Staff"}
               storeName={row.store_name}
+              sundayPay={row.sunday_pay}
               sundayPayAmount={row.sunday_pay_amount}
               sundayPresent={row.sunday_present}
               whatsappPhone={row.whatsapp_phone}
@@ -75,6 +79,21 @@ export default async function PayslipRowPage({
           </p>
         ) : null}
       </section>
+
+      {generated?.id ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm">
+          <p className="mb-3 text-sm font-semibold">Sent status</p>
+          <PayslipSentStatusActions
+            generatedPayslipId={generated.id}
+            lastShareAttemptAt={generated.last_share_attempt_at}
+            lastShareMethod={generated.last_share_method}
+            sentAt={generated.sent_at}
+            sentMethod={generated.sent_method}
+            sentNote={generated.sent_note}
+            sentStatus={generated.sent_status}
+          />
+        </section>
+      ) : null}
 
       {row.warning_message ? (
         <div className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-medium text-warning shadow-sm">

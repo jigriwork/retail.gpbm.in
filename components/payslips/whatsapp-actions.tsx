@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Copy, Download, ExternalLink, MessageCircle, Send, Share2 } from "lucide-react";
 
+import { markPayslipSent, recordPayslipShareAttempt } from "@/lib/payslips/actions";
 import { payslipWhatsAppMessage, professionalSalaryWhatsAppMessage, whatsAppLink } from "@/lib/payslips/whatsapp";
 
 type ShareProps = {
@@ -13,10 +15,13 @@ type ShareProps = {
   downloadUrl: string;
   fileName: string;
   firmName?: string | null;
+  generatedPayslipId?: string;
   netPayable?: number | null;
   salaryAmount?: number | null;
   salaryMonth: string;
   staffName: string;
+  dividedByDays?: number | null;
+  sundayPay?: number | null;
   storeName: string;
   sundayPayAmount?: number | null;
   sundayPresent?: number | null;
@@ -37,15 +42,19 @@ export function PayslipWhatsAppActions({
   downloadUrl,
   fileName,
   firmName,
+  generatedPayslipId,
   netPayable,
   salaryAmount,
   salaryMonth,
   staffName,
+  dividedByDays,
+  sundayPay,
   storeName,
   sundayPayAmount,
   sundayPresent,
   whatsappPhone,
 }: ShareProps) {
+  const router = useRouter();
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState<"danger" | "success" | "muted">("muted");
   const [isSharing, setIsSharing] = useState(false);
@@ -55,12 +64,14 @@ export function PayslipWhatsAppActions({
     absDays,
     advance,
     commission,
+    dividedByDays,
     firmName,
     netPayable,
     salaryAmount,
     salaryMonth,
     staffName,
     storeName,
+    sundayPay,
     sundayPayAmount,
     sundayPresent,
   });
@@ -75,10 +86,26 @@ export function PayslipWhatsAppActions({
   async function copyMessage() {
     try {
       await navigator.clipboard.writeText(salaryMessage);
+      if (generatedPayslipId) {
+        void recordPayslipShareAttempt(generatedPayslipId, "copy_message").then(() => router.refresh());
+      }
       showStatus("Salary message copied.", "success");
     } catch {
       showStatus("Could not copy salary message.", "danger");
     }
+  }
+
+  function recordTextAttempt() {
+    if (!generatedPayslipId) return;
+    void recordPayslipShareAttempt(generatedPayslipId, "whatsapp_text").then(() => router.refresh());
+    showStatus("WhatsApp text attempt recorded. Mark as sent after sending.", "muted");
+  }
+
+  async function markSentAfterShare(method: string) {
+    if (!generatedPayslipId) return;
+    const result = await markPayslipSent(generatedPayslipId, method);
+    showStatus(result.message, result.ok ? "success" : "danger");
+    if (result.ok) router.refresh();
   }
 
   async function sharePdf() {
@@ -116,8 +143,11 @@ export function PayslipWhatsAppActions({
         return;
       }
 
+      if (generatedPayslipId) {
+        void recordPayslipShareAttempt(generatedPayslipId, "whatsapp_pdf_share").then(() => router.refresh());
+      }
       await navigator.share(sharePayload);
-      showStatus("Share sheet opened.", "success");
+      showStatus("Share sheet opened. Mark as sent after sharing.", "success");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         showStatus("Share cancelled.", "muted");
@@ -138,6 +168,7 @@ export function PayslipWhatsAppActions({
             aria-label="Send WhatsApp salary text without PDF attachment"
             className={actionClass(true)}
             href={salaryChatUrl}
+            onClick={recordTextAttempt}
             rel="noreferrer"
             target="_blank"
           >
@@ -185,6 +216,16 @@ export function PayslipWhatsAppActions({
         <p className="text-xs leading-5 text-muted">
           Desktop: Download PDF, copy message, open WhatsApp, attach PDF manually and send.
         </p>
+      ) : null}
+      {generatedPayslipId ? (
+        <div className="flex flex-wrap gap-2">
+          <button className={actionClass()} onClick={() => markSentAfterShare("whatsapp_text")} type="button">
+            Mark as Sent after sending
+          </button>
+          <button className={actionClass()} onClick={() => markSentAfterShare("whatsapp_pdf_share")} type="button">
+            Mark as Sent after sharing
+          </button>
+        </div>
       ) : null}
       {status ? (
         <p
