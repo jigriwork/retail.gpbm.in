@@ -44,7 +44,7 @@ export function LoginForm() {
         <span className="mb-2 block text-sm font-medium text-muted">Email</span>
         <input
           autoComplete="email"
-          className="h-[3.25rem] w-full rounded-2xl border border-border bg-card px-4 text-base outline-none transition focus:border-foreground"
+          className="h-[3.25rem] w-full rounded-2xl border border-border bg-card px-4 text-base outline-none transition hover:border-muted/50 focus:border-foreground focus:ring-4 focus:ring-foreground/5"
           name="email"
           placeholder="owner@gpbm.in"
           required
@@ -58,7 +58,7 @@ export function LoginForm() {
         <div className="relative">
           <input
             autoComplete="current-password"
-            className="h-[3.25rem] w-full rounded-2xl border border-border bg-card px-4 pr-12 text-base outline-none transition focus:border-foreground"
+            className="h-[3.25rem] w-full rounded-2xl border border-border bg-card px-4 pr-12 text-base outline-none transition hover:border-muted/50 focus:border-foreground focus:ring-4 focus:ring-foreground/5"
             name="password"
             placeholder="Enter password"
             required
