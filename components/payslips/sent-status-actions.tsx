@@ -58,6 +58,16 @@ function buttonClass(active: boolean) {
     : "inline-flex h-9 items-center justify-center rounded-xl border border-border bg-card px-3 text-xs font-semibold transition hover:bg-black/[0.03] disabled:pointer-events-none disabled:opacity-50";
 }
 
+function formatMethod(value?: string | null) {
+  if (value === "whatsapp_text") return "WhatsApp Text";
+  if (value === "whatsapp_pdf_share") return "WhatsApp PDF Share";
+  if (value === "copy_message") return "Copy Message";
+  if (value === "whatsapp_manual") return "WhatsApp Manual";
+  if (value === "download_only") return "Download Only";
+  if (!value) return "";
+  return value.replaceAll("_", " ");
+}
+
 export function PayslipSentStatusActions({
   generatedPayslipId,
   lastShareAttemptAt,
@@ -91,10 +101,11 @@ export function PayslipSentStatusActions({
       </div>
       <div className="space-y-1 text-xs leading-5 text-muted">
         {sentAt ? <p>Sent at {formatDateTime(sentAt)}</p> : null}
-        {sentMethod ? <p>Sent method {sentMethod.replaceAll("_", " ")}</p> : null}
+        {sentMethod ? <p>Sent method {formatMethod(sentMethod)}</p> : null}
         {sentNote ? <p>Note {sentNote}</p> : null}
         {lastShareAttemptAt ? <p>Last attempt {formatDateTime(lastShareAttemptAt)}</p> : null}
-        {lastShareMethod ? <p>Attempt method {lastShareMethod.replaceAll("_", " ")}</p> : null}
+        {lastShareMethod ? <p>Attempt method {formatMethod(lastShareMethod)}</p> : null}
+        <p>Marked sent when WhatsApp text is opened. Use Mark Not Sent if you did not send it.</p>
       </div>
       <div className="flex flex-wrap gap-2">
         <button

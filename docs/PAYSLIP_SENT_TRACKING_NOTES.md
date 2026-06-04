@@ -4,10 +4,13 @@ Payslip sent status is owner-confirmed. Personal WhatsApp links and browser shar
 
 ## Owner Flow
 
-- `Send WhatsApp Text` opens WhatsApp with the salary message and records a share attempt only.
+- `Send WhatsApp Text` opens WhatsApp with the salary message and automatically marks the payslip as sent.
+- This sent status means the owner intended to send the salary text through WhatsApp.
 - `Share PDF` records a share attempt when the browser can start the native PDF share flow.
 - `Copy Message` records a copy-message share attempt.
-- The owner clicks `Mark Sent` after sending in WhatsApp.
+- Share PDF and Copy Message do not mark the payslip sent unless the owner manually uses `Mark Sent`.
+- WhatsApp still does not provide delivery confirmation.
+- If WhatsApp was opened but the owner did not send the message, use `Mark Not Sent`.
 - If a mistake is made, use `Mark Not Sent` to revert the payslip to pending.
 - `Mark Failed` and `Mark Skipped` are available when the owner decides the payslip should not remain pending.
 

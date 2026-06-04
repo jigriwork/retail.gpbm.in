@@ -143,6 +143,35 @@ export async function markPayslipSent(generatedPayslipId: string, method = "what
   return { ok: true, message: "Payslip marked sent." };
 }
 
+export async function markPayslipWhatsAppTextSent(generatedPayslipId: string) {
+  const { generated, message, profileId } = await getGeneratedPayslipForOwner(generatedPayslipId);
+  if (!generated || !profileId) {
+    return { ok: false, message };
+  }
+
+  const now = new Date().toISOString();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("generated_payslips")
+    .update({
+      last_share_attempt_at: now,
+      last_share_method: "whatsapp_text",
+      sent_at: now,
+      sent_by: profileId,
+      sent_method: "whatsapp_text",
+      sent_note: null,
+      sent_status: "sent",
+    })
+    .eq("id", generatedPayslipId);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  await refreshPayslipPaths(generated.batch_id, generated.payslip_row_id);
+  return { ok: true, message: "Marked sent when WhatsApp text opened." };
+}
+
 export async function markPayslipNotSent(generatedPayslipId: string) {
   const { generated, message } = await getGeneratedPayslipForOwner(generatedPayslipId);
   if (!generated) {

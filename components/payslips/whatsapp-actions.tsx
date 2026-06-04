@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Copy, Download, ExternalLink, MessageCircle, Send, Share2 } from "lucide-react";
 
-import { markPayslipSent, recordPayslipShareAttempt } from "@/lib/payslips/actions";
+import { markPayslipSent, markPayslipWhatsAppTextSent, recordPayslipShareAttempt } from "@/lib/payslips/actions";
 import { payslipWhatsAppMessage, professionalSalaryWhatsAppMessage, whatsAppLink } from "@/lib/payslips/whatsapp";
 
 type ShareProps = {
@@ -97,8 +97,11 @@ export function PayslipWhatsAppActions({
 
   function recordTextAttempt() {
     if (!generatedPayslipId) return;
-    void recordPayslipShareAttempt(generatedPayslipId, "whatsapp_text").then(() => router.refresh());
-    showStatus("WhatsApp text attempt recorded. Mark as sent after sending.", "muted");
+    void markPayslipWhatsAppTextSent(generatedPayslipId).then((result) => {
+      showStatus(result.message, result.ok ? "success" : "danger");
+      if (result.ok) router.refresh();
+    });
+    showStatus("Opening WhatsApp text and marking sent.", "muted");
   }
 
   async function markSentAfterShare(method: string) {
