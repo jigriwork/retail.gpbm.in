@@ -41,19 +41,31 @@
 ## Mobile Share PDF
 
 - `Share PDF` fetches the generated PDF, creates a PDF `File`, and uses the browser Web Share API when file sharing is supported.
-- On supported phones, the native share sheet opens and the owner can choose WhatsApp.
+- On supported mobile browsers, the native share sheet opens and the owner can choose WhatsApp.
+- PDF attachment is possible only if the browser and selected share target support file sharing.
 - Unsupported browsers show a fallback message to download and share manually.
 
 ## Open WhatsApp Chat
 
 - `Open WhatsApp` uses `https://wa.me/[whatsappPhone]?text=[encodedMessage]`.
 - The message is prefilled, but the owner still sends manually.
-- `wa.me` cannot attach the PDF automatically.
+- `wa.me` sends message text only and cannot attach the PDF automatically.
+
+## Share PDF vs Open WhatsApp
+
+- `Share PDF` is the file-sharing action. It uses the mobile/native share sheet and can attach the PDF only when the browser supports Web Share API file sharing.
+- `Open WhatsApp` is the chat/message action. It opens WhatsApp with text only.
+- Helper wording in the app: `PDF attachment works only through mobile share sheet on supported browsers. WhatsApp chat link sends message text only.`
 
 ## Desktop Fallback
 
-- Desktop flow is: Download PDF, copy message, open WhatsApp, attach PDF manually and send.
 - `Open WhatsApp Web` opens `https://web.whatsapp.com/`.
+- Desktop flow:
+  1. Download PDF.
+  2. Copy message.
+  3. Open WhatsApp/Web.
+  4. Attach PDF manually.
+  5. Send.
 
 ## Why Automatic Sending Is Not Included
 
@@ -62,4 +74,4 @@
 
 ## Future V2
 
-- WhatsApp Business Cloud API can send PDFs automatically after proper Meta setup, templates, token storage, webhook handling and operational approval.
+- Full automatic PDF sending requires WhatsApp Business Cloud API V2 after proper Meta setup, templates, token storage, webhook handling and operational approval. It is not implemented now.

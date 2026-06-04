@@ -29,42 +29,71 @@ export function PayslipWhatsAppActions({
   whatsappPhone,
 }: ShareProps) {
   const [status, setStatus] = useState("");
+  const [statusTone, setStatusTone] = useState<"danger" | "success" | "muted">("muted");
+  const [isSharing, setIsSharing] = useState(false);
   const message = payslipWhatsAppMessage({ salaryMonth, staffName, storeName });
   const chatUrl = whatsappPhone ? whatsAppLink(whatsappPhone, message) : "";
+
+  function showStatus(messageText: string, tone: "danger" | "success" | "muted" = "muted") {
+    setStatus(messageText);
+    setStatusTone(tone);
+  }
 
   async function copyMessage() {
     try {
       await navigator.clipboard.writeText(message);
-      setStatus("Message copied");
+      showStatus("Message copied.", "success");
     } catch {
-      setStatus("Could not copy message.");
+      showStatus("Could not copy message.", "danger");
     }
   }
 
   async function sharePdf() {
+    setIsSharing(true);
     try {
       const response = await fetch(downloadUrl);
       if (!response.ok) {
-        setStatus("PDF is not ready to share.");
+        if (response.status === 401 || response.status === 403) {
+          showStatus("PDF could not be fetched. Refresh the page and try again.", "danger");
+        } else if (response.status === 404) {
+          showStatus("PDF could not be fetched. Generate the payslip again and try sharing.", "danger");
+        } else {
+          showStatus("PDF could not be fetched. Download the PDF and share it manually on WhatsApp.", "danger");
+        }
         return;
       }
 
       const blob = await response.blob();
+      if (!blob.size) {
+        showStatus("PDF could not be fetched. Download the PDF and share it manually on WhatsApp.", "danger");
+        return;
+      }
+
       const file = new File([blob], fileName, { type: "application/pdf" });
       const sharePayload = { files: [file], title: `${storeName} Salary Slip`, text: message };
       const navigatorWithShare = navigator as Navigator & {
         canShare?: (data: ShareData) => boolean;
       };
 
-      if (navigatorWithShare.canShare?.(sharePayload)) {
-        await navigator.share(sharePayload);
-        setStatus("Share sheet opened.");
+      if (typeof navigator.share !== "function" || !navigatorWithShare.canShare?.(sharePayload)) {
+        showStatus(
+          "This browser does not support direct PDF sharing. Download the PDF and share it manually on WhatsApp.",
+          "danger",
+        );
         return;
       }
 
-      setStatus("Your browser does not support direct PDF sharing. Download the PDF and share it manually on WhatsApp.");
-    } catch {
-      setStatus("Your browser does not support direct PDF sharing. Download the PDF and share it manually on WhatsApp.");
+      await navigator.share(sharePayload);
+      showStatus("Share sheet opened.", "success");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        showStatus("Share cancelled.", "muted");
+        return;
+      }
+
+      showStatus("PDF could not be shared. Download the PDF and share it manually on WhatsApp.", "danger");
+    } finally {
+      setIsSharing(false);
     }
   }
 
@@ -75,12 +104,18 @@ export function PayslipWhatsAppActions({
           <Download className="size-4" />
           Download PDF
         </a>
-        <button className={actionClass(true)} onClick={sharePdf} type="button">
+        <button className={actionClass(true)} disabled={isSharing} onClick={sharePdf} type="button">
           <Share2 className="size-4" />
-          Share PDF
+          {isSharing ? "Preparing PDF" : "Share PDF"}
         </button>
         {chatUrl ? (
-          <a className={actionClass()} href={chatUrl} rel="noreferrer" target="_blank">
+          <a
+            aria-label="Open WhatsApp chat with message text only"
+            className={actionClass()}
+            href={chatUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
             <MessageCircle className="size-4" />
             Open WhatsApp
           </a>
@@ -99,14 +134,22 @@ export function PayslipWhatsAppActions({
         </a>
       </div>
       <p className="text-xs leading-5 text-muted">
-        Desktop: Download PDF, copy message, open WhatsApp, attach PDF manually and send.
+        PDF attachment works only through mobile share sheet on supported browsers. WhatsApp chat link sends message text only.
       </p>
       {chatUrl ? (
         <p className="text-xs leading-5 text-muted">
-          WhatsApp will open with the message. Attach the downloaded PDF manually if it is not already attached.
+          Desktop: Download PDF, copy message, open WhatsApp, attach PDF manually and send.
         </p>
       ) : null}
-      {status ? <p className="text-xs font-semibold text-success">{status}</p> : null}
+      {status ? (
+        <p
+          className={`text-xs font-semibold ${
+            statusTone === "danger" ? "text-danger" : statusTone === "success" ? "text-success" : "text-muted"
+          }`}
+        >
+          {status}
+        </p>
+      ) : null}
     </div>
   );
 }

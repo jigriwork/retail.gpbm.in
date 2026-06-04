@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +22,7 @@ export function CreateManagerForm({
   action: (formData: FormData) => Promise<ActionState>;
   disabled: boolean;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
   const [state, formAction, pending] = useActionState(
     async (_previous: ActionState, formData: FormData) => action(formData),
     initialState,
@@ -51,15 +52,26 @@ export function CreateManagerForm({
           required
           type="email"
         />
-        <input
-          className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
-          disabled={disabled}
-          minLength={6}
-          name="password"
-          placeholder="Temporary password"
-          required
-          type="password"
-        />
+        <div className="relative">
+          <input
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 pr-12 text-sm outline-none focus:border-foreground"
+            disabled={disabled}
+            minLength={6}
+            name="password"
+            placeholder="Temporary password"
+            required
+            type={showPassword ? "text" : "password"}
+          />
+          <button
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="absolute right-1 top-1/2 inline-flex size-10 -translate-y-1/2 items-center justify-center rounded-xl text-muted transition hover:bg-black/[0.04] hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            disabled={disabled}
+            onClick={() => setShowPassword((current) => !current)}
+            type="button"
+          >
+            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
       </div>
       <Button disabled={disabled || pending}>
         {pending ? <Loader2 className="size-4 animate-spin" /> : null}

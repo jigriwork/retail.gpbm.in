@@ -11,7 +11,7 @@ export function payslipWhatsAppMessage({
 }) {
   return `Hi ${staffName}, your salary slip for ${formatMonth(salaryMonth)} is ready.
 
-Please find the PDF salary slip attached.
+Please download or view the PDF salary slip shared separately.
 
 Regards,
 ${storeName}`;

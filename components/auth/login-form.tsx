@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ export function LoginForm() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,14 +55,24 @@ export function LoginForm() {
         <span className="mb-2 block text-sm font-medium text-muted">
           Password
         </span>
-        <input
-          autoComplete="current-password"
-          className="h-[3.25rem] w-full rounded-2xl border border-border bg-card px-4 text-base outline-none transition focus:border-foreground"
-          name="password"
-          placeholder="Enter password"
-          required
-          type="password"
-        />
+        <div className="relative">
+          <input
+            autoComplete="current-password"
+            className="h-[3.25rem] w-full rounded-2xl border border-border bg-card px-4 pr-12 text-base outline-none transition focus:border-foreground"
+            name="password"
+            placeholder="Enter password"
+            required
+            type={showPassword ? "text" : "password"}
+          />
+          <button
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="absolute right-2 top-1/2 inline-flex size-10 -translate-y-1/2 items-center justify-center rounded-xl text-muted transition hover:bg-black/[0.04] hover:text-foreground"
+            onClick={() => setShowPassword((current) => !current)}
+            type="button"
+          >
+            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
       </label>
 
       {error ? (
