@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { Download } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { AccessDenied } from "@/components/app/access-denied";
-import { GeneratePayslipRowForm } from "@/components/payslips/action-buttons";
+import { GeneratePayslipRowForm, PayslipRowPhoneForm } from "@/components/payslips/action-buttons";
 import { PayslipPreview } from "@/components/payslips/preview";
+import { PayslipWhatsAppActions } from "@/components/payslips/whatsapp-actions";
 import { requireProfile } from "@/lib/auth/session";
-import { generatePayslipForRow } from "@/lib/payslips/actions";
+import { generatePayslipForRow, updatePayslipRowPhone } from "@/lib/payslips/actions";
 import { getPayslipBatch, getPayslipRow } from "@/lib/payslips/queries";
+import { payslipFileName } from "@/lib/payslips/utils";
 
 export default async function PayslipRowPage({
   params,
@@ -39,17 +40,27 @@ export default async function PayslipRowPage({
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <GeneratePayslipRowForm action={generatePayslipForRow} rowId={row.id} />
+          <PayslipRowPhoneForm action={updatePayslipRowPhone} phone={row.employee_phone} rowId={row.id} />
           {generated?.id ? (
-            <Link
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
-              href={`/app/payslips/${batch.id}/rows/${row.id}/download`}
-            >
-              <Download className="size-4" />
-              Download PDF
-            </Link>
+            <PayslipWhatsAppActions
+              downloadUrl={`/app/payslips/${batch.id}/rows/${row.id}/download`}
+              fileName={generated.pdf_file_name ?? payslipFileName(row.store_name, row.staff_name ?? "Staff", row.salary_month)}
+              salaryMonth={row.salary_month}
+              staffName={row.staff_name ?? "Staff"}
+              storeName={row.store_name}
+              whatsappPhone={row.whatsapp_phone}
+            />
           ) : null}
         </div>
       </div>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm">
+        <p className="text-sm font-semibold">Employee phone</p>
+        <p className="mt-1 text-sm text-muted">{row.employee_phone || "Phone Missing"}</p>
+        <p className={row.whatsapp_phone ? "mt-2 text-sm font-semibold text-success" : "mt-2 text-sm font-semibold text-warning"}>
+          {row.whatsapp_phone ? "Phone Ready" : row.warning_message?.toLowerCase().includes("invalid phone") ? "Invalid Phone" : "Phone Missing"}
+        </p>
+      </section>
 
       {row.warning_message ? (
         <div className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-medium text-warning shadow-sm">

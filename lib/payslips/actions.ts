@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getAccessibleStores, requireOwner } from "@/lib/auth/session";
+import { appendWarning, normalizePhone, staffNameKey } from "@/lib/employees/utils";
 import { parsePayslipWorkbook } from "@/lib/payslips/parser";
 import { renderPayslipPdf } from "@/lib/payslips/pdf";
 import { payslipFileName } from "@/lib/payslips/utils";
@@ -106,6 +107,7 @@ async function generateOne(rowId: string) {
 
   const { error: generatedError } = await supabase.from("generated_payslips").insert({
     batch_id: row.batch_id,
+    employee_phone: row.employee_phone,
     firm_name: row.firm_name,
     payslip_row_id: row.id,
     pdf_file_name: fileName,
@@ -115,6 +117,7 @@ async function generateOne(rowId: string) {
     status: "generated",
     store_id: row.store_id,
     store_name: row.store_name,
+    whatsapp_phone: row.whatsapp_phone,
   });
 
   if (generatedError) {
@@ -205,6 +208,77 @@ export async function uploadPayslipSalarySheet(formData: FormData) {
     stores: validStores,
   }).map((row) => ({ ...row, batch_id: batch.id }));
 
+  const { data: contacts } = await supabase
+    .from("employee_contacts")
+    .select("*")
+    .in("store_id", validStores.map((store) => store.id));
+  const contactMap = new Map(
+    (contacts ?? []).map((contact) => [
+      `${contact.store_id ?? ""}:${contact.normalized_staff_name}`,
+      contact,
+    ]),
+  );
+  const contactsToCreate = new Map<string, {
+    normalizedPhone: string;
+    normalizedStaffName: string;
+    staffName: string;
+    storeId: string;
+    whatsappPhone: string;
+  }>();
+
+  for (const row of rows) {
+    if (!row.store_id || !row.staff_name) continue;
+
+    const normalizedStaffName = staffNameKey(row.staff_name);
+    const contactKey = `${row.store_id}:${normalizedStaffName}`;
+    const savedContact = contactMap.get(contactKey);
+    const uploadedPhone = row.employee_phone;
+
+    if (uploadedPhone) {
+      if (!savedContact) {
+        contactsToCreate.set(contactKey, {
+          normalizedPhone: uploadedPhone,
+          normalizedStaffName,
+          staffName: row.staff_name,
+          storeId: row.store_id,
+          whatsappPhone: row.whatsapp_phone ?? uploadedPhone,
+        });
+      } else if (
+        savedContact.whatsapp_phone &&
+        row.whatsapp_phone &&
+        savedContact.whatsapp_phone !== row.whatsapp_phone
+      ) {
+        row.warning_message = appendWarning(
+          row.warning_message,
+          "Phone differs from saved employee contact.",
+        );
+      }
+
+      continue;
+    }
+
+    if (savedContact && savedContact.is_active !== false && savedContact.normalized_phone) {
+      row.employee_phone = savedContact.normalized_phone;
+      row.whatsapp_phone = savedContact.whatsapp_phone ?? savedContact.normalized_phone;
+    }
+  }
+
+  if (contactsToCreate.size) {
+    await supabase.from("employee_contacts").insert(
+      [...contactsToCreate.values()].map((contact) => ({
+        created_by: session.profile.id,
+        is_active: true,
+        normalized_phone: contact.normalizedPhone,
+        normalized_staff_name: contact.normalizedStaffName,
+        phone: contact.normalizedPhone,
+        staff_name: contact.staffName,
+        store_id: contact.storeId,
+        whatsapp_phone: contact.whatsappPhone,
+      })),
+    );
+    revalidatePath("/app/employees");
+  }
+
   if (rows.length) {
     const { error: rowsError } = await supabase.from("payslip_rows").insert(rows);
     if (rowsError) {
@@ -278,4 +352,77 @@ export async function generateAllPayslips(
 
   await refreshPayslipPaths(batchId);
   return { ok: true, message: `Generated ${generated} payslip${generated === 1 ? "" : "s"}.` };
+}
+
+export async function updatePayslipRowPhone(
+  _previous: PayslipActionState,
+  formData: FormData,
+): Promise<PayslipActionState> {
+  const session = await requireOwner();
+  if (!session?.profile) {
+    return { ok: false, message: "Only the owner can edit payslip phone numbers." };
+  }
+
+  const rowId = readString(formData, "rowId");
+  const phoneInput = readString(formData, "phone");
+  const phone = normalizePhone(phoneInput);
+
+  if (!rowId) {
+    return { ok: false, message: "Payslip row is required." };
+  }
+
+  if (phoneInput && !phone.isValid) {
+    return { ok: false, message: "Enter a valid Indian mobile number." };
+  }
+
+  const supabase = await createClient();
+  const { data: row } = await supabase
+    .from("payslip_rows")
+    .select("id,batch_id,staff_name,store_id,employee_phone,whatsapp_phone")
+    .eq("id", rowId)
+    .maybeSingle();
+
+  if (!row) {
+    return { ok: false, message: "Payslip row not found." };
+  }
+
+  const { error } = await supabase
+    .from("payslip_rows")
+    .update({
+      employee_phone: phone.employeePhone || null,
+      whatsapp_phone: phone.whatsappPhone || null,
+    })
+    .eq("id", rowId);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  await supabase
+    .from("generated_payslips")
+    .update({
+      employee_phone: phone.employeePhone || null,
+      whatsapp_phone: phone.whatsappPhone || null,
+    })
+    .eq("payslip_row_id", rowId);
+
+  if (row.store_id && row.staff_name && phone.employeePhone) {
+    await supabase.from("employee_contacts").upsert(
+      {
+        created_by: session.profile.id,
+        is_active: true,
+        normalized_phone: phone.employeePhone,
+        normalized_staff_name: staffNameKey(row.staff_name),
+        phone: phone.employeePhone,
+        staff_name: row.staff_name,
+        store_id: row.store_id,
+        whatsapp_phone: phone.whatsappPhone,
+      },
+      { onConflict: "store_id,normalized_staff_name" },
+    );
+  }
+
+  await refreshPayslipPaths(row.batch_id, rowId);
+  revalidatePath("/app/employees");
+  return { ok: true, message: "Phone saved." };
 }

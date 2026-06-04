@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 
+import { appendWarning, normalizePhone, phoneHeaderAliases } from "@/lib/employees/utils";
 import type { Json, Tables, TablesInsert } from "@/lib/supabase/database.types";
 import { numberOrNull, numberOrZero } from "@/lib/payslips/utils";
 
@@ -16,6 +17,7 @@ const columnAliases = {
   sunday_present: ["sunday present", "sundays present", "sunday worked"],
   advance: ["advance", "advance deduction"],
   commission: ["commission", "comission", "incentive"],
+  phone: phoneHeaderAliases,
   total_amount: ["total amount", "net payable", "total", "payable", "net salary"],
   store: ["store", "store name", "branch"],
 } as const;
@@ -158,6 +160,8 @@ export function parsePayslipWorkbook({
       const sundayPayAmount = sundayPay * sundayPresent;
       const advance = numberOrZero(getValue(rawRow, columnAliases.advance));
       const commission = numberOrZero(getValue(rawRow, columnAliases.commission));
+      const rawPhone = getValue(rawRow, columnAliases.phone);
+      const parsedPhone = normalizePhone(rawPhone);
       const uploadedTotalAmount = numberOrNull(getValue(rawRow, columnAliases.total_amount));
       const calculatedTotalAmount =
         (salaryAmount ?? 0) - absAmount - advance + sundayPayAmount + commission;
@@ -180,6 +184,10 @@ export function parsePayslipWorkbook({
         warningMessage = `Uploaded Total Amount does not match calculated salary. Uploaded Total: Rs ${uploadedTotalAmount.toFixed(2)}, Calculated Total: Rs ${calculatedTotalAmount.toFixed(2)}. Please review before sharing.`;
       }
 
+      if (parsedPhone.raw && !parsedPhone.isValid) {
+        warningMessage = appendWarning(warningMessage, "Invalid Phone.");
+      }
+
       rows.push({
         abs_amount: absAmount,
         abs_days: absDays,
@@ -187,6 +195,7 @@ export function parsePayslipWorkbook({
         calculated_total_amount: calculatedTotalAmount,
         commission,
         divided_by_days: dividedByDays,
+        employee_phone: parsedPhone.employeePhone || null,
         firm_name: rowStore?.firm_name ?? "",
         net_payable: netPayable,
         raw_data: rawRow as Json,
@@ -201,6 +210,7 @@ export function parsePayslipWorkbook({
         sunday_present: sundayPresent,
         uploaded_total_amount: uploadedTotalAmount,
         warning_message: warningMessage,
+        whatsapp_phone: parsedPhone.whatsappPhone || null,
       });
     }
   }

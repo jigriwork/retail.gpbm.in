@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download, Eye, UploadCloud } from "lucide-react";
+import { Download, Eye, Phone, UploadCloud } from "lucide-react";
 
 import { AccessDenied } from "@/components/app/access-denied";
 import { requireProfile } from "@/lib/auth/session";
@@ -26,6 +26,13 @@ export default async function PayslipsPage() {
               Upload salary sheets, review parsed rows and generate staff payslip PDFs.
             </p>
           </div>
+          <Link
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
+            href="/app/employees"
+          >
+            <Phone className="size-4" />
+            Employee Directory
+          </Link>
           <Link
             className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
             href="/app/payslips/upload"

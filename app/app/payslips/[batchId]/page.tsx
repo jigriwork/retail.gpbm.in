@@ -3,11 +3,12 @@ import { Download, Eye } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { AccessDenied } from "@/components/app/access-denied";
-import { GenerateBatchPayslipsProgress, GeneratePayslipRowForm } from "@/components/payslips/action-buttons";
+import { GenerateBatchPayslipsProgress, GeneratePayslipRowForm, PayslipRowPhoneForm } from "@/components/payslips/action-buttons";
+import { PayslipWhatsAppActions } from "@/components/payslips/whatsapp-actions";
 import { requireProfile } from "@/lib/auth/session";
-import { generatePayslipForRow } from "@/lib/payslips/actions";
+import { generatePayslipForRow, updatePayslipRowPhone } from "@/lib/payslips/actions";
 import { getPayslipBatch, getPayslipRows } from "@/lib/payslips/queries";
-import { formatMoney, formatMonth } from "@/lib/payslips/utils";
+import { formatMoney, formatMonth, payslipFileName } from "@/lib/payslips/utils";
 
 type RowWithGenerated = Awaited<ReturnType<typeof getPayslipRows>>[number];
 
@@ -24,6 +25,14 @@ function statusClass(status?: string | null) {
 
 function canGenerate(status?: string | null) {
   return status === "ready" || status === "total_mismatch" || status === "generated";
+}
+
+function phoneStatus(row: RowWithGenerated) {
+  if (row.whatsapp_phone) return { className: "text-success", label: "Phone Ready" };
+  if (row.warning_message?.toLowerCase().includes("invalid phone")) {
+    return { className: "text-danger", label: "Invalid Phone" };
+  }
+  return { className: "text-warning", label: "Phone Missing" };
 }
 
 export default async function PayslipBatchPage({
@@ -57,6 +66,9 @@ export default async function PayslipBatchPage({
       <div>
         <Link className="text-sm font-semibold text-muted" href="/app/payslips">
           Back to payslips
+        </Link>
+        <Link className="ml-4 text-sm font-semibold text-muted" href="/app/employees">
+          Employee Directory
         </Link>
         <h1 className="mt-2 text-3xl font-semibold">{formatMonth(batch.salary_month)}</h1>
         <p className="mt-2 text-sm leading-6 text-muted">
@@ -104,10 +116,12 @@ export default async function PayslipBatchPage({
       <section className="grid gap-3">
         {rows.map((row) => {
           const generated = latestGenerated(row);
+          const rowPhoneStatus = phoneStatus(row);
+          const downloadUrl = `/app/payslips/${batch.id}/rows/${row.id}/download`;
 
           return (
             <div className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm" key={row.id}>
-              <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
+              <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr_1fr_1fr_0.8fr]">
                 <div>
                   <p className="text-lg font-semibold">{row.staff_name || "Missing staff name"}</p>
                   <p className="mt-1 text-xs text-muted">
@@ -131,6 +145,11 @@ export default async function PayslipBatchPage({
                     <p className="mt-1 text-xs leading-5 text-warning">{row.warning_message}</p>
                   ) : null}
                 </div>
+                <div>
+                  <p className={`text-sm font-semibold ${rowPhoneStatus.className}`}>{rowPhoneStatus.label}</p>
+                  <p className="mt-1 text-xs text-muted">{row.employee_phone || "No phone saved"}</p>
+                  <p className="mt-1 text-xs text-muted">WhatsApp {row.whatsapp_phone || "Missing"}</p>
+                </div>
               </div>
 
               <div className="mt-4 flex flex-wrap items-start gap-2">
@@ -142,14 +161,16 @@ export default async function PayslipBatchPage({
                   Preview
                 </Link>
                 <GeneratePayslipRowForm action={generatePayslipForRow} rowId={row.id} />
+                <PayslipRowPhoneForm action={updatePayslipRowPhone} phone={row.employee_phone} rowId={row.id} />
                 {generated?.id ? (
-                  <Link
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
-                    href={`/app/payslips/${batch.id}/rows/${row.id}/download`}
-                  >
-                    <Download className="size-4" />
-                    Download PDF
-                  </Link>
+                  <PayslipWhatsAppActions
+                    downloadUrl={downloadUrl}
+                    fileName={generated.pdf_file_name ?? payslipFileName(row.store_name, row.staff_name ?? "Staff", row.salary_month)}
+                    salaryMonth={row.salary_month}
+                    staffName={row.staff_name ?? "Staff"}
+                    storeName={row.store_name}
+                    whatsappPhone={row.whatsapp_phone}
+                  />
                 ) : null}
               </div>
             </div>

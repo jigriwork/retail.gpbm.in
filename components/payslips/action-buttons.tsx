@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, FileDown, Loader2, RefreshCw } from "lucide-react";
+import { CheckCircle2, FileDown, Loader2, Phone, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { PayslipActionState } from "@/lib/payslips/actions";
@@ -147,6 +147,39 @@ export function GeneratePayslipRowForm({
       </Button>
       {state.message ? (
         <p className={state.ok ? "text-xs font-medium text-success" : "text-xs font-medium text-danger"}>
+          {state.message}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+export function PayslipRowPhoneForm({
+  action,
+  phone,
+  rowId,
+}: {
+  action: (previous: PayslipActionState, formData: FormData) => Promise<PayslipActionState>;
+  phone?: string | null;
+  rowId: string;
+}) {
+  const [state, formAction, pending] = useActionState(action, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-wrap items-start gap-2">
+      <input name="rowId" type="hidden" value={rowId} />
+      <input
+        className="h-10 min-w-52 rounded-xl border border-border bg-card px-3 text-xs outline-none focus:border-foreground"
+        defaultValue={phone ?? ""}
+        name="phone"
+        placeholder="Employee phone"
+      />
+      <Button className="h-10 rounded-xl px-3 text-xs" disabled={pending} size="md" variant="secondary">
+        {pending ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
+        Edit Phone
+      </Button>
+      {state.message ? (
+        <p className={state.ok ? "self-center text-xs font-medium text-success" : "self-center text-xs font-medium text-danger"}>
           {state.message}
         </p>
       ) : null}

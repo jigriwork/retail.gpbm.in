@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { FirmMappingForm } from "@/components/stores/firm-mapping-form";
 import { StoreTargetForm } from "@/components/stores/store-target-form";
@@ -70,6 +71,21 @@ export default async function SettingsPage() {
 
       {profile?.role === "owner" ? (
         <>
+          <div className="pt-2">
+            <h2 className="text-2xl font-semibold">Staff</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Maintain employee phone numbers used for payslip WhatsApp sharing.
+            </p>
+          </div>
+          <section>
+            <Link
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              href="/app/employees"
+            >
+              Employee Directory
+            </Link>
+          </section>
+
           <div className="pt-2">
             <h2 className="text-2xl font-semibold">Store monthly targets</h2>
             <p className="mt-2 text-sm leading-6 text-muted">

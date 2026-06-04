@@ -31,6 +31,9 @@ export default async function PayslipUploadPage({
         <Link className="text-sm font-semibold text-muted" href="/app/payslips">
           Back to payslips
         </Link>
+        <Link className="ml-4 text-sm font-semibold text-muted" href="/app/employees">
+          Employee Directory
+        </Link>
         <h1 className="mt-2 text-3xl font-semibold">Upload Salary Sheet</h1>
         <p className="mt-2 text-sm leading-6 text-muted">
           Values come from this salary sheet only. Sample PDFs are format references.
