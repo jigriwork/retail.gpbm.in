@@ -71,7 +71,18 @@ function matchesStoreName(input: string | null, store: { name: string; code: str
   }
 
   const normalized = normalizeStore(input);
-  return normalized === normalizeStore(store.name) || normalized === normalizeStore(store.code);
+  const storeName = normalizeStore(store.name);
+  const storeCode = normalizeStore(store.code);
+
+  if (normalized === storeName || normalized === storeCode) {
+    return true;
+  }
+
+  if (storeName.length > 2 && normalized.includes(storeName)) {
+    return true;
+  }
+
+  return new RegExp(`(^|[^a-z0-9])${storeCode}([^a-z0-9]|$)`, "i").test(input);
 }
 
 function findStoreForName(input: string | null, stores: Array<{ id: string; name: string; code: string }>) {

@@ -4,7 +4,7 @@ Date: 2026-06-08
 
 ## Supported Real Format
 
-Monthly stock upload now supports the real Go Planet stock report export:
+Monthly stock upload was tested with the real Go Planet stock report export:
 
 - Workbook sheet such as `Report`
 - A title row before the table, for example `STOCK REPORT BARCODE WISE From 08/06/2026 to 08/06/2026`
@@ -12,7 +12,7 @@ Monthly stock upload now supports the real Go Planet stock report export:
 - Data rows after the detected header
 - A final `GRAND TOTALS` row
 
-The same layout should work for future similar Brand Mark stock exports when the store or godown column matches the selected active store.
+Tested with Go Planet file. Parser is generic for active stores Go Planet and Brand Mark. The same layout works for Brand Mark stock exports when the store or godown column matches the selected active Brand Mark store.
 
 ## Header Detection
 
@@ -44,7 +44,15 @@ Next Server Actions are configured with a `15mb` body size limit. This is enough
 
 If the file includes a store/godown column, uploaded rows must match the selected active store by store name or store code. For the tested file, `GODOWN NAME = GO PLANET` is accepted when the selected store is Go Planet.
 
-Rows for another, unknown, or inactive store are rejected. MITTY remains inactive/hidden through the existing active-store logic.
+Brand Mark rows are accepted when the selected store is Brand Mark and the godown/store value is `Brand Mark`, `BM`, or a value containing the full active store name. Go Planet rows follow the same rule for `Go Planet`, `GP`, or a value containing the full active store name.
+
+Rows for another, unknown, or inactive store are rejected. Store upload access depends on manager store assignment:
+
+- Owner can upload for all active stores.
+- Manager with both Go Planet and Brand Mark can upload for both.
+- Manager with one store can upload for that assigned store only.
+- Manager with no assigned active store cannot upload.
+- MITTY remains inactive/hidden through the existing active-store logic.
 
 ## Large File Handling
 
