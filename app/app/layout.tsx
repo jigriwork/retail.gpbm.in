@@ -62,7 +62,7 @@ export default async function ProtectedAppLayout({
               <Image alt="" className="rounded-lg" height={28} src="/icon-192.png" width={28} />
               <span>GPBM Retail</span>
               <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[0.65rem] font-bold uppercase text-muted">
-                Version 3
+                Version 5.1
               </span>
             </Link>
             <div className="mt-1 flex items-center gap-2 text-xs font-medium text-muted">
