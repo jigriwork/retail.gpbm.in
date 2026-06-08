@@ -34,8 +34,28 @@ export type SalesUploadState = {
   };
 };
 
+export type SalesRepairState = {
+  ok: boolean;
+  message: string;
+  result?: {
+    removedFooterRows: number;
+    correctedRowCount: number;
+    correctedTotalSale: number;
+    correctedQuantity: number;
+    correctedBillCount: number;
+    correctedReturnRows: number;
+    removedRows: Array<{
+      billNo: string | null;
+      itemName: string | null;
+      quantity: number | null;
+      netSale: number | null;
+    }>;
+  };
+};
+
 const allowedExtensions = [".xlsx", ".xls", ".csv"];
 const salesRowInsertBatchSize = 1000;
+const totalRowPattern = /\b(grand\s+totals?|godown\s+wise\s+totals?|godown\s+totals?|sub\s*totals?|totals?)\b/i;
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -83,6 +103,115 @@ function safeSummaryJson(
 
 function rowHasSalesIdentity(row: ParsedSalesRow) {
   return Boolean(row.billNo || row.itemName || row.brand || row.category || row.staffName || row.netSale);
+}
+
+function cleanSummaryName(value: string | null, fallback = "Unspecified") {
+  const text = value?.trim().replace(/\s+/g, " ");
+  return text || fallback;
+}
+
+function addSale(bucket: Map<string, number>, key: string | null, sale: number) {
+  const name = cleanSummaryName(key);
+  bucket.set(name, (bucket.get(name) ?? 0) + sale);
+}
+
+function topSales(bucket: Map<string, number>) {
+  return [...bucket.entries()]
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 5)
+    .map(([name, sale]) => ({ name, sale }));
+}
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function isFooterSalesRow(row: {
+  bill_no: string | null;
+  item_name: string | null;
+  brand: string | null;
+  category: string | null;
+  staff_name: string | null;
+}) {
+  const identityFields = [row.bill_no, row.item_name, row.brand, row.category, row.staff_name];
+  const identityText = identityFields.filter(Boolean).join(" ");
+
+  if (!totalRowPattern.test(identityText)) {
+    return false;
+  }
+
+  return identityFields.every((value) => !value || totalRowPattern.test(value));
+}
+
+function uniqueBillKey(row: { store_id: string | null; sale_date: string | null; bill_no: string | null }) {
+  if (!row.bill_no) {
+    return null;
+  }
+
+  return `${row.store_id ?? "store"}:${row.sale_date ?? "date"}:${row.bill_no.trim()}`;
+}
+
+function summarizePersistedSalesRows(
+  rows: Array<{
+    store_id: string | null;
+    sale_date: string | null;
+    bill_no: string | null;
+    staff_name: string | null;
+    brand: string | null;
+    category: string | null;
+    quantity: number | null;
+    net_sale: number | null;
+  }>,
+  removedFooterRows: number,
+) {
+  const bills = new Set<string>();
+  const staff = new Set<string>();
+  const staffSales = new Map<string, number>();
+  const brandSales = new Map<string, number>();
+  const categorySales = new Map<string, number>();
+  let totalNetSale = 0;
+  let totalQuantity = 0;
+  let returnsCount = 0;
+
+  for (const row of rows) {
+    const sale = Number(row.net_sale ?? 0);
+    const quantity = Number(row.quantity ?? 0);
+    totalNetSale += sale;
+    totalQuantity += quantity;
+
+    if (quantity < 0 || sale < 0) {
+      returnsCount += 1;
+    }
+
+    const billKey = uniqueBillKey(row);
+    if (billKey) {
+      bills.add(billKey);
+    }
+
+    if (row.staff_name) {
+      staff.add(cleanSummaryName(row.staff_name));
+    }
+
+    addSale(staffSales, row.staff_name, sale);
+    addSale(brandSales, row.brand, sale);
+    addSale(categorySales, row.category, sale);
+  }
+
+  return {
+    totalNetSale: roundMoney(totalNetSale),
+    totalQuantity,
+    rowCount: rows.length,
+    billCount: bills.size,
+    staffNames: [...staff].sort(),
+    brandSummary: Object.fromEntries(brandSales),
+    categorySummary: Object.fromEntries(categorySales),
+    topStaff: topSales(staffSales),
+    topBrands: topSales(brandSales),
+    topCategories: topSales(categorySales),
+    returnsCount,
+    skippedRows: removedFooterRows,
+    removedFooterRows,
+  } satisfies Json;
 }
 
 function uniqueDates(rows: ParsedSalesRow[]) {
@@ -337,6 +466,108 @@ export async function uploadSalesReport(
       ...uploadMetadata,
       topBrands: summary.topBrands,
       topCategories: summary.topCategories,
+    },
+  };
+}
+
+export async function repairSalesReportTotals(
+  _previous: SalesRepairState,
+  formData: FormData,
+): Promise<SalesRepairState> {
+  const { profile } = await requireProfile();
+
+  if (!profile || profile.is_active === false || profile.role !== "owner") {
+    return { ok: false, message: "Only owner can repair uploaded sales reports." };
+  }
+
+  const reportId = readString(formData, "reportId");
+
+  if (!reportId) {
+    return { ok: false, message: "Missing sales report id." };
+  }
+
+  const supabase = await createClient();
+  const { data: report, error: reportError } = await supabase
+    .from("reports")
+    .select("id,report_type,store_id,report_date,summary")
+    .eq("id", reportId)
+    .maybeSingle();
+
+  if (reportError || !report) {
+    return { ok: false, message: reportError?.message ?? "Sales report was not found." };
+  }
+
+  if (report.report_type !== "sales") {
+    return { ok: false, message: "This repair can run only on daily sales reports." };
+  }
+
+  const { data: rows, error: rowsError } = await supabase
+    .from("sales_rows")
+    .select("id,store_id,sale_date,bill_no,item_name,brand,category,staff_name,quantity,net_sale")
+    .eq("report_id", reportId);
+
+  if (rowsError) {
+    return { ok: false, message: rowsError.message };
+  }
+
+  const salesRows = rows ?? [];
+  const footerRows = salesRows.filter(isFooterSalesRow);
+
+  if (!footerRows.length) {
+    return { ok: true, message: "No footer rows found." };
+  }
+
+  const footerIds = footerRows.map((row) => row.id);
+  const { error: deleteError } = await supabase.from("sales_rows").delete().in("id", footerIds);
+
+  if (deleteError) {
+    return { ok: false, message: deleteError.message };
+  }
+
+  const remainingRows = salesRows.filter((row) => !footerIds.includes(row.id));
+  const summary = summarizePersistedSalesRows(remainingRows, footerRows.length);
+  const { error: updateError } = await supabase
+    .from("reports")
+    .update({
+      row_count: remainingRows.length,
+      summary: {
+        ...((report.summary && typeof report.summary === "object" && !Array.isArray(report.summary)
+          ? report.summary
+          : {}) as Record<string, unknown>),
+        ...summary,
+      } satisfies Json,
+    })
+    .eq("id", reportId);
+
+  if (updateError) {
+    return { ok: false, message: updateError.message };
+  }
+
+  revalidatePath("/app/today");
+  revalidatePath("/app/reports");
+  revalidatePath("/app/reports/sales");
+  revalidatePath("/app/reports/sales/analytics");
+  revalidatePath("/app/reports/staff");
+  if (report.store_id) {
+    revalidatePath(`/app/stores/${report.store_id}`);
+  }
+
+  return {
+    ok: true,
+    message: `Removed ${footerRows.length} footer row${footerRows.length === 1 ? "" : "s"} and recalculated totals.`,
+    result: {
+      removedFooterRows: footerRows.length,
+      correctedRowCount: remainingRows.length,
+      correctedTotalSale: Number(summary.totalNetSale),
+      correctedQuantity: Number(summary.totalQuantity),
+      correctedBillCount: Number(summary.billCount),
+      correctedReturnRows: Number(summary.returnsCount),
+      removedRows: footerRows.map((row) => ({
+        billNo: row.bill_no,
+        itemName: row.item_name,
+        quantity: row.quantity,
+        netSale: row.net_sale,
+      })),
     },
   };
 }

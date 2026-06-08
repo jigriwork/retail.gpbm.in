@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { SalesRepairButton } from "@/components/reports/sales-repair-button";
+import type { SalesRepairState } from "@/lib/reports/sales-actions";
 import type { SalesReportWithStore } from "@/lib/reports/sales-queries";
 
 function formatMoney(value?: number) {
@@ -15,9 +17,13 @@ function formatDate(date: string | null) {
 }
 
 export function SalesReportList({
+  canRepair = false,
+  repairAction,
   reports,
   emptyText = "No sales reports uploaded yet.",
 }: {
+  canRepair?: boolean;
+  repairAction?: (previous: SalesRepairState, formData: FormData) => Promise<SalesRepairState>;
   reports: SalesReportWithStore[];
   emptyText?: string;
 }) {
@@ -70,14 +76,19 @@ export function SalesReportList({
               </span>
             ))}
           </div>
-          {report.store_id ? (
-            <Link
-              className="mt-4 inline-flex text-sm font-semibold text-foreground"
-              href={`/app/stores/${report.store_id}`}
-            >
-              View store
-            </Link>
-          ) : null}
+          <div className="mt-4 flex flex-wrap items-start gap-3">
+            {report.store_id ? (
+              <Link
+                className="inline-flex min-h-10 items-center text-sm font-semibold text-foreground"
+                href={`/app/stores/${report.store_id}`}
+              >
+                View store
+              </Link>
+            ) : null}
+            {canRepair && repairAction ? (
+              <SalesRepairButton action={repairAction} reportId={report.id} />
+            ) : null}
+          </div>
         </article>
       ))}
     </div>

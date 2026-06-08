@@ -69,6 +69,7 @@ const headerAliases = {
 const headerScanRowLimit = 20;
 const minimumHeaderMatches = 4;
 const stockIdentityFields = ["itemName", "sku", "barcode", "brand", "category"] as const;
+const totalRowPattern = /\b(grand\s+totals?|godown\s+wise\s+totals?|godown\s+totals?|sub\s*totals?|totals?)\b/i;
 
 function normalizeHeader(value: unknown) {
   return String(value ?? "")
@@ -235,13 +236,13 @@ function isClearTotalRow(row: ParsedStockRow) {
     .join(" ")
     .toLowerCase();
 
-  if (!/\b(grand totals|grand total|total)\b/.test(identityText)) {
+  if (!totalRowPattern.test(identityText)) {
     return false;
   }
 
   return stockIdentityFields.every((field) => {
     const value = row[field];
-    return !value || /\b(grand totals|grand total|total)\b/i.test(value);
+    return !value || totalRowPattern.test(value);
   });
 }
 

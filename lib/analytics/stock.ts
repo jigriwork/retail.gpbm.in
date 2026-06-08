@@ -141,6 +141,10 @@ function identityKeys(row: {
   return keys;
 }
 
+function movementKey(storeId: string | null, identityKey: string) {
+  return `${storeId ?? "store"}:${identityKey}`;
+}
+
 function primaryStockKey(row: StockRowForAnalytics) {
   return (
     identityKeys(row)[0]?.key ??
@@ -216,10 +220,11 @@ function buildSalesMovementMap(salesRows: SalesRowForMovement[]) {
     const value = Number(row.net_sale ?? 0);
 
     for (const identity of identityKeys(row)) {
-      const current = movement.get(identity.key) ?? { quantity: 0, value: 0 };
+      const key = movementKey(row.store_id, identity.key);
+      const current = movement.get(key) ?? { quantity: 0, value: 0 };
       current.quantity += quantity;
       current.value += value;
-      movement.set(identity.key, current);
+      movement.set(key, current);
     }
   }
 
@@ -269,7 +274,7 @@ function summarizeItems(
         : (current.stockMrpValue ?? 0) + mrpValue;
 
     for (const identity of identityKeys(row)) {
-      const sale = movement.get(identity.key);
+      const sale = movement.get(movementKey(row.store_id, identity.key));
       if (sale) {
         current.salesQuantity = sale.quantity;
         current.salesValue = sale.value;

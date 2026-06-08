@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { SalesReportList } from "@/components/reports/sales-report-list";
 import { SalesUploadForm } from "@/components/reports/sales-upload-form";
-import { uploadSalesReport } from "@/lib/reports/sales-actions";
+import { repairSalesReportTotals, uploadSalesReport } from "@/lib/reports/sales-actions";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { getRecentSalesReports } from "@/lib/reports/sales-queries";
 
@@ -45,7 +45,11 @@ export default async function SalesReportsPage({
 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Recent sales reports</h2>
-        <SalesReportList reports={recentReports} />
+        <SalesReportList
+          canRepair={profile?.role === "owner"}
+          repairAction={repairSalesReportTotals}
+          reports={recentReports}
+        />
       </section>
     </div>
   );
