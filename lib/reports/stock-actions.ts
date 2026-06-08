@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { canAccessStore, getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import {
-  parseStockFile,
+  parseStockFileDetailed,
   summarizeStockRows,
   type ParsedStockRow,
 } from "@/lib/reports/stock-parser";
@@ -31,6 +31,7 @@ export type StockUploadState = {
 };
 
 const allowedExtensions = [".xlsx", ".xls", ".csv"];
+const stockRowInsertBatchSize = 1000;
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -105,6 +106,22 @@ function rowHasStockIdentity(row: ParsedStockRow) {
   return Boolean(row.itemName || row.sku || row.barcode || row.brand || row.category);
 }
 
+async function insertStockRowsInBatches(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rows: TablesInsert<"stock_rows">[],
+) {
+  for (let index = 0; index < rows.length; index += stockRowInsertBatchSize) {
+    const batch = rows.slice(index, index + stockRowInsertBatchSize);
+    const { error } = await supabase.from("stock_rows").insert(batch);
+
+    if (error) {
+      return error;
+    }
+  }
+
+  return null;
+}
+
 export async function uploadStockReport(
   _previous: StockUploadState,
   formData: FormData,
@@ -163,10 +180,23 @@ export async function uploadStockReport(
     };
   }
 
-  const parsedRows = (await parseStockFile(file)).filter(rowHasStockIdentity);
+  const parseResult = await parseStockFileDetailed(file);
+  const parsedRows = parseResult.rows.filter(rowHasStockIdentity);
 
   if (!parsedRows.length) {
-    return { ok: false, message: "No usable stock rows were found in this file." };
+    if (!parseResult.headerFound && parseResult.titleRowsSkipped > 0) {
+      return {
+        ok: false,
+        message:
+          "A report title row was found, but no stock header row was detected. Please check that the file has headers like ITEM CODE, COMPANY NAME, ITEM NAME and CLOSING STOCK.",
+      };
+    }
+
+    return {
+      ok: false,
+      message:
+        "No usable stock rows were found. Please check that the file has headers like ITEM CODE, COMPANY NAME, ITEM NAME and CLOSING STOCK.",
+    };
   }
 
   const rowsWithStoreColumn = parsedRows.filter((row) => row.storeName);
@@ -248,7 +278,7 @@ export async function uploadStockReport(
     raw_data: row.rawData as Json,
   }));
 
-  const { error: rowsError } = await supabase.from("stock_rows").insert(stockRows);
+  const rowsError = await insertStockRowsInBatches(supabase, stockRows);
 
   if (rowsError) {
     return {
