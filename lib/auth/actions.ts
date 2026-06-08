@@ -17,11 +17,11 @@ export async function signOut() {
   redirect("/login");
 }
 
-export async function createManager(formData: FormData) {
+export async function createUserAccount(formData: FormData) {
   const owner = await requireOwner();
 
   if (!owner) {
-    return { ok: false, message: "Only owners can create manager accounts." };
+    return { ok: false, message: "Only owners can create users." };
   }
 
   const admin = createAdminClient();
@@ -29,7 +29,7 @@ export async function createManager(formData: FormData) {
   if (!admin) {
     return {
       ok: false,
-      message: "Manager creation requires server service key.",
+      message: "User creation requires server service key.",
     };
   }
 
@@ -37,9 +37,15 @@ export async function createManager(formData: FormData) {
   const password = readString(formData, "password");
   const fullName = readString(formData, "fullName");
   const phone = readString(formData, "phone");
+  const requestedRole = readString(formData, "role") || "manager";
+  const role = requestedRole === "owner" ? "owner" : "manager";
 
   if (!email || !password || !fullName) {
     return { ok: false, message: "Email, password, and full name are required." };
+  }
+
+  if (!["manager", "owner"].includes(role)) {
+    return { ok: false, message: "Choose Manager or Owner role." };
   }
 
   const { data, error } = await admin.auth.admin.createUser({
@@ -64,12 +70,16 @@ export async function createManager(formData: FormData) {
     email,
     full_name: fullName,
     phone: phone || null,
-    role: "manager",
+    role,
     is_active: true,
   });
 
   revalidatePath("/app/users");
-  return { ok: true, message: "Manager account created." };
+  return { ok: true, message: `${role === "owner" ? "Owner" : "Manager"} account created.` };
+}
+
+export async function createManager(formData: FormData) {
+  return createUserAccount(formData);
 }
 
 export async function assignManagerToStore(formData: FormData) {

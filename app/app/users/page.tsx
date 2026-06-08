@@ -7,7 +7,7 @@ import {
 } from "@/components/users/action-form";
 import {
   assignManagerToStore,
-  createManager,
+  createUserAccount,
   setProfileActive,
   updateManagerStoreAssignments,
 } from "@/lib/auth/actions";
@@ -44,10 +44,10 @@ export default async function UsersPage() {
       </div>
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <h2 className="text-xl font-semibold">Create manager</h2>
+        <h2 className="text-xl font-semibold">Create user</h2>
         <div className="mt-4">
           <CreateManagerForm
-            action={createManager}
+            action={createUserAccount}
             disabled={!serviceRoleConfigured}
           />
         </div>

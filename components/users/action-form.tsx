@@ -23,6 +23,7 @@ export function CreateManagerForm({
   disabled: boolean;
 }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [role, setRole] = useState("manager");
   const [state, formAction, pending] = useActionState(
     async (_previous: ActionState, formData: FormData) => action(formData),
     initialState,
@@ -72,14 +73,32 @@ export function CreateManagerForm({
             {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
         </div>
+        <label className="block sm:col-span-2">
+          <span className="mb-2 block text-sm font-medium text-muted">Role</span>
+          <select
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            defaultValue="manager"
+            disabled={disabled}
+            name="role"
+            onChange={(event) => setRole(event.target.value)}
+          >
+            <option value="manager">Manager</option>
+            <option value="owner">Owner</option>
+          </select>
+        </label>
       </div>
+      {role === "owner" ? (
+        <p className="rounded-2xl border border-danger/30 bg-danger/5 p-3 text-sm font-medium text-danger">
+          Owners can access salary, payslips, receivables, users and settings.
+        </p>
+      ) : null}
       <Button disabled={disabled || pending}>
         {pending ? <Loader2 className="size-4 animate-spin" /> : null}
-        Create manager
+        Create {role === "owner" ? "owner" : "manager"}
       </Button>
       {disabled ? (
         <p className="text-sm leading-6 text-muted">
-          Manager creation requires server service key.
+          User creation requires server service key.
         </p>
       ) : null}
       {state.message ? (

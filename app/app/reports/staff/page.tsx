@@ -33,6 +33,14 @@ function safePeriod(value?: string): SalesPeriod {
   return periodLabels.some((period) => period.value === value) ? (value as SalesPeriod) : "yesterday";
 }
 
+function storeLabel(profileRole: string | null | undefined, storeName?: string) {
+  if (!storeName) {
+    return profileRole === "owner" ? "All" : "All assigned stores";
+  }
+
+  return storeName;
+}
+
 export default async function StaffSalesPage({
   searchParams,
 }: {
@@ -51,6 +59,10 @@ export default async function StaffSalesPage({
     storeIds: selectedStores.map((store) => store.id),
     dateRange,
   });
+  const totalSales = staffRows.reduce((sum, staff) => sum + staff.totalSale, 0);
+  const totalQuantity = staffRows.reduce((sum, staff) => sum + staff.quantitySold, 0);
+  const totalBills = staffRows.reduce((sum, staff) => sum + staff.billCount, 0);
+  const totalReturns = staffRows.reduce((sum, staff) => sum + staff.returnAmount, 0);
 
   return (
     <div className="space-y-5">
@@ -60,7 +72,7 @@ export default async function StaffSalesPage({
         </Link>
         <h1 className="mt-2 text-3xl font-semibold">Staff wise sales</h1>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Ranking by uploaded sales rows with bill count, quantity and staff leaders.
+          All staff sales from uploaded sales rows, combined through active staff aliases.
         </p>
       </div>
 
@@ -73,10 +85,10 @@ export default async function StaffSalesPage({
               defaultValue={storeId ?? "all"}
               name="storeId"
             >
-              <option value="all">All accessible stores</option>
+              <option value="all">{storeLabel(profile?.role)}</option>
               {stores.map((store) => (
                 <option key={store.id} value={store.id}>
-                  {store.name}
+                  {storeLabel(profile?.role, store.name)}
                 </option>
               ))}
             </select>
@@ -108,65 +120,83 @@ export default async function StaffSalesPage({
             <h2 className="mt-2 text-2xl font-semibold">
               {dateRange.startDate} to {dateRange.endDate}
             </h2>
+            <p className="mt-2 text-sm text-muted">
+              Showing {selectedStores.map((store) => store.name).join(", ") || "no active stores"}.
+            </p>
           </div>
           <UserRoundCheck className="size-5 text-muted" />
         </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Staff</p>
+            <p className="mt-1 text-xl font-semibold">{staffRows.length}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Total Sales</p>
+            <p className="mt-1 text-xl font-semibold">{formatMoney(totalSales)}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Quantity</p>
+            <p className="mt-1 text-xl font-semibold">{formatNumber(totalQuantity)}</p>
+          </div>
+          <div className="rounded-2xl border border-border p-3">
+            <p className="text-xs font-medium text-muted">Distinct Bills</p>
+            <p className="mt-1 text-xl font-semibold">{totalBills}</p>
+          </div>
+        </div>
+        {totalReturns > 0 ? (
+          <p className="mt-3 text-sm font-medium text-muted">
+            Return amount found in negative sales rows: {formatMoney(totalReturns)}
+          </p>
+        ) : null}
       </section>
 
       {staffRows.length ? (
-        <section className="space-y-3">
-          {staffRows.map((staff, index) => (
-            <article
-              className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm"
-              key={staff.staffName}
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-lg font-semibold">
-                    {index + 1}. {staff.staffName}
-                  </p>
-                  <p className="mt-1 text-sm text-muted">
-                    {staff.topCategory ? `Top category: ${staff.topCategory}` : "No category found"}
-                  </p>
-                </div>
-                <p className="text-2xl font-semibold">{formatMoney(staff.totalSale)}</p>
-              </div>
-              <div className="mt-4 grid gap-2 text-sm sm:grid-cols-5">
-                <div className="rounded-2xl border border-border p-3">
-                  <p className="text-xs font-medium text-muted">Bills</p>
-                  <p className="mt-1 font-semibold">{staff.billCount}</p>
-                </div>
-                <div className="rounded-2xl border border-border p-3">
-                  <p className="text-xs font-medium text-muted">Quantity</p>
-                  <p className="mt-1 font-semibold">{formatNumber(staff.quantitySold)}</p>
-                </div>
-                <div className="rounded-2xl border border-border p-3">
-                  <p className="text-xs font-medium text-muted">Average bill</p>
-                  <p className="mt-1 font-semibold">{formatMoney(staff.averageBillValue)}</p>
-                </div>
-                <div className="rounded-2xl border border-border p-3">
-                  <p className="text-xs font-medium text-muted">Top brand</p>
-                  <p className="mt-1 font-semibold">{staff.topBrand ?? "No brand"}</p>
-                </div>
-                <div className="rounded-2xl border border-border p-3">
-                  <p className="text-xs font-medium text-muted">Top category</p>
-                  <p className="mt-1 font-semibold">{staff.topCategory ?? "No category"}</p>
-                </div>
-              </div>
-              {staff.sourceBreakdown.length > 1 ? (
-                <div className="mt-4 rounded-2xl border border-border p-3">
-                  <p className="text-xs font-medium text-muted">Source names</p>
-                  <div className="mt-2 flex flex-wrap gap-2 text-sm">
-                    {staff.sourceBreakdown.map((source) => (
-                      <span className="rounded-full border border-border px-3 py-1" key={source.sourceName}>
-                        {source.sourceName}: {formatMoney(source.totalSale)}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </article>
-          ))}
+        <section className="overflow-hidden rounded-[1.35rem] border border-border bg-card shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-left text-sm">
+              <thead className="border-b border-border text-xs uppercase text-muted">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Staff Name</th>
+                  <th className="px-4 py-3 font-semibold">Total Sales</th>
+                  <th className="px-4 py-3 font-semibold">Quantity</th>
+                  <th className="px-4 py-3 font-semibold">Distinct Bills</th>
+                  <th className="px-4 py-3 font-semibold">Average Bill Value</th>
+                  <th className="px-4 py-3 font-semibold">Return Amount</th>
+                  <th className="px-4 py-3 font-semibold">Top Brand</th>
+                  <th className="px-4 py-3 font-semibold">Top Category</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {staffRows.map((staff, index) => (
+                  <tr key={staff.staffName}>
+                    <td className="px-4 py-4 font-semibold">
+                      {index + 1}. {staff.staffName}
+                      {staff.sourceBreakdown.length > 1 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {staff.sourceBreakdown.map((source) => (
+                            <span
+                              className="rounded-full border border-border px-2 py-1 text-xs font-medium text-muted"
+                              key={source.sourceName}
+                            >
+                              {source.sourceName}: {formatMoney(source.totalSale)}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-4 font-semibold">{formatMoney(staff.totalSale)}</td>
+                    <td className="px-4 py-4">{formatNumber(staff.quantitySold)}</td>
+                    <td className="px-4 py-4">{staff.billCount}</td>
+                    <td className="px-4 py-4">{formatMoney(staff.averageBillValue)}</td>
+                    <td className="px-4 py-4">{formatMoney(staff.returnAmount)}</td>
+                    <td className="px-4 py-4">{staff.topBrand ?? "No brand"}</td>
+                    <td className="px-4 py-4">{staff.topCategory ?? "No category"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       ) : (
         <section className="rounded-[1.35rem] border border-border bg-card p-8 text-center shadow-sm">

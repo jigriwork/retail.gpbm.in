@@ -68,6 +68,7 @@ export type SalesSummary = {
 export type StaffSalesSummary = {
   staffName: string;
   totalSale: number;
+  returnAmount: number;
   billCount: number;
   quantitySold: number;
   averageBillValue: number;
@@ -383,6 +384,7 @@ export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
     {
       staffName: string;
       totalSale: number;
+      returnAmount: number;
       quantitySold: number;
       bills: Set<string>;
       categories: Map<string, number>;
@@ -402,6 +404,7 @@ export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
       {
         staffName,
         totalSale: 0,
+        returnAmount: 0,
         quantitySold: 0,
         bills: new Set<string>(),
         categories: new Map<string, number>(),
@@ -411,6 +414,9 @@ export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
     const sale = Number(row.net_sale ?? 0);
     const quantity = Number(row.quantity ?? 0);
     bucket.totalSale += sale;
+    if (sale < 0) {
+      bucket.returnAmount += Math.abs(sale);
+    }
     bucket.quantitySold += quantity;
 
     const billKey = uniqueBillKey(row);
@@ -445,6 +451,7 @@ export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
       return {
         staffName: item.staffName,
         totalSale: item.totalSale,
+        returnAmount: item.returnAmount,
         billCount: item.bills.size,
         quantitySold: item.quantitySold,
         averageBillValue: calculateAverageBillValue(item.totalSale, item.bills.size),

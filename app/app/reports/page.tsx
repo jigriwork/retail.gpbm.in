@@ -129,9 +129,9 @@ export default async function ReportsPage() {
             <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
               <UserRoundCheck className="size-5" />
             </div>
-            <h2 className="text-2xl font-semibold">Staff Wise Sales</h2>
+            <h2 className="text-2xl font-semibold">Staff Sales Report</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Staff ranking, bill count, quantity, average bill, top brand and category.
+              View daily, weekly and monthly staff-wise sales.
             </p>
           </Link>
           <Link
