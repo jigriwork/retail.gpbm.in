@@ -9,6 +9,7 @@ import {
   Phone,
   UploadCloud,
   UserRoundCheck,
+  UserRoundCog,
 } from "lucide-react";
 
 import { SalesReportList } from "@/components/reports/sales-report-list";
@@ -131,6 +132,18 @@ export default async function ReportsPage() {
             <h2 className="text-2xl font-semibold">Staff Wise Sales</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
               Staff ranking, bill count, quantity, average bill, top brand and category.
+            </p>
+          </Link>
+          <Link
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            href="/app/reports/staff-aliases"
+          >
+            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+              <UserRoundCog className="size-5" />
+            </div>
+            <h2 className="text-2xl font-semibold">Staff Name Aliases</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Map sales report agent names to staff directory contacts.
             </p>
           </Link>
           <Link

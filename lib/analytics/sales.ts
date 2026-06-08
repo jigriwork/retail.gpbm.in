@@ -1,4 +1,5 @@
 import { addDays, getIndiaDayOfMonth, getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
+import { staffNameKey } from "@/lib/employees/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { Store } from "@/lib/auth/session";
 
@@ -72,6 +73,7 @@ export type StaffSalesSummary = {
   averageBillValue: number;
   topCategory: string | null;
   topBrand: string | null;
+  sourceBreakdown: Array<{ sourceName: string; totalSale: number; quantity: number }>;
 };
 
 export type MissingSalesReportDate = {
@@ -132,6 +134,14 @@ function dateList(startDate: string, endDate: string) {
 function cleanName(value: string | null, fallback: string) {
   const text = value?.trim().replace(/\s+/g, " ");
   return text || fallback;
+}
+
+function aliasKey(storeId: string | null, staffName: string | null) {
+  if (!storeId || !staffName?.trim()) {
+    return null;
+  }
+
+  return `${storeId}:${staffNameKey(staffName)}`;
 }
 
 function addRankedSale(bucket: Map<string, RankedSale>, key: string | null, sale: number, quantity: number) {
@@ -228,11 +238,40 @@ async function getSalesRows(filters: SalesAnalyticsFilters) {
   return (data ?? []) as SalesRowForAnalytics[];
 }
 
+async function getSalesStaffAliasMap(storeIds: string[]) {
+  if (!storeIds.length) {
+    return new Map<string, string>();
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("staff_name_aliases")
+    .select("store_id,normalized_source_name,canonical_staff_name")
+    .in("store_id", storeIds)
+    .eq("source_type", "sales_report")
+    .eq("is_active", true);
+  const aliases = new Map<string, string>();
+
+  for (const alias of data ?? []) {
+    aliases.set(`${alias.store_id}:${alias.normalized_source_name}`, alias.canonical_staff_name);
+  }
+
+  return aliases;
+}
+
+function mappedStaffName(row: SalesRowForAnalytics, aliases: Map<string, string>) {
+  const key = aliasKey(row.store_id, row.staff_name);
+  return key ? aliases.get(key) ?? row.staff_name : row.staff_name;
+}
+
 export async function getSalesSummary(
   filters: SalesAnalyticsFilters,
   stores: Array<Pick<Store, "id" | "name" | "code" | "monthly_target_enabled" | "monthly_target">>,
 ): Promise<SalesSummary> {
-  const rows = await getSalesRows(filters);
+  const [rows, aliases] = await Promise.all([
+    getSalesRows(filters),
+    getSalesStaffAliasMap(filters.storeIds),
+  ]);
   const bills = new Set<string>();
   const staff = new Set<string>();
   const brands = new Set<string>();
@@ -275,11 +314,12 @@ export async function getSalesSummary(
       }
     }
 
-    if (row.staff_name?.trim()) staff.add(cleanName(row.staff_name, "Unspecified"));
+    const staffName = mappedStaffName(row, aliases);
+    if (staffName?.trim()) staff.add(cleanName(staffName, "Unspecified"));
     if (row.brand?.trim()) brands.add(cleanName(row.brand, "Unspecified"));
     if (row.category?.trim()) categories.add(cleanName(row.category, "Unspecified"));
 
-    addRankedSale(staffSales, row.staff_name, sale, quantity);
+    addRankedSale(staffSales, staffName, sale, quantity);
     addRankedSale(brandSales, row.brand, sale, quantity);
     addRankedSale(categorySales, row.category, sale, quantity);
     addRankedSale(itemSales, row.item_name, sale, quantity);
@@ -334,7 +374,10 @@ export async function getStoreSalesSummary(
 }
 
 export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
-  const rows = await getSalesRows(filters);
+  const [rows, aliases] = await Promise.all([
+    getSalesRows(filters),
+    getSalesStaffAliasMap(filters.storeIds),
+  ]);
   const staff = new Map<
     string,
     {
@@ -344,6 +387,7 @@ export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
       bills: Set<string>;
       categories: Map<string, number>;
       brands: Map<string, number>;
+      sources: Map<string, { sourceName: string; totalSale: number; quantity: number }>;
     }
   >();
 
@@ -352,7 +396,7 @@ export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
       continue;
     }
 
-    const staffName = cleanName(row.staff_name, "Unspecified");
+    const staffName = cleanName(mappedStaffName(row, aliases), "Unspecified");
     const bucket =
       staff.get(staffName) ??
       {
@@ -362,6 +406,7 @@ export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
         bills: new Set<string>(),
         categories: new Map<string, number>(),
         brands: new Map<string, number>(),
+        sources: new Map<string, { sourceName: string; totalSale: number; quantity: number }>(),
       };
     const sale = Number(row.net_sale ?? 0);
     const quantity = Number(row.quantity ?? 0);
@@ -383,6 +428,12 @@ export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
       bucket.brands.set(brand, (bucket.brands.get(brand) ?? 0) + sale);
     }
 
+    const sourceName = cleanName(row.staff_name, "Unspecified");
+    const source = bucket.sources.get(sourceName) ?? { sourceName, totalSale: 0, quantity: 0 };
+    source.totalSale += sale;
+    source.quantity += quantity;
+    bucket.sources.set(sourceName, source);
+
     staff.set(staffName, bucket);
   }
 
@@ -399,6 +450,7 @@ export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
         averageBillValue: calculateAverageBillValue(item.totalSale, item.bills.size),
         topCategory,
         topBrand,
+        sourceBreakdown: [...item.sources.values()].sort((a, b) => b.totalSale - a.totalSale),
       } satisfies StaffSalesSummary;
     })
     .sort((left, right) => right.totalSale - left.totalSale);

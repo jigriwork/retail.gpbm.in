@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { Loader2, UploadCloud } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,9 @@ export function SalesUploadForm({
             <div className="rounded-2xl border border-border p-3">
               <p className="text-xs font-medium text-muted">Report date</p>
               <p className="mt-1 font-semibold">{state.summary.reportDate}</p>
+              {state.summary.detectedDate ? (
+                <p className="mt-1 text-xs text-muted">Detected from bill date</p>
+              ) : null}
             </div>
             <div className="rounded-2xl border border-border p-3">
               <p className="text-xs font-medium text-muted">Rows</p>
@@ -115,6 +119,34 @@ export function SalesUploadForm({
               <p className="mt-1 font-semibold">{state.summary.billCount}</p>
             </div>
           </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Returns</p>
+              <p className="mt-1 font-semibold">{state.summary.returnsCount}</p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Skipped rows</p>
+              <p className="mt-1 font-semibold">{state.summary.skippedRows}</p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Unmatched staff</p>
+              <p className="mt-1 font-semibold">{state.summary.unmatchedStaffCount}</p>
+            </div>
+          </div>
+          {state.summary.unmatchedStaffNames.length ? (
+            <div className="mt-5 rounded-2xl border border-border p-4">
+              <p className="text-sm font-semibold">Unmatched staff names</p>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                {state.summary.unmatchedStaffNames.join(", ")}
+              </p>
+              <Link
+                className="mt-3 inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
+                href="/app/reports/staff-aliases"
+              >
+                Open alias mapping
+              </Link>
+            </div>
+          ) : null}
           <div className="mt-5 grid gap-4 lg:grid-cols-3">
             <div>
               <p className="text-sm font-semibold">Staff found</p>

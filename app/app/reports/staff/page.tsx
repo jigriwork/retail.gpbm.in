@@ -153,6 +153,18 @@ export default async function StaffSalesPage({
                   <p className="mt-1 font-semibold">{staff.topCategory ?? "No category"}</p>
                 </div>
               </div>
+              {staff.sourceBreakdown.length > 1 ? (
+                <div className="mt-4 rounded-2xl border border-border p-3">
+                  <p className="text-xs font-medium text-muted">Source names</p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                    {staff.sourceBreakdown.map((source) => (
+                      <span className="rounded-full border border-border px-3 py-1" key={source.sourceName}>
+                        {source.sourceName}: {formatMoney(source.totalSale)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </article>
           ))}
         </section>

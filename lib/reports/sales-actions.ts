@@ -3,10 +3,15 @@
 import { revalidatePath } from "next/cache";
 
 import { canAccessStore, getAccessibleStores, requireProfile } from "@/lib/auth/session";
-import { parseSalesFile, matchesStoreName, summarizeSalesRows } from "@/lib/reports/sales-parser";
+import { staffNameKey } from "@/lib/employees/utils";
+import {
+  parseSalesFileDetailed,
+  matchesStoreName,
+  summarizeSalesRows,
+  type ParsedSalesRow,
+} from "@/lib/reports/sales-parser";
 import { createClient } from "@/lib/supabase/server";
 import { completeMatchingTasks } from "@/lib/tasks/auto-complete";
-import { getIndiaToday } from "@/lib/tasks/dates";
 import type { Json, TablesInsert } from "@/lib/supabase/database.types";
 
 export type SalesUploadState = {
@@ -19,12 +24,18 @@ export type SalesUploadState = {
     totalNetSale: number;
     billCount: number;
     staffNames: string[];
+    detectedDate: string | null;
+    unmatchedStaffNames: string[];
+    unmatchedStaffCount: number;
+    returnsCount: number;
+    skippedRows: number;
     topBrands: Array<{ name: string; sale: number }>;
     topCategories: Array<{ name: string; sale: number }>;
   };
 };
 
 const allowedExtensions = [".xlsx", ".xls", ".csv"];
+const salesRowInsertBatchSize = 1000;
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -46,7 +57,16 @@ function slugFileName(fileName: string) {
   return clean || "sales-report";
 }
 
-function safeSummaryJson(summary: ReturnType<typeof summarizeSalesRows>) {
+function safeSummaryJson(
+  summary: ReturnType<typeof summarizeSalesRows>,
+  metadata: {
+    detectedDate: string | null;
+    returnsCount: number;
+    skippedRows: number;
+    unmatchedStaffCount: number;
+    unmatchedStaffNames: string[];
+  },
+) {
   return {
     totalNetSale: summary.totalNetSale,
     rowCount: summary.rowCount,
@@ -57,7 +77,56 @@ function safeSummaryJson(summary: ReturnType<typeof summarizeSalesRows>) {
     topStaff: summary.topStaff,
     topBrands: summary.topBrands,
     topCategories: summary.topCategories,
+    ...metadata,
   } satisfies Json;
+}
+
+function rowHasSalesIdentity(row: ParsedSalesRow) {
+  return Boolean(row.billNo || row.itemName || row.brand || row.category || row.staffName || row.netSale);
+}
+
+function uniqueDates(rows: ParsedSalesRow[]) {
+  return [...new Set(rows.map((row) => row.saleDate).filter((date): date is string => Boolean(date)))].sort();
+}
+
+function uniqueStaffNames(rows: ParsedSalesRow[]) {
+  return [...new Set(rows.map((row) => row.staffName?.trim()).filter((name): name is string => Boolean(name)))].sort();
+}
+
+async function getUnmatchedSalesStaffNames(storeId: string, staffNames: string[]) {
+  const normalizedNames = [...new Set(staffNames.map(staffNameKey).filter(Boolean))];
+
+  if (!normalizedNames.length) {
+    return [];
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("staff_name_aliases")
+    .select("normalized_source_name")
+    .eq("store_id", storeId)
+    .eq("source_type", "sales_report")
+    .eq("is_active", true)
+    .in("normalized_source_name", normalizedNames);
+  const matched = new Set((data ?? []).map((alias) => alias.normalized_source_name));
+
+  return staffNames.filter((name) => !matched.has(staffNameKey(name)));
+}
+
+async function insertSalesRowsInBatches(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rows: TablesInsert<"sales_rows">[],
+) {
+  for (let index = 0; index < rows.length; index += salesRowInsertBatchSize) {
+    const batch = rows.slice(index, index + salesRowInsertBatchSize);
+    const { error } = await supabase.from("sales_rows").insert(batch);
+
+    if (error) {
+      return error;
+    }
+  }
+
+  return null;
 }
 
 export async function uploadSalesReport(
@@ -101,13 +170,43 @@ export async function uploadSalesReport(
     return { ok: false, message: "Choose an active Go Planet or Brand Mark store." };
   }
 
+  const parseResult = await parseSalesFileDetailed(file);
+  const parsedRows = parseResult.rows.filter(rowHasSalesIdentity);
+
+  if (!parsedRows.length) {
+    if (!parseResult.headerFound && parseResult.titleRowsSkipped > 0) {
+      return {
+        ok: false,
+        message:
+          "A report title row was found, but no sales header row was detected. Please check that the file has headers like BILL DATE, BILL NO., AGENT NAME and NET AMOUNT.",
+      };
+    }
+
+    return {
+      ok: false,
+      message:
+        "No usable rows were found. Please check that the file has headers like BILL DATE, BILL NO., AGENT NAME and NET AMOUNT.",
+    };
+  }
+
+  const detectedDates = uniqueDates(parsedRows);
+
+  if (detectedDates.length > 1) {
+    return {
+      ok: false,
+      message:
+        "This file contains multiple bill dates. Please upload one day at a time or select the correct report date.",
+    };
+  }
+
+  const finalReportDate = detectedDates[0] ?? reportDate;
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from("reports")
     .select("id")
     .eq("report_type", "sales")
     .eq("store_id", storeId)
-    .eq("report_date", reportDate)
+    .eq("report_date", finalReportDate)
     .maybeSingle();
 
   if (existing) {
@@ -117,12 +216,6 @@ export async function uploadSalesReport(
     };
   }
 
-  const parsedRows = await parseSalesFile(file);
-
-  if (!parsedRows.length) {
-    return { ok: false, message: "No usable rows were found in this file." };
-  }
-
   const rowsWithStoreColumn = parsedRows.filter((row) => row.storeName);
   const invalidStoreRows = rowsWithStoreColumn.filter((row) => !matchesStoreName(row.storeName, store));
 
@@ -130,13 +223,13 @@ export async function uploadSalesReport(
     return {
       ok: false,
       message:
-        "The file contains rows for a different or inactive store. Upload one active store report at a time.",
+        `The file contains ${invalidStoreRows.length} rows for a different or inactive store. Upload one active store report at a time.`,
     };
   }
 
   const reportRows = parsedRows.map((row) => ({
     ...row,
-    saleDate: row.saleDate ?? reportDate,
+    saleDate: row.saleDate ?? finalReportDate,
   }));
   const summary = summarizeSalesRows(reportRows);
 
@@ -144,10 +237,22 @@ export async function uploadSalesReport(
     return { ok: false, message: "At least one sales row is required." };
   }
 
+  const staffNames = uniqueStaffNames(reportRows);
+  const unmatchedStaffNames = await getUnmatchedSalesStaffNames(storeId, staffNames);
+  const returnsCount = reportRows.filter(
+    (row) => Number(row.quantity ?? 0) < 0 || Number(row.netSale ?? 0) < 0,
+  ).length;
+  const uploadMetadata = {
+    detectedDate: detectedDates[0] ?? null,
+    returnsCount,
+    skippedRows: parseResult.skippedTotalRows,
+    unmatchedStaffCount: unmatchedStaffNames.length,
+    unmatchedStaffNames,
+  };
   const storagePath = [
     "sales",
     store.code.toLowerCase(),
-    reportDate,
+    finalReportDate,
     `${Date.now()}-${slugFileName(file.name)}`,
   ].join("/");
 
@@ -166,11 +271,11 @@ export async function uploadSalesReport(
       report_type: "sales",
       store_id: storeId,
       uploaded_by: profile.id,
-      report_date: reportDate,
+      report_date: finalReportDate,
       file_name: file.name,
       file_path: storagePath,
       row_count: summary.rowCount,
-      summary: safeSummaryJson(summary),
+      summary: safeSummaryJson(summary, uploadMetadata),
       status: "processed",
     })
     .select("id")
@@ -203,7 +308,7 @@ export async function uploadSalesReport(
     raw_data: row.rawData as Json,
   }));
 
-  const { error: rowsError } = await supabase.from("sales_rows").insert(salesRows);
+  const rowsError = await insertSalesRowsInBatches(supabase, salesRows);
 
   if (rowsError) {
     return {
@@ -213,7 +318,7 @@ export async function uploadSalesReport(
     };
   }
 
-  await completeMatchingTasks(storeId, getIndiaToday(), ["sales report", "daily_sales"]);
+  await completeMatchingTasks(storeId, finalReportDate, ["sales report", "daily_sales"]);
   revalidatePath("/app/reports");
   revalidatePath("/app/reports/sales");
   revalidatePath("/app/today");
@@ -224,11 +329,12 @@ export async function uploadSalesReport(
     message: "Sales report uploaded and processed.",
     summary: {
       storeName: store.name,
-      reportDate,
+      reportDate: finalReportDate,
       rowsProcessed: summary.rowCount,
       totalNetSale: summary.totalNetSale,
       billCount: summary.billCount,
       staffNames: summary.staffNames,
+      ...uploadMetadata,
       topBrands: summary.topBrands,
       topCategories: summary.topCategories,
     },
