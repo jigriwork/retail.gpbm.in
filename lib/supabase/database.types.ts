@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -1009,6 +1009,73 @@ export type Database = {
           },
           {
             foreignKeyName: "sales_rows_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_name_aliases: {
+        Row: {
+          canonical_staff_name: string
+          created_at: string | null
+          created_by: string | null
+          employee_contact_id: string | null
+          id: string
+          is_active: boolean | null
+          normalized_canonical_staff_name: string
+          normalized_source_name: string
+          source_name: string
+          source_type: string | null
+          store_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          canonical_staff_name: string
+          created_at?: string | null
+          created_by?: string | null
+          employee_contact_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          normalized_canonical_staff_name: string
+          normalized_source_name: string
+          source_name: string
+          source_type?: string | null
+          store_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          canonical_staff_name?: string
+          created_at?: string | null
+          created_by?: string | null
+          employee_contact_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          normalized_canonical_staff_name?: string
+          normalized_source_name?: string
+          source_name?: string
+          source_type?: string | null
+          store_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_name_aliases_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_name_aliases_employee_contact_id_fkey"
+            columns: ["employee_contact_id"]
+            isOneToOne: false
+            referencedRelation: "employee_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_name_aliases_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
