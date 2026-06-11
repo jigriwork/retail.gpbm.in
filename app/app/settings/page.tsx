@@ -87,6 +87,21 @@ export default async function SettingsPage() {
       {profile?.role === "owner" ? (
         <>
           <div className="pt-2">
+            <h2 className="text-2xl font-semibold">Owner personal area</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Personal tracking stays outside the business Today workflow.
+            </p>
+          </div>
+          <section>
+            <Link
+              className="inline-flex h-11 items-center justify-center rounded-2xl border border-border bg-card px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
+              href="/app/life"
+            >
+              Open Life Flow
+            </Link>
+          </section>
+
+          <div className="pt-2">
             <h2 className="text-2xl font-semibold">Store monthly targets</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
               Set a monthly sales target per store. When enabled, target progress is shown in sales analytics and the Today page.

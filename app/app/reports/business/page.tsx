@@ -1,16 +1,19 @@
 import Link from "next/link";
-import { BarChart3, Boxes, Layers3, PackageSearch, Ruler, Search, UsersRound } from "lucide-react";
+import { BarChart3, Boxes, Layers3, PackageSearch, Ruler, Search, ShoppingBag, TrendingDown, UsersRound } from "lucide-react";
 
+import { BusinessReportActions } from "@/components/reports/business-report-actions";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import {
   getBusinessDateRange,
   getBusinessReport,
+  type BusinessSignalRow,
   type BusinessPeriod,
   type BusinessRank,
   type BusinessItem,
   type SizeSummary,
   type StaffSummary,
 } from "@/lib/analytics/business";
+import { getMissingSalesReportDates } from "@/lib/analytics/sales";
 
 const periodOptions: Array<{ value: BusinessPeriod; label: string }> = [
   { value: "today", label: "Today" },
@@ -46,6 +49,163 @@ function hrefWith(params: Record<string, string | undefined>) {
     if (value) url.set(key, value);
   }
   return `/app/reports/business?${url.toString()}`;
+}
+
+function csvEscape(value: unknown) {
+  const text = value === null || value === undefined ? "" : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function csvSection(title: string, headers: string[], rows: Array<Array<unknown>>) {
+  return [
+    title,
+    headers.map(csvEscape).join(","),
+    ...rows.map((row) => row.map(csvEscape).join(",")),
+    "",
+  ].join("\n");
+}
+
+function buildSummaryText({
+  brand,
+  category,
+  periodLabel,
+  report,
+  storeLabel,
+}: {
+  brand: string;
+  category: string;
+  periodLabel: string;
+  report: Awaited<ReturnType<typeof getBusinessReport>>;
+  storeLabel: string;
+}) {
+  const topStaff = report.staffRows[0]?.staffName ?? "None";
+  const topProduct = report.itemRows[0]?.itemName ?? "None";
+
+  return [
+    "GPBM Business Report",
+    `Store: ${storeLabel}`,
+    `Period: ${periodLabel}`,
+    brand ? `Brand: ${brand}` : "Brand: All",
+    category ? `Category: ${category}` : "Category: All",
+    "",
+    `Net Sales: ${formatMoney(report.summary.netSales)}`,
+    `Sold Qty: ${formatNumber(report.summary.soldQuantity)}`,
+    `Current Stock: ${formatNumber(report.summary.stockQuantity)}`,
+    `Return Amount: ${formatMoney(report.summary.returnAmount)}`,
+    `Top Staff: ${topStaff}`,
+    `Top Product: ${topProduct}`,
+    `Restock Urgent: ${report.restockRows.filter((row) => row.signal === "Restock Urgent").length}`,
+    `Slow / No-sale: ${report.slowRows.length}`,
+    "",
+    "Generated from GPBM Retail",
+  ].join("\n");
+}
+
+function buildReportCsv(report: Awaited<ReturnType<typeof getBusinessReport>>) {
+  return [
+    csvSection(
+      "Brand Performance",
+      ["Brand", "Net Sales", "Sold Qty", "Return Amount", "Bills", "Stock Qty", "Stock MRP", "Items", "Sizes", "Top Category", "Top Staff", "Movement"],
+      report.brandRows.map((row) => [
+        row.name,
+        row.netSales,
+        row.soldQuantity,
+        row.returnAmount,
+        row.billCount,
+        row.stockQuantity,
+        row.stockMrpValue,
+        row.uniqueItems,
+        row.uniqueSizes,
+        row.topCategory,
+        row.topStaff,
+        row.movementStatus,
+      ]),
+    ),
+    csvSection(
+      "Category Performance",
+      ["Category", "Net Sales", "Sold Qty", "Return Amount", "Bills", "Stock Qty", "Stock MRP", "Items", "Brands", "Top Brand", "Top Staff"],
+      report.categoryRows.map((row) => [
+        row.name,
+        row.netSales,
+        row.soldQuantity,
+        row.returnAmount,
+        row.billCount,
+        row.stockQuantity,
+        row.stockMrpValue,
+        row.uniqueItems,
+        row.uniqueBrands,
+        row.topBrand,
+        row.topStaff,
+      ]),
+    ),
+    csvSection(
+      "Item/Product Performance",
+      ["Brand", "Product", "Category", "Size", "Stock Qty", "Sold Qty", "Net Sales", "Return Qty", "MRP Value", "Staff", "Restock Signal", "Match Confidence", "Barcode", "SKU"],
+      report.itemRows.map((row) => [
+        row.brand,
+        row.itemName,
+        row.category,
+        [...new Set([...row.sizesAvailable, ...row.sizesSold])].join(" / "),
+        row.stockQuantity,
+        row.soldQuantity,
+        row.netSales,
+        row.returnQuantity,
+        row.stockMrpValue,
+        row.staff.join(" / "),
+        row.stockQuantity <= 2 && row.soldQuantity >= 5 ? "Restock Urgent" : "",
+        row.matchConfidence,
+        row.barcode,
+        row.sku,
+      ]),
+    ),
+    csvSection(
+      "Size-wise Quantity",
+      ["Size", "Stock Qty", "Sold Qty", "Return Qty", "Net Sold Qty", "Net Sales", "Brands", "Items"],
+      report.sizeRows.map((row) => [
+        row.size,
+        row.stockQuantity,
+        row.soldQuantity,
+        row.returnQuantity,
+        row.netSoldQuantity,
+        row.netSales,
+        row.brandsCount,
+        row.itemsCount,
+      ]),
+    ),
+    csvSection(
+      "Restock Suggestions",
+      ["Signal", "Brand", "Product", "Category", "Size", "Sold Qty", "Stock Qty", "Return Qty", "Net Sales", "Latest Stock Month", "Match Confidence"],
+      report.restockRows.map((row) => [
+        row.signal,
+        row.brand,
+        row.itemName,
+        row.category,
+        row.size,
+        row.soldQuantity,
+        row.stockQuantity,
+        row.returnQuantity,
+        row.netSales,
+        row.latestStockMonth,
+        row.matchConfidence,
+      ]),
+    ),
+    csvSection(
+      "Slow / No-sale Signals",
+      ["Brand", "Product", "Category", "Size", "Stock Qty", "Sold Qty", "Net Sales", "MRP Value", "Suggested Action", "Match Confidence"],
+      report.slowRows.map((row) => [
+        row.brand,
+        row.itemName,
+        row.category,
+        row.size,
+        row.stockQuantity,
+        row.soldQuantity,
+        row.netSales,
+        row.mrpValue,
+        row.suggestedAction,
+        row.matchConfidence,
+      ]),
+    ),
+  ].join("\n");
 }
 
 function MetricCard({ label, value, note }: { label: string; value: string; note?: string }) {
@@ -174,40 +334,106 @@ function ItemTable({ rows }: { rows: BusinessItem[] }) {
       <table className="w-full min-w-[1240px] text-left text-sm">
         <thead className="border-b border-border text-xs uppercase text-muted">
           <tr>
-            <th className="px-3 py-3 font-semibold">Item Name</th>
             <th className="px-3 py-3 font-semibold">Brand</th>
+            <th className="px-3 py-3 font-semibold">Item/Product Name</th>
             <th className="px-3 py-3 font-semibold">Category</th>
-            <th className="px-3 py-3 font-semibold">Barcode</th>
-            <th className="px-3 py-3 font-semibold">SKU</th>
-            <th className="px-3 py-3 font-semibold">Net Sales</th>
-            <th className="px-3 py-3 font-semibold">Sold Qty</th>
-            <th className="px-3 py-3 font-semibold">Return Qty</th>
-            <th className="px-3 py-3 font-semibold">Return Amt</th>
+            <th className="px-3 py-3 font-semibold">Size</th>
             <th className="px-3 py-3 font-semibold">Stock Qty</th>
+            <th className="px-3 py-3 font-semibold">Sold Qty</th>
+            <th className="px-3 py-3 font-semibold">Net Sales</th>
+            <th className="px-3 py-3 font-semibold">Return Qty</th>
             <th className="px-3 py-3 font-semibold">Stock MRP</th>
-            <th className="px-3 py-3 font-semibold">Sizes Available</th>
-            <th className="px-3 py-3 font-semibold">Sizes Sold</th>
             <th className="px-3 py-3 font-semibold">Staff</th>
+            <th className="px-3 py-3 font-semibold">Restock Signal</th>
             <th className="px-3 py-3 font-semibold">Match Confidence</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {rows.map((row) => (
             <tr key={row.key}>
-              <td className="px-3 py-3 font-semibold">{row.itemName}</td>
               <td className="px-3 py-3">{row.brand ?? "None"}</td>
+              <td className="px-3 py-3">
+                <p className="font-semibold">{row.itemName}</p>
+                <p className="mt-1 text-xs text-muted">
+                  Barcode {row.barcode ?? "none"} · SKU {row.sku ?? "none"}
+                </p>
+              </td>
               <td className="px-3 py-3">{row.category ?? "None"}</td>
-              <td className="px-3 py-3">{row.barcode ?? "None"}</td>
-              <td className="px-3 py-3">{row.sku ?? "None"}</td>
-              <td className="px-3 py-3">{formatMoney(row.netSales)}</td>
-              <td className="px-3 py-3">{formatNumber(row.soldQuantity)}</td>
-              <td className="px-3 py-3">{formatNumber(row.returnQuantity)}</td>
-              <td className="px-3 py-3">{formatMoney(row.returnAmount)}</td>
+              <td className="px-3 py-3">
+                {[...new Set([...row.sizesAvailable, ...row.sizesSold])].join(", ") || "None"}
+              </td>
               <td className="px-3 py-3">{formatNumber(row.stockQuantity)}</td>
+              <td className="px-3 py-3">{formatNumber(row.soldQuantity)}</td>
+              <td className="px-3 py-3">{formatMoney(row.netSales)}</td>
+              <td className="px-3 py-3">{formatNumber(row.returnQuantity)}</td>
               <td className="px-3 py-3">{formatMoney(row.stockMrpValue)}</td>
-              <td className="px-3 py-3">{row.sizesAvailable.join(", ") || "None"}</td>
-              <td className="px-3 py-3">{row.sizesSold.join(", ") || "None"}</td>
               <td className="px-3 py-3">{row.staff.slice(0, 5).join(", ") || "None"}</td>
+              <td className="px-3 py-3">
+                {row.soldQuantity >= 5 && row.stockQuantity <= 2
+                  ? "Restock Urgent"
+                  : row.soldQuantity >= 3 && row.stockQuantity <= 5
+                    ? "Restock Soon"
+                    : row.soldQuantity <= 1 && row.stockQuantity >= 10
+                      ? "Do Not Reorder / Push Offer"
+                      : row.soldQuantity === 0 && row.stockQuantity > 0
+                        ? "No Sale Stock"
+                        : "Watch"}
+              </td>
+              <td className="px-3 py-3">{row.matchConfidence}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SignalTable({
+  mode,
+  rows,
+}: {
+  mode: "restock" | "slow" | "low";
+  rows: BusinessSignalRow[];
+}) {
+  if (!rows.length) return <p className="text-sm leading-6 text-muted">No rows found for this signal in the selected filters.</p>;
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[980px] text-left text-sm">
+        <thead className="border-b border-border text-xs uppercase text-muted">
+          <tr>
+            {mode === "restock" ? <th className="px-3 py-3 font-semibold">Signal</th> : null}
+            <th className="px-3 py-3 font-semibold">Brand</th>
+            <th className="px-3 py-3 font-semibold">Item/Product</th>
+            <th className="px-3 py-3 font-semibold">Category</th>
+            <th className="px-3 py-3 font-semibold">Size</th>
+            <th className="px-3 py-3 font-semibold">Sold Qty</th>
+            <th className="px-3 py-3 font-semibold">Current Stock Qty</th>
+            <th className="px-3 py-3 font-semibold">Return Qty</th>
+            <th className="px-3 py-3 font-semibold">Net Sales</th>
+            {mode === "restock" ? <th className="px-3 py-3 font-semibold">Latest Stock Month</th> : null}
+            {mode === "slow" ? <th className="px-3 py-3 font-semibold">MRP Value</th> : null}
+            {mode === "slow" ? <th className="px-3 py-3 font-semibold">Suggested Action</th> : null}
+            {mode === "low" ? <th className="px-3 py-3 font-semibold">Signal</th> : null}
+            <th className="px-3 py-3 font-semibold">Match Confidence</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {rows.map((row) => (
+            <tr key={row.key}>
+              {mode === "restock" ? <td className="px-3 py-3 font-semibold">{row.signal}</td> : null}
+              <td className="px-3 py-3">{row.brand ?? "None"}</td>
+              <td className="px-3 py-3 font-semibold">{row.itemName}</td>
+              <td className="px-3 py-3">{row.category ?? "None"}</td>
+              <td className="px-3 py-3">{row.size}</td>
+              <td className="px-3 py-3">{formatNumber(row.soldQuantity)}</td>
+              <td className="px-3 py-3">{formatNumber(row.stockQuantity)}</td>
+              <td className="px-3 py-3">{formatNumber(row.returnQuantity)}</td>
+              <td className="px-3 py-3">{formatMoney(row.netSales)}</td>
+              {mode === "restock" ? <td className="px-3 py-3">{row.latestStockMonth ?? "None"}</td> : null}
+              {mode === "slow" ? <td className="px-3 py-3">{formatMoney(row.mrpValue)}</td> : null}
+              {mode === "slow" ? <td className="px-3 py-3">{row.suggestedAction}</td> : null}
+              {mode === "low" ? <td className="px-3 py-3 font-semibold">{row.signal}</td> : null}
               <td className="px-3 py-3">{row.matchConfidence}</td>
             </tr>
           ))}
@@ -337,6 +563,21 @@ export default async function BusinessReportingPage({
     },
     selectedStores,
   );
+  const missingSalesReports = await getMissingSalesReportDates(selectedStores, {
+    endDate: range.endDate,
+    startDate: range.startDate,
+  });
+  const storeLabel = selectedStoreId === "all" ? "All accessible stores" : selectedStores[0]?.name ?? "No store";
+  const periodLabel = `${periodOptions.find((option) => option.value === period)?.label ?? "This month"} (${range.startDate} to ${range.endDate})`;
+  const summaryText = buildSummaryText({
+    brand: query.brand,
+    category: query.category,
+    periodLabel,
+    report,
+    storeLabel,
+  });
+  const csv = buildReportCsv(report);
+  const weakItemRows = report.itemRows.filter((row) => row.matchConfidence === "weak item" || row.matchConfidence === "none").length;
 
   return (
     <div className="space-y-5">
@@ -355,6 +596,20 @@ export default async function BusinessReportingPage({
           <BarChart3 className="size-5 text-muted" />
         </div>
       </div>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm print:hidden">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Share / Download</p>
+            <h2 className="mt-2 text-2xl font-semibold">Owner-ready report actions</h2>
+          </div>
+          <BusinessReportActions
+            csv={csv}
+            fileName={`gpbm-business-report-${range.startDate}-to-${range.endDate}.csv`}
+            summary={summaryText}
+          />
+        </div>
+      </section>
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -430,12 +685,26 @@ export default async function BusinessReportingPage({
           {report.stockWarning}
         </section>
       ) : null}
+      {missingSalesReports.length ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-4 text-sm leading-6 text-danger shadow-sm">
+          Sales report missing for {missingSalesReports.length} selected store/date combination
+          {missingSalesReports.length === 1 ? "" : "s"}. Decisions may be incomplete.
+        </section>
+      ) : null}
       {report.summary.salesSizeMissingRows ? (
         <section className="rounded-[1.35rem] border border-border bg-card p-4 text-sm leading-6 text-muted shadow-sm">
           Size data not available in uploaded sales report for {report.summary.salesSizeMissingRows} row
           {report.summary.salesSizeMissingRows === 1 ? "" : "s"}.
         </section>
       ) : null}
+      {weakItemRows ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-4 text-sm leading-6 text-muted shadow-sm">
+          {weakItemRows} item row{weakItemRows === 1 ? "" : "s"} use weak or missing stock-sales match confidence. Verify before buying decisions.
+        </section>
+      ) : null}
+      <section className="rounded-[1.35rem] border border-border bg-card p-4 text-sm leading-6 text-muted shadow-sm">
+        Stock is based on the latest monthly upload, not a live inventory ledger.
+      </section>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard label="Net Sales" value={formatMoney(report.summary.netSales)} />
@@ -486,7 +755,39 @@ export default async function BusinessReportingPage({
           <h2 className="text-xl font-semibold">Item/Product Performance</h2>
           <PackageSearch className="size-5 text-muted" />
         </div>
+        <p className="mb-4 text-xs font-medium text-muted">Showing top 50 matching products.</p>
         <ItemTable rows={report.itemRows} />
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Restock Suggestions</h2>
+          <ShoppingBag className="size-5 text-muted" />
+        </div>
+        <p className="mb-4 text-xs font-medium text-muted">
+          Size-specific where uploaded stock/sales size data is available. Showing top 50 signals.
+        </p>
+        <SignalTable mode="restock" rows={report.restockRows} />
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Overstock / Slow Movement</h2>
+          <TrendingDown className="size-5 text-muted" />
+        </div>
+        <p className="mb-4 text-xs font-medium text-muted">
+          Slow / No-sale signal only. This is not final dead stock because ageing and purchase date are not used here.
+        </p>
+        <SignalTable mode="slow" rows={report.slowRows} />
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Low Stock by Size</h2>
+          <Ruler className="size-5 text-muted" />
+        </div>
+        <p className="mb-4 text-xs font-medium text-muted">Uses explicit size columns only. Unsafe item-name size inference is not used.</p>
+        <SignalTable mode="low" rows={report.lowStockRows} />
       </section>
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
@@ -507,4 +808,3 @@ export default async function BusinessReportingPage({
     </div>
   );
 }
-

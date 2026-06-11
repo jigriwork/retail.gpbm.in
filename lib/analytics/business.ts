@@ -84,6 +84,23 @@ export type BusinessItem = {
   matchConfidence: MatchConfidence;
 };
 
+export type BusinessSignalRow = {
+  key: string;
+  signal: string;
+  suggestedAction: string;
+  brand: string | null;
+  itemName: string;
+  category: string | null;
+  size: string;
+  soldQuantity: number;
+  stockQuantity: number;
+  returnQuantity: number;
+  netSales: number;
+  mrpValue: number | null;
+  latestStockMonth: string | null;
+  matchConfidence: MatchConfidence;
+};
+
 export type SizeSummary = {
   size: string;
   stockQuantity: number;
@@ -143,10 +160,28 @@ export type BusinessReport = {
   brandRows: BusinessRank[];
   categoryRows: BusinessRank[];
   itemRows: BusinessItem[];
+  restockRows: BusinessSignalRow[];
+  slowRows: BusinessSignalRow[];
+  lowStockRows: BusinessSignalRow[];
   sizeRows: SizeSummary[];
   staffRows: StaffSummary[];
   dailyTrend: DailyTrend[];
 };
+
+export const businessSignalThresholds = {
+  lowAndMovingSoldQuantity: 3,
+  lowAndMovingStockQuantity: 5,
+  noSaleStockQuantity: 1,
+  outOfStockQuantity: 0,
+  overstockSoldQuantity: 1,
+  overstockStockQuantity: 10,
+  restockSoonSoldQuantity: 3,
+  restockSoonStockQuantity: 5,
+  restockUrgentSoldQuantity: 5,
+  restockUrgentStockQuantity: 2,
+  veryLowStockQuantity: 2,
+  watchStockQuantity: 5,
+} as const;
 
 const salesSelect =
   "store_id,sale_date,bill_no,item_name,sku,barcode,brand,category,size,color,quantity,net_sale,staff_name";
@@ -275,7 +310,69 @@ function uniqueBillKey(row: SalesRow) {
 }
 
 function itemLabel(row: { item_name: string | null; barcode: string | null; sku: string | null }) {
-  return cleanNullable(row.barcode) ?? cleanNullable(row.sku) ?? clean(row.item_name, "Unnamed item");
+  return cleanNullable(row.item_name) ?? cleanNullable(row.barcode) ?? clean(row.sku, "Unnamed item");
+}
+
+function productSizeKey(identityKey: string, size: string) {
+  return `${identityKey}:size:${normalize(size) || "unspecified"}`;
+}
+
+function restockSignal(soldQuantity: number, stockQuantity: number) {
+  if (
+    soldQuantity >= businessSignalThresholds.restockUrgentSoldQuantity &&
+    stockQuantity <= businessSignalThresholds.restockUrgentStockQuantity
+  ) {
+    return "Restock Urgent";
+  }
+
+  if (
+    soldQuantity >= businessSignalThresholds.restockSoonSoldQuantity &&
+    stockQuantity <= businessSignalThresholds.restockSoonStockQuantity
+  ) {
+    return "Restock Soon";
+  }
+
+  if (soldQuantity > 0 && stockQuantity > businessSignalThresholds.watchStockQuantity) {
+    return "Watch";
+  }
+
+  if (
+    soldQuantity <= businessSignalThresholds.overstockSoldQuantity &&
+    stockQuantity >= businessSignalThresholds.overstockStockQuantity
+  ) {
+    return "Do Not Reorder / Push Offer";
+  }
+
+  if (soldQuantity === 0 && stockQuantity > 0) {
+    return "No Sale Stock";
+  }
+
+  return "Balanced";
+}
+
+function slowSuggestedAction(soldQuantity: number, stockQuantity: number) {
+  if (stockQuantity <= 0) return "Review after next stock upload";
+  if (soldQuantity === 0) return "Check display";
+  if (
+    stockQuantity >= businessSignalThresholds.overstockStockQuantity &&
+    soldQuantity <= businessSignalThresholds.overstockSoldQuantity
+  ) {
+    return "Put in offer";
+  }
+  if (stockQuantity >= businessSignalThresholds.overstockStockQuantity) return "Avoid reorder";
+  return "Push staff";
+}
+
+function lowStockSignal(stockQuantity: number, soldQuantity: number) {
+  if (stockQuantity === businessSignalThresholds.outOfStockQuantity) return "Out of Stock";
+  if (stockQuantity <= businessSignalThresholds.veryLowStockQuantity) return "Very Low";
+  if (
+    stockQuantity <= businessSignalThresholds.lowAndMovingStockQuantity &&
+    soldQuantity >= businessSignalThresholds.lowAndMovingSoldQuantity
+  ) {
+    return "Low and Moving";
+  }
+  return "OK";
 }
 
 async function getLatestStockMonths(stores: Array<Pick<Store, "id" | "name">>) {
@@ -401,6 +498,7 @@ export async function getBusinessReport(
   const sizeMap = new Map<string, SizeSummary>();
   const staffMap = new Map<string, StaffSummary & { bills: Set<string>; brands: Map<string, number>; categories: Map<string, number>; sources: Map<string, { sourceName: string; netSales: number; quantity: number }> }>();
   const itemMap = new Map<string, BusinessItem>();
+  const signalMap = new Map<string, BusinessSignalRow>();
   const itemIndex = new Map<string, string>();
   const dailyMap = new Map<string, DailyTrend>();
   const bills = new Set<string>();
@@ -464,6 +562,27 @@ export async function getBusinessReport(
     sizeMap.set(size, sizeBucket);
 
     const identity = primaryIdentity(row);
+    const signalKey = productSizeKey(identity.key, size);
+    const signalRow = signalMap.get(signalKey) ?? {
+      brand: cleanNullable(row.brand),
+      category: cleanNullable(row.category),
+      itemName: clean(row.item_name, "Unnamed item"),
+      key: signalKey,
+      latestStockMonth: row.stock_month,
+      matchConfidence: identity.confidence,
+      mrpValue: 0,
+      netSales: 0,
+      returnQuantity: 0,
+      signal: "Balanced",
+      size,
+      soldQuantity: 0,
+      stockQuantity: 0,
+      suggestedAction: "Watch",
+    };
+    signalRow.stockQuantity += quantity;
+    signalRow.mrpValue = signalRow.mrpValue === null || mrpValue === null ? null : (signalRow.mrpValue ?? 0) + mrpValue;
+    signalMap.set(signalKey, signalRow);
+
     const itemBucket = itemMap.get(identity.key) ?? {
       barcode: cleanNullable(row.barcode),
       brand: cleanNullable(row.brand),
@@ -594,6 +713,31 @@ export async function getBusinessReport(
 
     const match = identityKeys(row).find((key) => itemIndex.has(key.key));
     const identity = match ? { key: itemIndex.get(match.key)!, confidence: match.confidence } : primaryIdentity(row);
+    const signalKey = productSizeKey(identity.key, size);
+    const signalRow = signalMap.get(signalKey) ?? {
+      brand: cleanNullable(row.brand),
+      category: cleanNullable(row.category),
+      itemName: clean(row.item_name, "Unnamed item"),
+      key: signalKey,
+      latestStockMonth: null,
+      matchConfidence: identity.confidence,
+      mrpValue: 0,
+      netSales: 0,
+      returnQuantity: 0,
+      signal: "Balanced",
+      size,
+      soldQuantity: 0,
+      stockQuantity: 0,
+      suggestedAction: "Watch",
+    };
+    signalRow.netSales += sale;
+    signalRow.soldQuantity += quantity;
+    signalRow.returnQuantity += absReturnQuantity;
+    if (confidenceRank(identity.confidence) > confidenceRank(signalRow.matchConfidence)) {
+      signalRow.matchConfidence = identity.confidence;
+    }
+    signalMap.set(signalKey, signalRow);
+
     const itemBucket = itemMap.get(identity.key) ?? {
       barcode: cleanNullable(row.barcode),
       brand: cleanNullable(row.brand),
@@ -713,6 +857,29 @@ export async function getBusinessReport(
     .sort((a, b) => b.netSales + b.stockQuantity - (a.netSales + a.stockQuantity))
     .slice(0, 50);
 
+  const signalRows = [...signalMap.values()]
+    .map((row) => ({
+      ...row,
+      signal: restockSignal(row.soldQuantity, row.stockQuantity),
+      suggestedAction: slowSuggestedAction(row.soldQuantity, row.stockQuantity),
+    }))
+    .sort((a, b) => b.soldQuantity + b.stockQuantity - (a.soldQuantity + a.stockQuantity));
+  const restockRows = signalRows
+    .filter((row) => ["Restock Urgent", "Restock Soon", "Watch", "Do Not Reorder / Push Offer", "No Sale Stock"].includes(row.signal))
+    .slice(0, 50);
+  const slowRows = signalRows
+    .filter(
+      (row) =>
+        (row.stockQuantity >= businessSignalThresholds.overstockStockQuantity &&
+          row.soldQuantity <= businessSignalThresholds.overstockSoldQuantity) ||
+        (row.stockQuantity > 0 && row.soldQuantity === 0),
+    )
+    .slice(0, 50);
+  const lowStockRows = signalRows
+    .map((row) => ({ ...row, signal: lowStockSignal(row.stockQuantity, row.soldQuantity) }))
+    .filter((row) => ["Very Low", "Low and Moving", "Out of Stock"].includes(row.signal))
+    .slice(0, 50);
+
   const fastMovingCount = [...itemMap.values()].filter((item) => movementStatus(item.soldQuantity, item.stockQuantity) === "Fast moving").length;
   const slowMovingCount = [...itemMap.values()].filter((item) => movementStatus(item.soldQuantity, item.stockQuantity) === "Slow moving").length;
   const noSaleStockCount = [...itemMap.values()].filter((item) => movementStatus(item.soldQuantity, item.stockQuantity) === "No sale stock").length;
@@ -736,6 +903,9 @@ export async function getBusinessReport(
       categories: [...categoryOptions].filter((value) => value !== "Unspecified").sort().slice(0, 250),
       sizes: [...sizeOptions].sort().slice(0, 250),
     },
+    lowStockRows,
+    restockRows,
+    slowRows,
     sizeRows: [...sizeMap.values()].sort((a, b) => b.stockQuantity + b.soldQuantity - (a.stockQuantity + a.soldQuantity)).slice(0, 80),
     staffRows: [...staffMap.values()]
       .map((staff) => ({
@@ -774,4 +944,3 @@ export async function getBusinessReport(
     },
   };
 }
-
