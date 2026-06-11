@@ -142,6 +142,63 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          metadata: Json | null
+          period_month: string | null
+          report_date: string | null
+          store_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          metadata?: Json | null
+          period_month?: string | null
+          report_date?: string | null
+          store_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          metadata?: Json | null
+          period_month?: string | null
+          report_date?: string | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cleaning_reviews: {
         Row: {
           ac_fan_working: boolean | null
@@ -774,6 +831,7 @@ export type Database = {
           report_date: string | null
           report_type: string
           row_count: number | null
+          sales_upload_batch_id: string | null
           status: string | null
           store_id: string | null
           summary: Json | null
@@ -788,6 +846,7 @@ export type Database = {
           report_date?: string | null
           report_type: string
           row_count?: number | null
+          sales_upload_batch_id?: string | null
           status?: string | null
           store_id?: string | null
           summary?: Json | null
@@ -802,12 +861,20 @@ export type Database = {
           report_date?: string | null
           report_type?: string
           row_count?: number | null
+          sales_upload_batch_id?: string | null
           status?: string | null
           store_id?: string | null
           summary?: Json | null
           uploaded_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "reports_sales_upload_batch_id_fkey"
+            columns: ["sales_upload_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sales_upload_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reports_store_id_fkey"
             columns: ["store_id"]
@@ -1012,6 +1079,96 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_upload_batches: {
+        Row: {
+          created_at: string | null
+          detected_end_date: string | null
+          detected_start_date: string | null
+          failed_dates: number | null
+          file_path: string | null
+          id: string
+          imported_dates: number | null
+          original_file_name: string | null
+          replaced_dates: number | null
+          skipped_dates: number | null
+          status: string | null
+          store_id: string
+          summary: Json | null
+          total_bills: number | null
+          total_dates: number | null
+          total_net_sale: number | null
+          total_quantity: number | null
+          total_rows: number | null
+          unmatched_staff_count: number | null
+          updated_at: string | null
+          upload_mode: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          detected_end_date?: string | null
+          detected_start_date?: string | null
+          failed_dates?: number | null
+          file_path?: string | null
+          id?: string
+          imported_dates?: number | null
+          original_file_name?: string | null
+          replaced_dates?: number | null
+          skipped_dates?: number | null
+          status?: string | null
+          store_id: string
+          summary?: Json | null
+          total_bills?: number | null
+          total_dates?: number | null
+          total_net_sale?: number | null
+          total_quantity?: number | null
+          total_rows?: number | null
+          unmatched_staff_count?: number | null
+          updated_at?: string | null
+          upload_mode?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          detected_end_date?: string | null
+          detected_start_date?: string | null
+          failed_dates?: number | null
+          file_path?: string | null
+          id?: string
+          imported_dates?: number | null
+          original_file_name?: string | null
+          replaced_dates?: number | null
+          skipped_dates?: number | null
+          status?: string | null
+          store_id?: string
+          summary?: Json | null
+          total_bills?: number | null
+          total_dates?: number | null
+          total_net_sale?: number | null
+          total_quantity?: number | null
+          total_rows?: number | null
+          unmatched_staff_count?: number | null
+          updated_at?: string | null
+          upload_mode?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_upload_batches_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_upload_batches_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
