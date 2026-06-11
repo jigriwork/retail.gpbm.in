@@ -7,6 +7,7 @@ import {
   LineChart,
   PackageSearch,
   Phone,
+  ShieldAlert,
   UploadCloud,
   UserRoundCheck,
   UserRoundCog,
@@ -228,6 +229,18 @@ export default async function ReportsPage() {
           </Link>
           {profile?.role === "owner" ? (
             <>
+              <Link
+                className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+                href="/app/reports/correction"
+              >
+                <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+                  <ShieldAlert className="size-5" />
+                </div>
+                <h2 className="text-2xl font-semibold">Data Correction Center</h2>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  Delete, replace or repair wrong uploaded sales reports. Owner only.
+                </p>
+              </Link>
               <Link
                 className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
                 href="/app/payslips"

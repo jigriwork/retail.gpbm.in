@@ -29,6 +29,14 @@ export default async function SalesReportsPage({
         </p>
       </div>
 
+      <section className="rounded-[1.35rem] border border-border bg-card p-4 text-sm leading-6 text-muted shadow-sm">
+        Managers should upload one day report only. If owner has a multi-date historical report, use{" "}
+        <Link className="font-semibold text-foreground" href="/app/reports/correction">
+          Data Correction Center
+        </Link>{" "}
+        - Bulk Historical Sales Upload. If a wrong report was uploaded, owner can delete or replace it from Data Correction Center.
+      </section>
+
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         {stores.length ? (
           <SalesUploadForm
