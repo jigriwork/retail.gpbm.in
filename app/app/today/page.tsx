@@ -16,6 +16,10 @@ import {
   WalletCards,
   Bot,
   FileText,
+  ShieldAlert,
+  ShoppingBag,
+  UploadCloud,
+  UserRoundCheck,
 } from "lucide-react";
 
 import { ChecklistCard } from "@/components/checklist/checklist-card";
@@ -56,6 +60,65 @@ function formatMoney(value?: number) {
     style: "currency",
   }).format(value ?? 0);
 }
+
+const ownerCommandShortcuts = [
+  {
+    description: "Search brand, product, category and size. Check stock vs sales and what to reorder.",
+    href: "/app/reports/business",
+    icon: ShoppingBag,
+    title: "Buying & Restock",
+  },
+  {
+    description: "Open owner-ready copy, WhatsApp, print and CSV report actions.",
+    href: "/app/reports/business",
+    icon: LineChart,
+    title: "Business Reports / Downloads",
+  },
+  {
+    description: "Upload today's store sales report.",
+    href: "/app/reports/sales",
+    icon: UploadCloud,
+    title: "Upload Daily Sales",
+  },
+  {
+    description: "Upload monthly stock report and view stock status.",
+    href: "/app/reports/stock",
+    icon: PackageSearch,
+    title: "Upload Stock",
+  },
+  {
+    description: "See staff-wise sales for today, week and month.",
+    href: "/app/reports/staff",
+    icon: UserRoundCheck,
+    title: "Staff Sales",
+  },
+  {
+    description: "Delete, replace or bulk upload sales reports. Owner only.",
+    href: "/app/reports/correction",
+    icon: ShieldAlert,
+    ownerOnly: true,
+    title: "Fix Wrong Upload",
+  },
+  {
+    description: "Ask business questions and get owner summary.",
+    href: "/app/secretary",
+    icon: Bot,
+    ownerOnly: true,
+    title: "AI Secretary",
+  },
+  {
+    description: "Check pending tasks and manager follow-ups.",
+    href: "/app/tasks",
+    icon: ListTodo,
+    title: "Store Tasks",
+  },
+  {
+    description: "Check daily store discipline.",
+    href: "/app/checklist",
+    icon: ClipboardCheck,
+    title: "Daily Checklist",
+  },
+];
 
 export default async function TodayPage() {
   const { profile } = await requireProfile();
@@ -137,6 +200,32 @@ export default async function TodayPage() {
           Signed in as <span className="font-semibold capitalize">{profile?.role}</span>.
           Store data below follows your role and assignments.
         </p>
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="mb-4">
+          <p className="text-sm font-medium text-muted">Owner Command Center</p>
+          <h2 className="mt-2 text-2xl font-semibold">Quick actions for sales, stock, staff, restock and store control.</h2>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {ownerCommandShortcuts
+            .filter((item) => !item.ownerOnly || profile?.role === "owner")
+            .map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  className="rounded-2xl border border-border p-4 transition hover:border-foreground hover:bg-black/[0.02]"
+                  href={item.href}
+                  key={item.href}
+                >
+                  <Icon className="mb-4 size-5 text-muted" />
+                  <h3 className="font-semibold">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted">{item.description}</p>
+                </Link>
+              );
+            })}
+        </div>
       </section>
 
       {profile?.role === "owner" ? (
@@ -271,7 +360,7 @@ export default async function TodayPage() {
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl border border-border p-3">
-            <p className="text-xs font-medium text-muted">Dead candidates</p>
+            <p className="text-xs font-medium text-muted">Possible dead</p>
             <p className="mt-1 text-2xl font-semibold">{stockPulse?.deadStockCandidates.length ?? 0}</p>
           </div>
           <div className="rounded-2xl border border-border p-3">

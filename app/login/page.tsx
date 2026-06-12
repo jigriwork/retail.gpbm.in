@@ -22,7 +22,7 @@ export default async function LoginPage() {
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold">Retail</h1>
               <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[0.65rem] font-bold uppercase text-muted">
-                Version 6.0.0
+                Version 7.0.0
               </span>
             </div>
           </div>

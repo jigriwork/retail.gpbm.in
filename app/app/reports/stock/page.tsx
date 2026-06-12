@@ -43,7 +43,7 @@ export default async function StockReportsPage({
           </div>
           <h2 className="text-xl font-semibold">Stock analytics</h2>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Slow stock, dead stock signals and fast moving low-stock candidates.
+            Slow stock, possible dead stock and fast moving low-stock candidates.
           </p>
         </Link>
         {overview.statuses.map((status) => (

@@ -56,9 +56,9 @@ export default async function ReportsPage() {
               <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
                 <BarChart3 className="size-5" />
               </div>
-              <h2 className="text-2xl font-semibold">Daily Sales Report</h2>
+              <h2 className="text-2xl font-semibold">Daily Sales Upload</h2>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Upload store-wise sales files and convert them into searchable sales rows.
+                Upload store-wise daily sales files and convert them into searchable sales rows.
               </p>
             </div>
             <Link
@@ -119,9 +119,9 @@ export default async function ReportsPage() {
             <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
               <ChartNoAxesCombined className="size-5" />
             </div>
-            <h2 className="text-2xl font-semibold">Business Reporting</h2>
+            <h2 className="text-2xl font-semibold">Buying & Restock Report</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Search brand, category, item, size, stock and sales performance.
+              Search brand/product/category/size, compare stock vs sales, and find what to reorder or avoid buying.
             </p>
           </Link>
           <Link
@@ -133,7 +133,7 @@ export default async function ReportsPage() {
             </div>
             <h2 className="text-2xl font-semibold">Sales Analytics</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Store, staff, brand and category visibility from uploaded sales rows.
+              Track sales trends, targets, daily movement, brands and categories from uploaded sales rows.
             </p>
           </Link>
           <Link
@@ -145,7 +145,7 @@ export default async function ReportsPage() {
             </div>
             <h2 className="text-2xl font-semibold">Staff Sales Report</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              View daily, weekly and monthly staff-wise sales.
+              Check staff performance for daily, weekly and monthly sales.
             </p>
           </Link>
           <Link
@@ -167,9 +167,9 @@ export default async function ReportsPage() {
             <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
               <FileSpreadsheet className="size-5" />
             </div>
-            <h2 className="text-2xl font-semibold">Monthly Stock Report</h2>
+            <h2 className="text-2xl font-semibold">Stock Upload</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Due day 1. Current month: {stockOverview.periodMonth}.
+              Upload monthly stock and confirm current stock status. Current month: {stockOverview.periodMonth}.
             </p>
             <div className="mt-4 space-y-2">
               {stockOverview.statuses.map((status) => (
@@ -197,7 +197,7 @@ export default async function ReportsPage() {
             </div>
             <h2 className="text-2xl font-semibold">Stock Analytics</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Slow/dead stock dashboard, high-stock low-sale and reorder signals.
+              Review stock movement, possible dead stock, high-stock low-sale items and reorder signals.
             </p>
           </Link>
           <Link
@@ -251,7 +251,7 @@ export default async function ReportsPage() {
                 </div>
                 <h2 className="text-2xl font-semibold">Data Correction Center</h2>
                 <p className="mt-2 text-sm leading-6 text-muted">
-                  Delete, replace or repair wrong uploaded sales reports. Owner only.
+                  Fix wrong uploads: delete, replace, repair or bulk upload sales reports. Owner only.
                 </p>
               </Link>
               <Link

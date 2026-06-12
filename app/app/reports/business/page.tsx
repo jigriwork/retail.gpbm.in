@@ -218,6 +218,81 @@ function MetricCard({ label, value, note }: { label: string; value: string; note
   );
 }
 
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-border bg-background p-4 text-sm leading-6 text-muted">
+      {children}
+    </div>
+  );
+}
+
+function DecisionItem({
+  brand,
+  itemName,
+  netSales,
+  soldQuantity,
+  stockQuantity,
+}: {
+  brand?: string | null;
+  itemName: string;
+  netSales: number;
+  soldQuantity: number;
+  stockQuantity: number;
+}) {
+  return (
+    <div className="rounded-2xl border border-border p-3">
+      <p className="text-xs font-medium text-muted">{brand ?? "No brand"}</p>
+      <p className="mt-1 font-semibold">{itemName}</p>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+        <div>
+          <p className="text-muted">Sold</p>
+          <p className="font-semibold">{formatNumber(soldQuantity)}</p>
+        </div>
+        <div>
+          <p className="text-muted">Sales</p>
+          <p className="font-semibold">{formatMoney(netSales)}</p>
+        </div>
+        <div>
+          <p className="text-muted">Stock</p>
+          <p className="font-semibold">{formatNumber(stockQuantity)}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DecisionCard({
+  children,
+  count,
+  emptyText,
+  title,
+}: {
+  children: React.ReactNode;
+  count?: number;
+  emptyText: string;
+  title: string;
+}) {
+  return (
+    <div className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <h3 className="font-semibold">{title}</h3>
+        {count !== undefined ? (
+          <span className="rounded-full border border-border px-2 py-1 text-xs font-semibold text-muted">
+            {count}
+          </span>
+        ) : null}
+      </div>
+      {count === 0 ? <p className="text-sm leading-6 text-muted">{emptyText}</p> : children}
+    </div>
+  );
+}
+
+function statusClass(status: "ok" | "warning" | "danger") {
+  if (status === "danger") return "text-danger";
+  if (status === "warning") return "text-warning";
+  return "text-success";
+}
+
 function BrandTable({
   rows,
   query,
@@ -225,7 +300,13 @@ function BrandTable({
   rows: BusinessRank[];
   query: Record<string, string | undefined>;
 }) {
-  if (!rows.length) return <p className="text-sm leading-6 text-muted">No brand data found for the selected filters.</p>;
+  if (!rows.length) {
+    return (
+      <EmptyState>
+        No brand match for these filters. Check the spelling from the uploaded files, clear the brand field, or try a wider period.
+      </EmptyState>
+    );
+  }
 
   return (
     <div className="overflow-x-auto">
@@ -280,7 +361,13 @@ function CategoryTable({
   rows: BusinessRank[];
   query: Record<string, string | undefined>;
 }) {
-  if (!rows.length) return <p className="text-sm leading-6 text-muted">No category data found for the selected filters.</p>;
+  if (!rows.length) {
+    return (
+      <EmptyState>
+        No category match for these filters. Check if the category name differs in uploaded sales or stock files.
+      </EmptyState>
+    );
+  }
 
   return (
     <div className="overflow-x-auto">
@@ -326,8 +413,14 @@ function CategoryTable({
   );
 }
 
-function ItemTable({ rows }: { rows: BusinessItem[] }) {
-  if (!rows.length) return <p className="text-sm leading-6 text-muted">No item/product data found for the selected filters.</p>;
+function ItemTable({ hasItemSearch, rows }: { hasItemSearch: boolean; rows: BusinessItem[] }) {
+  if (!rows.length) {
+    return (
+      <EmptyState>
+        No product/item match for these filters. {hasItemSearch ? "Try widening period or clearing brand/category filters." : "Select a brand or category first, then search item name, barcode or SKU."}
+      </EmptyState>
+    );
+  }
 
   return (
     <div className="overflow-x-auto">
@@ -395,7 +488,16 @@ function SignalTable({
   mode: "restock" | "slow" | "low";
   rows: BusinessSignalRow[];
 }) {
-  if (!rows.length) return <p className="text-sm leading-6 text-muted">No rows found for this signal in the selected filters.</p>;
+  if (!rows.length) {
+    const message =
+      mode === "restock"
+        ? "No restock signal found. Try This Year or check if sales and latest stock reports are uploaded."
+        : mode === "slow"
+          ? "No slow/no-sale rows found for this selection. Try a wider period before deciding what to avoid buying."
+          : "No low stock by size found. Size signals need explicit size in uploaded stock and sales rows.";
+
+    return <EmptyState>{message}</EmptyState>;
+  }
 
   return (
     <div className="overflow-x-auto">
@@ -444,7 +546,13 @@ function SignalTable({
 }
 
 function SizeTable({ rows }: { rows: SizeSummary[] }) {
-  if (!rows.length) return <p className="text-sm leading-6 text-muted">No size data found for the selected filters.</p>;
+  if (!rows.length) {
+    return (
+      <EmptyState>
+        No size data found. Stock size works only when stock upload has size, and size-wise sales works only when sales upload has size.
+      </EmptyState>
+    );
+  }
 
   return (
     <div className="overflow-x-auto">
@@ -481,7 +589,13 @@ function SizeTable({ rows }: { rows: SizeSummary[] }) {
 }
 
 function StaffTable({ rows }: { rows: StaffSummary[] }) {
-  if (!rows.length) return <p className="text-sm leading-6 text-muted">No staff sales found for the selected filters.</p>;
+  if (!rows.length) {
+    return (
+      <EmptyState>
+        No staff sales found for this selection. Try This Year or check whether sales files include staff names.
+      </EmptyState>
+    );
+  }
 
   return (
     <div className="overflow-x-auto">
@@ -578,6 +692,39 @@ export default async function BusinessReportingPage({
   });
   const csv = buildReportCsv(report);
   const weakItemRows = report.itemRows.filter((row) => row.matchConfidence === "weak item" || row.matchConfidence === "none").length;
+  const missingDataCount =
+    missingSalesReports.length +
+    (report.stockWarning ? 1 : 0) +
+    (report.summary.salesSizeMissingRows ? 1 : 0) +
+    (weakItemRows ? 1 : 0);
+  const topSellingRows = [...report.itemRows]
+    .sort((left, right) => right.soldQuantity - left.soldQuantity || right.netSales - left.netSales)
+    .slice(0, 3);
+  const urgentRestockRows = report.restockRows.filter((row) => row.signal === "Restock Urgent");
+  const avoidBuyingRows = report.slowRows;
+  const lowStockRows = report.lowStockRows;
+  const salesStatus =
+    report.summary.billCount === 0 && report.summary.soldQuantity === 0 && report.summary.netSales === 0
+      ? { label: "No sales data", tone: "danger" as const }
+      : missingSalesReports.length
+        ? { label: "Missing days", tone: "warning" as const }
+        : { label: "Complete", tone: "ok" as const };
+  const stockStatus =
+    report.stockWarning || report.summary.stockQuantity === 0
+      ? { label: "Missing stock", tone: "warning" as const }
+      : { label: "Latest stock uploaded", tone: "ok" as const };
+  const sizeStatus =
+    report.sizeRows.length === 0
+      ? { label: "No size data", tone: "danger" as const }
+      : report.summary.salesSizeMissingRows
+        ? { label: "Missing in some sales rows", tone: "warning" as const }
+        : { label: "Available", tone: "ok" as const };
+  const matchStatus =
+    report.itemRows.length === 0
+      ? { label: "No product matches", tone: "warning" as const }
+      : weakItemRows
+        ? { label: "Mixed / weak matches present", tone: "warning" as const }
+        : { label: "Strong", tone: "ok" as const };
 
   return (
     <div className="space-y-5">
@@ -588,14 +735,126 @@ export default async function BusinessReportingPage({
         <div className="mt-2 flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-muted">Business Reporting</p>
-            <h1 className="mt-2 text-3xl font-semibold">Brand, category, item and size performance</h1>
+            <h1 className="mt-2 text-3xl font-semibold">Buying & Restock Report</h1>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Search stock and sales together without salary, payslip or incentive data.
+              Search brand, category, product and size to see stock, sold quantity, staff performance and reorder signals.
             </p>
           </div>
           <BarChart3 className="size-5 text-muted" />
         </div>
       </div>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Selected filters</p>
+            <h2 className="mt-2 text-2xl font-semibold">What this report is showing</h2>
+          </div>
+          <span className={missingDataCount ? "rounded-full border border-border px-3 py-1 text-xs font-semibold text-warning" : "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success"}>
+            {missingDataCount ? `${missingDataCount} warning${missingDataCount === 1 ? "" : "s"}` : "No warnings"}
+          </span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            ["Store", storeLabel],
+            ["Period", periodLabel],
+            ["Brand", query.brand || "All Brands"],
+            ["Category", query.category || "All Categories"],
+            ["Product search", query.item || "All Products"],
+            ["Size", query.size || "All Sizes"],
+            ["Latest stock month used", report.summary.latestStockMonthLabel || "None"],
+            ["Missing data warnings", String(missingDataCount)],
+          ].map(([label, value]) => (
+            <div className="min-w-0 rounded-2xl border border-border p-3" key={label}>
+              <p className="text-xs font-medium text-muted">{label}</p>
+              <p className="mt-1 break-words text-sm font-semibold">{value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <p className="text-sm font-medium text-muted">Data Confidence</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            ["Sales data", salesStatus],
+            ["Stock data", stockStatus],
+            ["Size data", sizeStatus],
+            ["Match confidence", matchStatus],
+          ].map(([label, item]) => {
+            const status = item as { label: string; tone: "ok" | "warning" | "danger" };
+
+            return (
+              <div className="rounded-2xl border border-border p-3" key={label as string}>
+                <p className="text-xs font-medium text-muted">{label as string}</p>
+                <p className={`mt-2 font-semibold ${statusClass(status.tone)}`}>{status.label}</p>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-4 text-sm leading-6 text-muted">
+          Stock note: latest monthly stock, not live inventory.
+        </p>
+      </section>
+
+      <section className="grid gap-3 lg:grid-cols-4">
+        <DecisionCard count={topSellingRows.length} emptyText="No sales found for this period. Try This Year or check missing sales reports." title="Top Selling">
+          <div className="space-y-2">
+            {topSellingRows.map((row) => (
+              <DecisionItem
+                brand={row.brand}
+                itemName={row.itemName}
+                key={row.key}
+                netSales={row.netSales}
+                soldQuantity={row.soldQuantity}
+                stockQuantity={row.stockQuantity}
+              />
+            ))}
+          </div>
+        </DecisionCard>
+        <DecisionCard count={urgentRestockRows.length} emptyText="No urgent restock signal found for these filters." title="Restock Urgent">
+          <div className="space-y-2">
+            {urgentRestockRows.slice(0, 3).map((row) => (
+              <DecisionItem
+                brand={row.brand}
+                itemName={row.itemName}
+                key={row.key}
+                netSales={row.netSales}
+                soldQuantity={row.soldQuantity}
+                stockQuantity={row.stockQuantity}
+              />
+            ))}
+          </div>
+        </DecisionCard>
+        <DecisionCard count={avoidBuyingRows.length} emptyText="No avoid-buying or offer-push signal found." title="Avoid Buying / Push Offer">
+          <div className="space-y-2">
+            {avoidBuyingRows.slice(0, 3).map((row) => (
+              <DecisionItem
+                brand={row.brand}
+                itemName={row.itemName}
+                key={row.key}
+                netSales={row.netSales}
+                soldQuantity={row.soldQuantity}
+                stockQuantity={row.stockQuantity}
+              />
+            ))}
+          </div>
+        </DecisionCard>
+        <DecisionCard count={lowStockRows.length} emptyText="No low-stock size signal found." title="Low Stock by Size">
+          <div className="space-y-2">
+            {lowStockRows.slice(0, 3).map((row) => (
+              <DecisionItem
+                brand={row.brand}
+                itemName={`${row.itemName} / ${row.size}`}
+                key={row.key}
+                netSales={row.netSales}
+                soldQuantity={row.soldQuantity}
+                stockQuantity={row.stockQuantity}
+              />
+            ))}
+          </div>
+        </DecisionCard>
+      </section>
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm print:hidden">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -663,6 +922,9 @@ export default async function BusinessReportingPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Item/Product</span>
             <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.item} name="item" placeholder="Name, barcode, SKU" />
+            <span className="mt-2 block text-xs leading-5 text-muted">
+              Searches within the selected store, period, brand and category. For best results, first select brand or category, then search item.
+            </span>
           </label>
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Size</span>
@@ -756,7 +1018,7 @@ export default async function BusinessReportingPage({
           <PackageSearch className="size-5 text-muted" />
         </div>
         <p className="mb-4 text-xs font-medium text-muted">Showing top 50 matching products.</p>
-        <ItemTable rows={report.itemRows} />
+        <ItemTable hasItemSearch={Boolean(query.item)} rows={report.itemRows} />
       </section>
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">

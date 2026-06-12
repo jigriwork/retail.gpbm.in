@@ -107,7 +107,7 @@ export default async function StockAnalyticsPage({
         </Link>
         <h1 className="mt-2 text-3xl font-semibold">Stock analytics</h1>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Slow stock, dead stock signals and fast moving low-stock candidates from stock and sales rows.
+          Slow stock, possible dead stock and fast moving low-stock candidates from stock and sales rows.
         </p>
       </div>
 
@@ -218,11 +218,14 @@ export default async function StockAnalyticsPage({
       <section className="grid gap-5 lg:grid-cols-2">
         <div className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Dead stock candidates</h2>
+            <h2 className="text-xl font-semibold">No-sale / possible dead stock</h2>
             <CircleAlert className="size-5 text-muted" />
           </div>
+          <p className="mb-4 text-xs font-medium text-muted">
+            Dead stock is not final until purchase date/ageing is considered.
+          </p>
           <CandidateList
-            emptyText="No dead stock candidates found for the current thresholds."
+            emptyText="No no-sale / possible dead stock candidates found for the current thresholds."
             items={summary.deadStockCandidates}
           />
         </div>
