@@ -2,7 +2,7 @@
 
 Date: 2026-06-12
 
-Version: v7.0.0
+Version: v7.2.0
 
 Scope: owner buying workflow clarity, Today shortcuts, Buying & Restock report polish, safer stock wording, and release label update. No payslip/salary modules, sales parser, stock parser, uploaded data, RLS/security, incentives, reports/data deletion, or large new module were changed.
 

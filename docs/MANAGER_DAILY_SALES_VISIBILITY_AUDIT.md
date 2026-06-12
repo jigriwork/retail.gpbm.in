@@ -2,7 +2,7 @@
 
 Date: 2026-06-12
 
-Version: v7.0.0
+Version: v7.2.0
 
 Scope: audit-only review of manager daily sales upload visibility for owner. No code, schema, data, parser, RLS/security, or uploaded data changes were made.
 

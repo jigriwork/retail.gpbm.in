@@ -5,7 +5,10 @@ export type SalesReportSummary = {
   totalNetSale?: number;
   rowCount?: number;
   billCount?: number;
+  returnsCount?: number;
   staffNames?: string[];
+  unmatchedStaffCount?: number;
+  unmatchedStaffNames?: string[];
   topBrands?: Array<{ name: string; sale: number }>;
   topCategories?: Array<{ name: string; sale: number }>;
 };
@@ -19,11 +22,14 @@ export type SalesReportWithStore = {
   status: string | null;
   created_at: string | null;
   summary: SalesReportSummary | null;
+  profiles: { full_name: string | null; email: string | null } | null;
   stores: { id: string; name: string; code: string } | null;
 };
 
 export type StoreSalesStatus = {
   store: { id: string; name: string; code: string };
+  todayDate: string;
+  todayReport: SalesReportWithStore | null;
   yesterdayDate: string;
   yesterdayReport: SalesReportWithStore | null;
   latestReport: SalesReportWithStore | null;
@@ -39,6 +45,7 @@ const salesReportSelect = `
   status,
   created_at,
   summary,
+  profiles(full_name,email),
   stores(id,name,code)
 `;
 
@@ -89,7 +96,8 @@ export async function getSalesReportForStoreDate(storeId: string, reportDate: st
 export async function getStoreSalesStatuses(
   stores: Array<{ id: string; name: string; code: string }>,
 ) {
-  const yesterdayDate = addDays(getIndiaToday(), -1);
+  const todayDate = getIndiaToday();
+  const yesterdayDate = addDays(todayDate, -1);
   const storeIds = stores.map((store) => store.id);
 
   if (!storeIds.length) {
@@ -113,6 +121,11 @@ export async function getStoreSalesStatuses(
 
     return {
       store,
+      todayDate,
+      todayReport:
+        reports.find(
+          (report) => report.store_id === store.id && report.report_date === todayDate,
+        ) ?? null,
       yesterdayDate,
       yesterdayReport:
         reports.find(

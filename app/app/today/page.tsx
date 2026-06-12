@@ -26,7 +26,11 @@ import { ChecklistCard } from "@/components/checklist/checklist-card";
 import { StatusCard } from "@/components/app/status-card";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
-import { getStoreSalesStatuses } from "@/lib/reports/sales-queries";
+import {
+  getStoreSalesStatuses,
+  type SalesReportWithStore,
+  type StoreSalesStatus,
+} from "@/lib/reports/sales-queries";
 import { getSalaryAttendanceOverview } from "@/lib/reports/salary-queries";
 import { getStockOverview } from "@/lib/reports/stock-queries";
 import { getReviewStatuses } from "@/lib/reviews/queries";
@@ -59,6 +63,60 @@ function formatMoney(value?: number) {
     maximumFractionDigits: 0,
     style: "currency",
   }).format(value ?? 0);
+}
+
+function formatUploadTime(value?: string | null) {
+  if (!value) return "No upload";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Kolkata",
+  }).format(new Date(value));
+}
+
+function salesUploadLabel(report: SalesReportWithStore | null) {
+  return report ? "Uploaded" : "Missing";
+}
+
+function salesUploadBadgeClass(report: SalesReportWithStore | null) {
+  return report
+    ? "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success"
+    : "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger";
+}
+
+function latestUploadStatus(status: StoreSalesStatus) {
+  const unmatchedStaffCount = status.latestReport?.summary?.unmatchedStaffCount ?? 0;
+
+  if (unmatchedStaffCount > 0) {
+    return {
+      className: "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger",
+      label: "Needs Staff Alias Review",
+    };
+  }
+
+  if (status.todayReport || status.yesterdayReport) {
+    return {
+      className: "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success",
+      label: "Uploaded",
+    };
+  }
+
+  if (status.latestReport) {
+    return {
+      className: "rounded-full border border-border px-3 py-1 text-xs font-semibold text-warning",
+      label: "Late",
+    };
+  }
+
+  return {
+    className: "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger",
+    label: "Missing",
+  };
+}
+
+function salesUploader(report: SalesReportWithStore | null) {
+  return report?.profiles?.full_name ?? report?.profiles?.email ?? "No upload";
 }
 
 const ownerCommandShortcuts = [
@@ -224,7 +282,139 @@ export default async function TodayPage() {
                   <p className="mt-2 text-sm leading-6 text-muted">{item.description}</p>
                 </Link>
               );
-            })}
+          })}
+        </div>
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Daily Sales Upload Status</p>
+            <h2 className="mt-2 text-2xl font-semibold">
+              See whether daily store sales were uploaded and who uploaded them.
+            </h2>
+          </div>
+          <UploadCloud className="size-5 text-muted" />
+        </div>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {salesStatuses.map((status) => {
+            const latestReport = status.latestReport;
+            const latestStatus = latestUploadStatus(status);
+            const unmatchedStaffCount = latestReport?.summary?.unmatchedStaffCount ?? 0;
+
+            return (
+              <article
+                className="rounded-2xl border border-border p-4"
+                key={status.store.id}
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">{status.store.name}</h3>
+                    <p className="mt-1 text-xs font-medium text-muted">
+                      Latest upload: {latestReport?.report_date ?? "No upload"}
+                    </p>
+                  </div>
+                  <span className={latestStatus.className}>{latestStatus.label}</span>
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-xl border border-border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-muted">Today Report</p>
+                      <span className={salesUploadBadgeClass(status.todayReport)}>
+                        {salesUploadLabel(status.todayReport)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold">{status.todayDate}</p>
+                  </div>
+                  <div className="rounded-xl border border-border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-muted">Yesterday Report</p>
+                      <span className={salesUploadBadgeClass(status.yesterdayReport)}>
+                        {salesUploadLabel(status.yesterdayReport)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold">{status.yesterdayDate}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl border border-border p-3">
+                    <p className="text-xs font-medium text-muted">Uploaded by</p>
+                    <p className="mt-1 break-words text-sm font-semibold">{salesUploader(latestReport)}</p>
+                  </div>
+                  <div className="rounded-xl border border-border p-3">
+                    <p className="text-xs font-medium text-muted">Upload time</p>
+                    <p className="mt-1 text-sm font-semibold">{formatUploadTime(latestReport?.created_at)}</p>
+                  </div>
+                  <div className="rounded-xl border border-border p-3">
+                    <p className="text-xs font-medium text-muted">Total sale</p>
+                    <p className="mt-1 text-sm font-semibold">
+                      {formatMoney(latestReport?.summary?.totalNetSale)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-border p-3">
+                    <p className="text-xs font-medium text-muted">Bills</p>
+                    <p className="mt-1 text-sm font-semibold">{latestReport?.summary?.billCount ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-border p-3">
+                    <p className="text-xs font-medium text-muted">Returns</p>
+                    <p className="mt-1 text-sm font-semibold">{latestReport?.summary?.returnsCount ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-border p-3">
+                    <p className="text-xs font-medium text-muted">Unmatched staff</p>
+                    <p className={unmatchedStaffCount ? "mt-1 text-sm font-semibold text-danger" : "mt-1 text-sm font-semibold"}>
+                      {unmatchedStaffCount}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-border p-3 sm:col-span-2">
+                    <p className="text-xs font-medium text-muted">Latest Upload</p>
+                    <p className="mt-1 break-words text-sm font-semibold">
+                      {latestReport
+                        ? `${latestReport.report_date ?? "No date"} - ${latestReport.file_name ?? "No file name"}`
+                        : "No upload found"}
+                    </p>
+                  </div>
+                </div>
+
+                {latestReport?.summary?.unmatchedStaffNames?.length ? (
+                  <p className="mt-3 text-sm leading-6 text-muted">
+                    Staff alias review: {latestReport.summary.unmatchedStaffNames.slice(0, 3).join(", ")}
+                    {latestReport.summary.unmatchedStaffNames.length > 3 ? "..." : ""}
+                  </p>
+                ) : null}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
+                    href={`/app/reports/sales?storeId=${status.store.id}`}
+                  >
+                    View Sales
+                  </Link>
+                  <Link
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
+                    href={`/app/reports/staff?storeId=${status.store.id}`}
+                  >
+                    Staff Sales
+                  </Link>
+                  <Link
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
+                    href={`/app/reports/business?storeId=${status.store.id}`}
+                  >
+                    Buying Report
+                  </Link>
+                  {profile?.role === "owner" ? (
+                    <Link
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
+                      href={`/app/reports/correction?storeId=${status.store.id}`}
+                    >
+                      Fix Wrong Upload
+                    </Link>
+                  ) : null}
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
 

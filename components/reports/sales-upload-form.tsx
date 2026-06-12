@@ -98,6 +98,9 @@ export function SalesUploadForm({
         <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
           <p className="text-sm font-medium text-muted">Upload summary</p>
           <h2 className="mt-2 text-2xl font-semibold">{state.summary.storeName}</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Owner can see this upload on Today - Daily Sales Upload Status.
+          </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-border p-3">
               <p className="text-xs font-medium text-muted">Report date</p>

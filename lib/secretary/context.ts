@@ -29,6 +29,16 @@ function money(value: number) {
   }).format(value);
 }
 
+function uploadTime(value?: string | null) {
+  if (!value) return "no upload time";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Kolkata",
+  }).format(new Date(value));
+}
+
 function shouldIncludeWeeklyAudit(prompt: string) {
   const lower = prompt.toLowerCase();
   return isWeeklyAuditDay() || lower.includes("monday") || lower.includes("weekly") || lower.includes("audit");
@@ -112,6 +122,14 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
     ...salesStatuses.map(
       (status) =>
         `- ${status.store.name}: ${status.yesterdayReport ? "uploaded" : "missing"} for ${status.yesterdayDate}; latest sale ${money(status.latestReport?.summary?.totalNetSale ?? 0)}.`,
+    ),
+    "",
+    "Latest daily sales uploads:",
+    ...salesStatuses.map(
+      (status) =>
+        `- ${status.store.name}: latest report ${status.latestReport?.report_date ?? "none"}, uploaded by ${
+          status.latestReport?.profiles?.full_name ?? status.latestReport?.profiles?.email ?? "unknown"
+        }, upload time ${uploadTime(status.latestReport?.created_at)}, total ${money(status.latestReport?.summary?.totalNetSale ?? 0)}.`,
     ),
     "",
     "This month sales by store:",
