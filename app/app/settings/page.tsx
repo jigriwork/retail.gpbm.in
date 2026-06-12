@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { RefreshReleaseButton } from "@/components/app/refresh-release-button";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { FirmMappingForm } from "@/components/stores/firm-mapping-form";
 import { StoreTargetForm } from "@/components/stores/store-target-form";
@@ -67,6 +68,16 @@ export default async function SettingsPage() {
             </p>
           </div>
         ))}
+      </section>
+
+      <div className="pt-2">
+        <h2 className="text-2xl font-semibold">App release</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Current version: v6.0.0
+        </p>
+      </div>
+      <section>
+        <RefreshReleaseButton />
       </section>
 
       <div className="pt-2">

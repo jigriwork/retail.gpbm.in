@@ -55,17 +55,23 @@ export default async function ProtectedAppLayout({
 
   return (
     <div className="min-h-dvh bg-background pb-24 text-foreground">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
-          <div>
-            <Link className="flex items-center gap-2 text-lg font-semibold tracking-normal" href="/app/today">
-              <Image alt="" className="rounded-lg" height={28} src="/icon-192.png" width={28} />
-              <span>GPBM Retail</span>
-              <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[0.65rem] font-bold uppercase text-muted">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 py-2 backdrop-blur sm:px-4 sm:py-3">
+        <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+          <div className="min-w-0">
+            <Link
+              className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-base font-semibold tracking-normal sm:text-lg"
+              href="/app/today"
+            >
+              <Image alt="" className="shrink-0 rounded-lg" height={28} src="/icon-192.png" width={28} />
+              <span className="min-w-0 truncate">GPBM Retail</span>
+              <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[0.6rem] font-bold uppercase text-muted sm:hidden">
+                v6.0.0
+              </span>
+              <span className="hidden rounded-full border border-border bg-card px-2 py-0.5 text-[0.65rem] font-bold uppercase text-muted sm:inline-flex">
                 Version 6.0.0
               </span>
             </Link>
-            <div className="mt-1 flex items-center gap-2 text-xs font-medium text-muted">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-muted">
               <span className="rounded-full border border-border bg-card px-2 py-1 capitalize">
                 {profile.role}
               </span>
@@ -79,10 +85,10 @@ export default async function ProtectedAppLayout({
               </Link>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <LiveClock />
+          <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end sm:gap-3">
+            <LiveClock compact />
             <form action={signOut}>
-              <Button className="h-10 rounded-xl px-3 text-xs" variant="secondary">
+              <Button className="h-9 rounded-xl px-3 text-xs sm:h-10" variant="secondary">
                 Logout
               </Button>
             </form>
