@@ -56,8 +56,8 @@ export default async function ProtectedAppLayout({
   return (
     <div className="min-h-dvh bg-background pb-24 text-foreground">
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 py-2 backdrop-blur sm:px-4 sm:py-3">
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-          <div className="min-w-0">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-start justify-between gap-x-3 gap-y-2 sm:flex-nowrap sm:items-center sm:gap-3">
+          <div className="min-w-0 flex-1">
             <Link
               className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-base font-semibold tracking-normal sm:text-lg"
               href="/app/today"
@@ -85,10 +85,15 @@ export default async function ProtectedAppLayout({
               </Link>
             </div>
           </div>
-          <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end sm:gap-3">
-            <LiveClock compact />
-            <form action={signOut}>
-              <Button className="h-9 rounded-xl px-3 text-xs sm:h-10" variant="secondary">
+          <form action={signOut} className="shrink-0 sm:hidden">
+            <Button className="h-10 rounded-xl px-3 text-xs" variant="secondary">
+              Logout
+            </Button>
+          </form>
+          <div className="flex w-full shrink-0 items-center justify-between gap-2 sm:w-auto sm:justify-end sm:gap-3">
+            <LiveClock className="text-left sm:text-right" compact />
+            <form action={signOut} className="hidden sm:block">
+              <Button className="hidden h-10 rounded-xl px-3 text-xs sm:inline-flex" variant="secondary">
                 Logout
               </Button>
             </form>
