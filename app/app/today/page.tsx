@@ -217,7 +217,7 @@ export default async function TodayPage() {
                 <Link
                   className="rounded-2xl border border-border p-4 transition hover:border-foreground hover:bg-black/[0.02]"
                   href={item.href}
-                  key={item.href}
+                  key={`${item.title}-${item.href}`}
                 >
                   <Icon className="mb-4 size-5 text-muted" />
                   <h3 className="font-semibold">{item.title}</h3>
