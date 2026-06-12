@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -9,16 +10,16 @@ export type StoreAssignment = Tables<"store_users"> & {
   stores: Store | null;
 };
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async function getCurrentUser() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   return user;
-}
+});
 
-export async function getCurrentProfile() {
+export const getCurrentProfile = cache(async function getCurrentProfile() {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -33,9 +34,9 @@ export async function getCurrentProfile() {
     .maybeSingle();
 
   return data;
-}
+});
 
-export async function requireProfile() {
+export const requireProfile = cache(async function requireProfile() {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -50,7 +51,7 @@ export async function requireProfile() {
     .maybeSingle();
 
   return { user, profile };
-}
+});
 
 export async function getAccessibleStores(profile?: Profile | null) {
   const currentProfile = profile ?? (await getCurrentProfile());

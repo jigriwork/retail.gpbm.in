@@ -119,21 +119,37 @@ export async function getStoreStockStatuses(
   stores: Array<{ id: string; name: string; code: string }>,
   periodMonth = getIndiaMonthStart(),
 ) {
-  return Promise.all(
-    stores.map(async (store) => {
-      const recentReports = await getStockReportsForStore(store.id, 5);
-      const report =
-        recentReports.find((item) => item.period_month === periodMonth) ??
-        (await getStockReportForStoreMonth(store.id, periodMonth));
+  const storeIds = stores.map((store) => store.id);
 
-      return {
-        store,
-        periodMonth,
-        report,
-        recentReports,
-      } satisfies StoreStockStatus;
-    }),
-  );
+  if (!storeIds.length) {
+    return [];
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("reports")
+    .select(stockReportSelect)
+    .eq("report_type", "stock")
+    .in("store_id", storeIds)
+    .order("period_month", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  const reports = (data ?? []).map(asStockReport);
+
+  return stores.map((store) => {
+    const recentReports = reports
+      .filter((report) => report.store_id === store.id)
+      .slice(0, 5);
+
+    return {
+      store,
+      periodMonth,
+      report:
+        reports.find(
+          (report) => report.store_id === store.id && report.period_month === periodMonth,
+        ) ?? null,
+      recentReports,
+    } satisfies StoreStockStatus;
+  });
 }
 
 export async function getStockOverview(stores: Array<{ id: string; name: string; code: string }>) {

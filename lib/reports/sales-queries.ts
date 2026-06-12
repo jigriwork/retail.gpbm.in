@@ -90,21 +90,36 @@ export async function getStoreSalesStatuses(
   stores: Array<{ id: string; name: string; code: string }>,
 ) {
   const yesterdayDate = addDays(getIndiaToday(), -1);
+  const storeIds = stores.map((store) => store.id);
 
-  return Promise.all(
-    stores.map(async (store) => {
-      const recentReports = await getSalesReportsForStore(store.id, 5);
-      const yesterdayReport =
-        recentReports.find((report) => report.report_date === yesterdayDate) ??
-        (await getSalesReportForStoreDate(store.id, yesterdayDate));
+  if (!storeIds.length) {
+    return [];
+  }
 
-      return {
-        store,
-        yesterdayDate,
-        yesterdayReport,
-        latestReport: recentReports[0] ?? null,
-        recentReports,
-      } satisfies StoreSalesStatus;
-    }),
-  );
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("reports")
+    .select(salesReportSelect)
+    .eq("report_type", "sales")
+    .in("store_id", storeIds)
+    .order("report_date", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  const reports = (data ?? []).map(asSalesReport);
+
+  return stores.map((store) => {
+    const recentReports = reports
+      .filter((report) => report.store_id === store.id)
+      .slice(0, 5);
+
+    return {
+      store,
+      yesterdayDate,
+      yesterdayReport:
+        reports.find(
+          (report) => report.store_id === store.id && report.report_date === yesterdayDate,
+        ) ?? null,
+      latestReport: recentReports[0] ?? null,
+      recentReports,
+    } satisfies StoreSalesStatus;
+  });
 }
