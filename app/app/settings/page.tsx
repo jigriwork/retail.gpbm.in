@@ -56,6 +56,18 @@ export default async function SettingsPage() {
         <p className="text-sm font-medium text-muted">Settings</p>
         <h1 className="mt-2 text-3xl font-semibold">Business rules</h1>
       </div>
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <h2 className="text-2xl font-semibold">Account</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Change your own password securely. Passwords are handled by Supabase Auth and are not stored in app tables.
+        </p>
+        <Link
+          className="mt-4 inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+          href="/app/settings/account"
+        >
+          Change My Password
+        </Link>
+      </section>
       <section className="grid gap-3 sm:grid-cols-2">
         {Object.entries(labels).map(([key, label]) => (
           <div
@@ -73,7 +85,7 @@ export default async function SettingsPage() {
       <div className="pt-2">
         <h2 className="text-2xl font-semibold">App release</h2>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Current version: v7.2.0
+          Current version: v7.3.0
         </p>
       </div>
       <section>

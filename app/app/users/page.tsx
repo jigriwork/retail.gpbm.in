@@ -4,10 +4,14 @@ import {
   CreateManagerForm,
   ManagerStoreAssignmentsForm,
   ProfileActiveForm,
+  SendPasswordResetLinkForm,
+  TemporaryPasswordResetForm,
 } from "@/components/users/action-form";
 import {
   assignManagerToStore,
   createUserAccount,
+  ownerResetUserPassword,
+  sendPasswordResetLink,
   setProfileActive,
   updateManagerStoreAssignments,
 } from "@/lib/auth/actions";
@@ -129,12 +133,24 @@ export default async function UsersPage() {
                   ) : null}
                 </div>
                 {userProfile.role === "manager" ? (
-                  <ProfileActiveForm
-                    action={setProfileActive}
-                    isActive={userProfile.is_active !== false}
-                    userId={userProfile.id}
-                  />
-                ) : null}
+                  <div className="grid gap-3 sm:min-w-72">
+                    <ProfileActiveForm
+                      action={setProfileActive}
+                      isActive={userProfile.is_active !== false}
+                      userId={userProfile.id}
+                    />
+                    <SendPasswordResetLinkForm action={sendPasswordResetLink} userId={userProfile.id} />
+                    <TemporaryPasswordResetForm
+                      action={ownerResetUserPassword}
+                      disabled={!serviceRoleConfigured}
+                      userId={userProfile.id}
+                    />
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:min-w-72">
+                    <SendPasswordResetLinkForm action={sendPasswordResetLink} userId={userProfile.id} />
+                  </div>
+                )}
               </div>
             </div>
           );

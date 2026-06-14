@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -86,6 +87,9 @@ export function LoginForm() {
         Continue
         <ArrowRight className="size-4" />
       </Button>
+      <Link className="inline-flex text-sm font-semibold text-muted" href="/forgot-password">
+        Forgot password?
+      </Link>
     </form>
   );
 }

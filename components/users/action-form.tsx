@@ -248,3 +248,93 @@ export function ProfileActiveForm({
     </form>
   );
 }
+
+export function SendPasswordResetLinkForm({
+  action,
+  userId,
+}: {
+  action: (previous: ActionState, formData: FormData) => Promise<ActionState>;
+  userId: string;
+}) {
+  const [state, formAction, pending] = useActionState(action, initialState);
+
+  return (
+    <form action={formAction} className="space-y-2">
+      <input name="userId" type="hidden" value={userId} />
+      <Button className="h-10 rounded-xl px-3 text-xs" disabled={pending} variant="secondary">
+        {pending ? <Loader2 className="size-4 animate-spin" /> : null}
+        Send Password Reset Link
+      </Button>
+      {state.message ? (
+        <p className={state.ok ? "text-xs text-success" : "text-xs text-danger"}>
+          {state.message}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+export function TemporaryPasswordResetForm({
+  action,
+  disabled,
+  userId,
+}: {
+  action: (previous: ActionState, formData: FormData) => Promise<ActionState>;
+  disabled: boolean;
+  userId: string;
+}) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [state, formAction, pending] = useActionState(action, initialState);
+
+  return (
+    <form action={formAction} className="space-y-2">
+      <input name="userId" type="hidden" value={userId} />
+      <p className="text-xs leading-5 text-muted">
+        Share this temporary password securely. Ask the user to change it after login.
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="relative">
+          <input
+            autoComplete="new-password"
+            className="h-10 w-full rounded-xl border border-border bg-card px-3 pr-10 text-xs outline-none focus:border-foreground"
+            disabled={disabled || pending}
+            minLength={8}
+            name="temporaryPassword"
+            placeholder="Temporary password"
+            type={showPassword ? "text" : "password"}
+          />
+          <button
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="absolute right-1 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted transition hover:bg-black/[0.04] hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            disabled={disabled || pending}
+            onClick={() => setShowPassword((current) => !current)}
+            type="button"
+          >
+            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
+        <input
+          autoComplete="new-password"
+          className="h-10 rounded-xl border border-border bg-card px-3 text-xs outline-none focus:border-foreground"
+          disabled={disabled || pending}
+          minLength={8}
+          name="confirmPassword"
+          placeholder="Confirm temporary password"
+          type="password"
+        />
+      </div>
+      <Button className="h-10 rounded-xl px-3 text-xs" disabled={disabled || pending} variant="secondary">
+        {pending ? <Loader2 className="size-4 animate-spin" /> : null}
+        Set Temporary Password
+      </Button>
+      {disabled ? (
+        <p className="text-xs leading-5 text-muted">Temporary reset requires server service key.</p>
+      ) : null}
+      {state.message ? (
+        <p className={state.ok ? "text-xs text-success" : "text-xs text-danger"}>
+          {state.message}
+        </p>
+      ) : null}
+    </form>
+  );
+}
