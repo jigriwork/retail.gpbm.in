@@ -162,11 +162,11 @@ const ownerCommandShortcuts = [
     title: "Fix Staff Names",
   },
   {
-    description: "Delete, replace or bulk upload sales reports. Owner only.",
+    description: "Import month-to-date or financial-year sales, delete or replace wrong reports. Owner only.",
     href: "/app/reports/correction",
     icon: ShieldAlert,
     ownerOnly: true,
-    title: "Fix Wrong Upload",
+    title: "Historical Sales Import",
   },
   {
     description: "Ask business questions and get owner summary.",

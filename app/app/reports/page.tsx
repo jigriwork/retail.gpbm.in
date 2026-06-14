@@ -259,9 +259,9 @@ export default async function ReportsPage() {
                 <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
                   <ShieldAlert className="size-5" />
                 </div>
-                <h2 className="text-2xl font-semibold">Data Correction Center</h2>
+                <h2 className="text-2xl font-semibold">Historical Sales Import</h2>
                 <p className="mt-2 text-sm leading-6 text-muted">
-                  Fix wrong uploads: delete, replace, repair or bulk upload sales reports. Owner only.
+                  Import current month or financial-year sales, preview missing dates, and fix wrong uploads. Owner only.
                 </p>
               </Link>
               <Link

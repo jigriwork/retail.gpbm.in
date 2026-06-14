@@ -8,6 +8,7 @@ import type {
   BulkDuplicateBehavior,
   CorrectionActionState,
   CorrectionSalesReport,
+  HistoricalImportPreset,
 } from "@/lib/reports/sales-correction";
 import type { Store } from "@/lib/auth/session";
 
@@ -138,10 +139,15 @@ export function BulkSalesUploadForm({
   stores: Store[];
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
+  const presetOptions: Array<{ value: HistoricalImportPreset; label: string; description: string }> = [
+    { value: "current_month", label: "Current Month to Date", description: "From the 1st day of this month to today." },
+    { value: "financial_year", label: "Financial Year from 1 April", description: "From April 1 of the current Indian financial year to today." },
+    { value: "custom", label: "Custom date range", description: "Use the Start and End fields below." },
+  ];
   const duplicateOptions: Array<{ value: BulkDuplicateBehavior; label: string; description: string }> = [
-    { value: "stop", label: "Stop if duplicates", description: "Safest default. Nothing imports if any date exists." },
-    { value: "skip", label: "Skip existing dates", description: "Imports only missing dates." },
-    { value: "replace", label: "Replace existing dates", description: "Replaces duplicate daily reports with the bulk file rows." },
+    { value: "skip", label: "Skip existing dates", description: "Default. Imports only missing dates." },
+    { value: "stop", label: "Stop if duplicates", description: "Nothing imports if any selected file date already exists." },
+    { value: "replace", label: "Replace existing dates", description: "Owner-only. Requires the final confirmation phrase." },
   ];
 
   return (
@@ -162,10 +168,24 @@ export function BulkSalesUploadForm({
           </select>
         </label>
         <label className="block">
+          <span className="mb-2 block text-sm font-medium text-muted">Import range</span>
+          <select
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            defaultValue="current_month"
+            name="preset"
+          >
+            {presetOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Duplicate behavior</span>
           <select
             className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
-            defaultValue="stop"
+            defaultValue="skip"
             name="duplicateBehavior"
           >
             {duplicateOptions.map((option) => (
@@ -174,6 +194,22 @@ export function BulkSalesUploadForm({
               </option>
             ))}
           </select>
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-muted">Custom start</span>
+          <input
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            name="startDate"
+            type="date"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-muted">Custom end</span>
+          <input
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            name="endDate"
+            type="date"
+          />
         </label>
       </div>
       <label className="block rounded-[1.35rem] border border-dashed border-border bg-card p-5">
@@ -189,6 +225,25 @@ export function BulkSalesUploadForm({
           type="file"
         />
       </label>
+      <label className="block">
+        <span className="mb-2 block text-sm font-medium text-muted">Final confirmation</span>
+        <input
+          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+          name="confirmation"
+          placeholder="IMPORT HISTORICAL SALES"
+        />
+        <span className="mt-2 block text-xs leading-5 text-muted">
+          First submit previews only. For final import, reselect the same file and type IMPORT HISTORICAL SALES.
+        </span>
+      </label>
+      <div className="grid gap-2 text-xs text-muted lg:grid-cols-3">
+        {presetOptions.map((option) => (
+          <div className="rounded-2xl border border-border p-3" key={option.value}>
+            <p className="font-semibold text-foreground">{option.label}</p>
+            <p className="mt-1 leading-5">{option.description}</p>
+          </div>
+        ))}
+      </div>
       <div className="grid gap-2 text-xs text-muted lg:grid-cols-3">
         {duplicateOptions.map((option) => (
           <div className="rounded-2xl border border-border p-3" key={option.value}>
@@ -199,7 +254,7 @@ export function BulkSalesUploadForm({
       </div>
       <Button disabled={pending} size="lg">
         {pending ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
-        Process bulk historical upload
+        Preview / Import Historical Sales
       </Button>
       <ActionResult state={state} />
     </form>

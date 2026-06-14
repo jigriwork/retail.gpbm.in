@@ -113,6 +113,12 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
     .or("status.is.null,status.eq.open")
     .order("created_at", { ascending: false })
     .limit(maxImportantUpdates);
+  const { data: recentSalesBatches } = await supabase
+    .from("sales_upload_batches")
+    .select("original_file_name,status,upload_mode,detected_start_date,detected_end_date,total_dates,imported_dates,skipped_dates,replaced_dates,failed_dates,total_net_sale,stores(name,code)")
+    .in("store_id", storeIds)
+    .order("created_at", { ascending: false })
+    .limit(3);
 
   return [
     `Current India time: ${nowInIndia()}.`,
@@ -138,6 +144,14 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
           status.latestReport?.profiles?.full_name ?? status.latestReport?.profiles?.email ?? "unknown"
         }, upload time ${uploadTime(status.latestReport?.created_at)}, total ${money(status.latestReport?.summary?.totalNetSale ?? 0)}.`,
     ),
+    "",
+    "Recent historical sales imports:",
+    ...((recentSalesBatches ?? []).length
+      ? (recentSalesBatches ?? []).map(
+          (batch) =>
+            `- ${batch.stores?.name ?? "Store"}: ${batch.original_file_name ?? "file"}, ${batch.status ?? "status unknown"}, ${batch.detected_start_date ?? "no start"} to ${batch.detected_end_date ?? "no end"}, imported ${batch.imported_dates ?? 0}, skipped ${batch.skipped_dates ?? 0}, replaced ${batch.replaced_dates ?? 0}, failed ${batch.failed_dates ?? 0}, sale ${money(Number(batch.total_net_sale ?? 0))}.`,
+        )
+      : ["- No historical sales import batch found."]),
     "",
     `Suspicious sales reports this month: ${suspiciousSalesReports.length}.`,
     ...suspiciousSalesReports.slice(0, 5).map(

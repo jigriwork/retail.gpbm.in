@@ -16,6 +16,7 @@ import {
 } from "@/lib/reports/sales-parser";
 import { createClient } from "@/lib/supabase/server";
 import type { Json, Tables, TablesInsert } from "@/lib/supabase/database.types";
+import { addDays, getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
 
 export type CorrectionActionState = {
   ok: boolean;
@@ -27,6 +28,7 @@ export type CorrectionActionState = {
 };
 
 export type BulkDuplicateBehavior = "stop" | "skip" | "replace";
+export type HistoricalImportPreset = "current_month" | "financial_year" | "custom";
 
 export type CorrectionSalesReport = Tables<"reports"> & {
   stores: Pick<Tables<"stores">, "id" | "name" | "code"> | null;
@@ -41,6 +43,7 @@ export type CorrectionAuditLog = Tables<"audit_logs"> & {
 
 const allowedExtensions = [".xlsx", ".xls", ".csv"];
 const salesRowInsertBatchSize = 1000;
+const historicalImportPhrase = "IMPORT HISTORICAL SALES";
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -69,6 +72,41 @@ function slugFileName(fileName: string) {
 
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function getFinancialYearStart(today = getIndiaToday()) {
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7));
+  const financialYear = month >= 4 ? year : year - 1;
+  return `${financialYear}-04-01`;
+}
+
+function getHistoricalRange(preset: HistoricalImportPreset, startDate: string, endDate: string) {
+  const today = getIndiaToday();
+
+  if (preset === "financial_year") {
+    return { startDate: getFinancialYearStart(today), endDate: today };
+  }
+
+  if (preset === "current_month") {
+    return { startDate: getIndiaMonthStart(today), endDate: today };
+  }
+
+  return { startDate, endDate };
+}
+
+function dateList(startDate: string, endDate: string) {
+  const dates: string[] = [];
+
+  if (!startDate || !endDate || startDate > endDate) {
+    return dates;
+  }
+
+  for (let date = startDate; date <= endDate; date = addDays(date, 1)) {
+    dates.push(date);
+  }
+
+  return dates;
 }
 
 function rowHasSalesIdentity(row: ParsedSalesRow) {
@@ -675,11 +713,22 @@ export async function bulkHistoricalSalesUpload(
   if (!ownerResult.ok) return ownerResult.state;
 
   const storeId = readString(formData, "storeId");
-  const duplicateBehavior = (readString(formData, "duplicateBehavior") || "stop") as BulkDuplicateBehavior;
+  const duplicateBehavior = (readString(formData, "duplicateBehavior") || "skip") as BulkDuplicateBehavior;
+  const preset = (readString(formData, "preset") || "current_month") as HistoricalImportPreset;
+  const confirmation = readString(formData, "confirmation");
+  const range = getHistoricalRange(preset, readString(formData, "startDate"), readString(formData, "endDate"));
   const file = readFile(formData, "file");
 
   if (!["stop", "skip", "replace"].includes(duplicateBehavior)) {
     return { ok: false, message: "Choose a valid duplicate behavior." };
+  }
+
+  if (!["current_month", "financial_year", "custom"].includes(preset)) {
+    return { ok: false, message: "Choose a valid historical import range." };
+  }
+
+  if (!range.startDate || !range.endDate || range.startDate > range.endDate) {
+    return { ok: false, message: "Choose a valid start and end date for historical import." };
   }
 
   if (!file) {
@@ -726,6 +775,23 @@ export async function bulkHistoricalSalesUpload(
     return { ok: false, message: "No BILL DATE values were detected." };
   }
 
+  const today = getIndiaToday();
+  const futureDates = dates.filter((date) => date > today);
+  if (futureDates.length) {
+    return {
+      ok: false,
+      message: `Historical import cannot include future sales dates. First future date: ${futureDates[0]}.`,
+    };
+  }
+
+  const outsideRangeDates = dates.filter((date) => date < range.startDate || date > range.endDate);
+  if (outsideRangeDates.length) {
+    return {
+      ok: false,
+      message: `The file contains ${outsideRangeDates.length} date(s) outside the selected range ${range.startDate} to ${range.endDate}. First outside date: ${outsideRangeDates[0]}.`,
+    };
+  }
+
   const suspiciousDate = dates.find((date) => {
     const dateRows = grouped.get(date) ?? [];
     const summary = summarizeSalesRows(dateRows);
@@ -742,7 +808,8 @@ export async function bulkHistoricalSalesUpload(
     .select("id,report_date,file_name,file_path,row_count,summary,store_id")
     .eq("report_type", "sales")
     .eq("store_id", store.id)
-    .in("report_date", dates);
+    .gte("report_date", range.startDate)
+    .lte("report_date", range.endDate);
   const existingByDate = new Map<string, NonNullable<typeof existingReports>[number]>();
   for (const report of existingReports ?? []) {
     if (report.report_date && !existingByDate.has(report.report_date)) {
@@ -750,12 +817,72 @@ export async function bulkHistoricalSalesUpload(
     }
   }
   const duplicateDates = dates.filter((date) => existingByDate.has(date));
+  const selectedRangeDates = dateList(range.startDate, range.endDate);
+  const existingDatesInRange = new Set(
+    (existingReports ?? [])
+      .map((report) => report.report_date)
+      .filter(
+        (date): date is string =>
+          typeof date === "string" && date >= range.startDate && date <= range.endDate,
+      ),
+  );
+  const coveredDates = new Set([...dates, ...existingDatesInRange]);
+  const missingDates = selectedRangeDates.filter((date) => !coveredDates.has(date));
+  const previewRows = dates.map((date) => {
+    const dateRows = grouped.get(date) ?? [];
+    const summary = summarizeSalesRows(dateRows);
+    const hasStaffColumn = rowsHaveStaffColumn(dateRows);
+
+    return {
+      billCount: summary.billCount,
+      date,
+      duplicate: existingByDate.has(date),
+      hasStaffColumn,
+      rowCount: summary.rowCount,
+      staffCount: summary.staffNames.length,
+      suspiciousZeroTotal: summary.rowCount > 0 && summary.totalNetSale === 0,
+      totalNetSale: roundMoney(summary.totalNetSale),
+    };
+  });
+  const suspiciousDates = previewRows.filter((row) => row.suspiciousZeroTotal).map((row) => row.date);
+  const datesWithoutStaffColumn = previewRows.filter((row) => !row.hasStaffColumn).map((row) => row.date);
+  const totalPreviewRows = previewRows.reduce((sum, row) => sum + row.rowCount, 0);
+  const totalPreviewSale = roundMoney(previewRows.reduce((sum, row) => sum + row.totalNetSale, 0));
+  const totalPreviewBills = previewRows.reduce((sum, row) => sum + row.billCount, 0);
+  const preview = {
+    billCount: totalPreviewBills,
+    dateRange: `${range.startDate} to ${range.endDate}`,
+    datesFound: dates.length,
+    datesFoundList: dates.slice(0, 40),
+    datesMissingInRange: missingDates.length,
+    duplicateDates,
+    duplicateMode: duplicateBehavior,
+    finalConfirmationPhrase: historicalImportPhrase,
+    missingDates: missingDates.slice(0, 60),
+    noStaffColumnDates: datesWithoutStaffColumn,
+    preset,
+    previewRows: previewRows.slice(0, 40),
+    skippedExistingDatesIfImported: duplicateBehavior === "skip" ? duplicateDates : [],
+    store: store.name,
+    suspiciousDates,
+    totalRows: totalPreviewRows,
+    totalSale: totalPreviewSale,
+  };
+
+  if (confirmation !== historicalImportPhrase) {
+    return {
+      ok: false,
+      expectedPhrase: historicalImportPhrase,
+      message: `Review the historical import preview, reselect the file if needed, and type ${historicalImportPhrase} to import.`,
+      preview,
+    };
+  }
 
   if (duplicateDates.length && duplicateBehavior === "stop") {
     return {
       ok: false,
       message: `Existing sales reports found for ${duplicateDates.length} date(s). Choose skip or replace to continue.`,
-      summary: { duplicateDates },
+      summary: { duplicateDates, expectedPhrase: historicalImportPhrase },
     };
   }
 
@@ -929,8 +1056,14 @@ export async function bulkHistoricalSalesUpload(
       duplicate_behavior: duplicateBehavior,
       failed_dates: failedDates,
       imported_dates: importedDates,
+      missing_dates: missingDates,
+      no_staff_column_dates: datesWithoutStaffColumn,
+      preset,
       replaced_dates: replacedDates,
       skipped_dates: skippedDates,
+      suspicious_dates: suspiciousDates,
+      selected_end_date: range.endDate,
+      selected_start_date: range.startDate,
       total_net_sale: roundMoney(totalNetSale),
       total_rows: totalRows,
     } satisfies Json,
@@ -953,10 +1086,14 @@ export async function bulkHistoricalSalesUpload(
       duplicateDates,
       failedDates,
       importedDates,
+      missingDates: missingDates.slice(0, 60),
+      noStaffColumnDates: datesWithoutStaffColumn,
+      preset,
       replacedDates,
       returnRows,
       skippedDates,
       store: store.name,
+      suspiciousDates,
       totalBills: allBills.size,
       totalDates: dates.length,
       totalNetSale: roundMoney(totalNetSale),

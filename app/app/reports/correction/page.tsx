@@ -113,7 +113,7 @@ export default async function SalesCorrectionPage({
             <p className="text-sm font-medium text-muted">Owner only</p>
             <h1 className="mt-2 text-3xl font-semibold">Data Correction Center</h1>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Delete, replace, or bulk-import sales reports with audit logs for every sensitive action.
+              Delete, replace, or import historical sales reports with audit logs for every sensitive action.
             </p>
           </div>
           <ShieldAlert className="size-5 text-muted" />
@@ -340,8 +340,8 @@ export default async function SalesCorrectionPage({
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-muted">Bulk Historical Sales Upload</p>
-            <h2 className="mt-2 text-2xl font-semibold">Split one file date-wise</h2>
+            <p className="text-sm font-medium text-muted">Historical Sales Import</p>
+            <h2 className="mt-2 text-2xl font-semibold">Preview and split one file date-wise</h2>
           </div>
           <UploadCloud className="size-5 text-muted" />
         </div>
