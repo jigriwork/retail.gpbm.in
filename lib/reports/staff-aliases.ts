@@ -226,6 +226,8 @@ export async function saveStaffAlias(
   _previous: StaffAliasState,
   formData: FormData,
 ): Promise<StaffAliasState> {
+  "use server";
+
   const { profile } = await requireProfile();
 
   if (!profile || !["owner", "manager"].includes(profile.role) || profile.is_active === false) {
