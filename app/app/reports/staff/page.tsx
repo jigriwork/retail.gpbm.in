@@ -18,6 +18,8 @@ const periodLabels: Array<{ value: SalesPeriod; label: string }> = [
   { value: "yesterday", label: "Yesterday" },
   { value: "week", label: "This week" },
   { value: "month", label: "This month" },
+  { value: "last-month", label: "Last month" },
+  { value: "custom", label: "Custom" },
 ];
 
 function formatMoney(value?: number) {
@@ -49,13 +51,13 @@ function storeLabel(profileRole: string | null | undefined, storeName?: string) 
 export default async function StaffSalesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ storeId?: string; period?: string }>;
+  searchParams: Promise<{ storeId?: string; period?: string; start?: string; end?: string }>;
 }) {
-  const { storeId, period: rawPeriod } = await searchParams;
+  const { storeId, period: rawPeriod, start, end } = await searchParams;
   const { profile } = await requireProfile();
   const stores = await getAccessibleStores(profile);
   const period = safePeriod(rawPeriod);
-  const dateRange = getDateRangeForPeriod(period);
+  const dateRange = getDateRangeForPeriod(period, start, end);
   const selectedStores =
     storeId && stores.some((store) => store.id === storeId)
       ? stores.filter((store) => store.id === storeId)
@@ -134,6 +136,28 @@ export default async function StaffSalesPage({
           <button className="mt-7 h-12 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85">
             Apply
           </button>
+          {period === "custom" ? (
+            <>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-muted">Start date</span>
+                <input
+                  className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+                  defaultValue={dateRange.startDate}
+                  name="start"
+                  type="date"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-muted">End date</span>
+                <input
+                  className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+                  defaultValue={dateRange.endDate}
+                  name="end"
+                  type="date"
+                />
+              </label>
+            </>
+          ) : null}
         </form>
       </section>
 

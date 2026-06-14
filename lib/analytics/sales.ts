@@ -3,7 +3,7 @@ import { staffNameKey } from "@/lib/employees/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { Store } from "@/lib/auth/session";
 
-export type SalesPeriod = "today" | "yesterday" | "week" | "month" | "custom";
+export type SalesPeriod = "today" | "yesterday" | "week" | "month" | "last-month" | "custom";
 
 export type DateRange = {
   startDate: string;
@@ -185,6 +185,22 @@ export function getDateRangeForPeriod(
 
   if (period === "week") {
     return { startDate: weekStart(today), endDate: today };
+  }
+
+  if (period === "last-month") {
+    const firstOfThisMonth = new Date(`${getIndiaMonthStart(today)}T00:00:00+05:30`);
+    const lastDayPrevMonth = new Date(firstOfThisMonth);
+    lastDayPrevMonth.setDate(0);
+    const firstDayPrevMonth = new Date(lastDayPrevMonth);
+    firstDayPrevMonth.setDate(1);
+    const fmt = (d: Date) =>
+      new Intl.DateTimeFormat("en-CA", {
+        day: "2-digit",
+        month: "2-digit",
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+      }).format(d);
+    return { startDate: fmt(firstDayPrevMonth), endDate: fmt(lastDayPrevMonth) };
   }
 
   if (period === "custom" && customStart && customEnd && customStart <= customEnd) {
