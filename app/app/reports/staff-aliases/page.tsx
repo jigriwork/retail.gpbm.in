@@ -32,6 +32,15 @@ export default async function StaffAliasesPage({
             <p className="mt-2 text-sm leading-6 text-muted">
               Map sales report agent names to staff directory contacts.
             </p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Map uploaded staff names like RITA S, RITA1, or SALESMAN codes to the real staff name.
+              This makes Staff Sales accurate. Old reports update automatically in analytics.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              {profile?.role === "owner"
+                ? "Owner can manage all store staff name aliases."
+                : "You can manage staff names only for your assigned stores."}
+            </p>
           </div>
           <UserRoundCog className="size-5 text-muted" />
         </div>

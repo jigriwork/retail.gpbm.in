@@ -36,6 +36,14 @@ export type StoreSalesStatus = {
   recentReports: SalesReportWithStore[];
 };
 
+export type UnmatchedStaffReportWarning = {
+  storeId: string;
+  reportIds: string[];
+  reportDates: string[];
+  count: number;
+  names: string[];
+};
+
 const salesReportSelect = `
   id,
   store_id,
@@ -51,6 +59,18 @@ const salesReportSelect = `
 
 function asSalesReport(report: unknown) {
   return report as SalesReportWithStore;
+}
+
+function summaryObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as SalesReportSummary)
+    : null;
+}
+
+function summaryStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
 }
 
 export async function getRecentSalesReports(limit = 8) {
@@ -91,6 +111,64 @@ export async function getSalesReportForStoreDate(storeId: string, reportDate: st
     .maybeSingle();
 
   return data ? asSalesReport(data) : null;
+}
+
+export async function getUnmatchedStaffWarningsFromReports({
+  endDate,
+  startDate,
+  storeIds,
+}: {
+  endDate: string;
+  startDate: string;
+  storeIds: string[];
+}) {
+  if (!storeIds.length) {
+    return [] as UnmatchedStaffReportWarning[];
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("reports")
+    .select("id,store_id,report_date,summary")
+    .eq("report_type", "sales")
+    .in("store_id", storeIds)
+    .gte("report_date", startDate)
+    .lte("report_date", endDate);
+
+  const warningMap = new Map<string, UnmatchedStaffReportWarning>();
+
+  for (const report of data ?? []) {
+    if (!report.store_id) {
+      continue;
+    }
+
+    const summary = summaryObject(report.summary);
+    const count = Number(summary?.unmatchedStaffCount ?? 0);
+    const names = summaryStringArray(summary?.unmatchedStaffNames);
+
+    if (count <= 0 && !names.length) {
+      continue;
+    }
+
+    const current =
+      warningMap.get(report.store_id) ??
+      {
+        count: 0,
+        names: [],
+        reportDates: [],
+        reportIds: [],
+        storeId: report.store_id,
+      };
+    current.count += count || names.length;
+    current.names = [...new Set([...current.names, ...names])].sort();
+    current.reportIds.push(report.id);
+    if (report.report_date) {
+      current.reportDates = [...new Set([...current.reportDates, report.report_date])].sort();
+    }
+    warningMap.set(report.store_id, current);
+  }
+
+  return [...warningMap.values()].sort((a, b) => b.count - a.count);
 }
 
 export async function getStoreSalesStatuses(

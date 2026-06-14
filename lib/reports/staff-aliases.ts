@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { canAccessStore, getAccessibleStores, requireProfile, type Profile } from "@/lib/auth/session";
 import { normalizeStaffName, staffNameKey } from "@/lib/employees/utils";
 import { createClient } from "@/lib/supabase/server";
-import type { Tables } from "@/lib/supabase/database.types";
+import type { Json, Tables } from "@/lib/supabase/database.types";
 
 export type StaffAliasState = {
   ok: boolean;
@@ -30,6 +30,19 @@ export type UnmatchedStaffName = {
 
 const sourceType = "sales_report";
 
+type StaffAliasAuditSnapshot = Pick<
+  Tables<"staff_name_aliases">,
+  | "canonical_staff_name"
+  | "employee_contact_id"
+  | "id"
+  | "is_active"
+  | "normalized_canonical_staff_name"
+  | "normalized_source_name"
+  | "source_name"
+  | "source_type"
+  | "store_id"
+>;
+
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -37,6 +50,76 @@ function readString(formData: FormData, key: string) {
 
 async function getWritableStores(profile: Profile) {
   return (await getAccessibleStores(profile)).filter((store) => store.is_active);
+}
+
+function aliasAuditSnapshot(alias: StaffAliasAuditSnapshot | null) {
+  if (!alias) {
+    return null;
+  }
+
+  return {
+    canonical_staff_name: alias.canonical_staff_name,
+    employee_contact_id: alias.employee_contact_id,
+    is_active: alias.is_active,
+    normalized_canonical_staff_name: alias.normalized_canonical_staff_name,
+    normalized_source_name: alias.normalized_source_name,
+    source_name: alias.source_name,
+    source_type: alias.source_type,
+    store_id: alias.store_id,
+  };
+}
+
+function staffAliasAuditAction(
+  existingAlias: StaffAliasAuditSnapshot | null,
+  savedAlias: StaffAliasAuditSnapshot,
+) {
+  if (!existingAlias) {
+    return "create_staff_alias";
+  }
+
+  if (existingAlias.is_active === false && savedAlias.is_active !== false) {
+    return "activate_staff_alias";
+  }
+
+  if (existingAlias.is_active !== false && savedAlias.is_active === false) {
+    return "inactivate_staff_alias";
+  }
+
+  return "update_staff_alias";
+}
+
+async function writeStaffAliasAuditLog({
+  action,
+  existingAlias,
+  profile,
+  savedAlias,
+}: {
+  action: string;
+  existingAlias: StaffAliasAuditSnapshot | null;
+  profile: Profile;
+  savedAlias: StaffAliasAuditSnapshot;
+}) {
+  try {
+    const supabase = await createClient();
+    await supabase.from("audit_logs").insert({
+      action,
+      actor_id: profile.id,
+      actor_role: profile.role,
+      entity_id: savedAlias.id,
+      entity_type: "staff_name_alias",
+      metadata: {
+        actor_profile_id: profile.id,
+        actor_role: profile.role,
+        alias_id: savedAlias.id,
+        new_values: aliasAuditSnapshot(savedAlias),
+        old_values: aliasAuditSnapshot(existingAlias),
+        source_name: savedAlias.source_name,
+      } satisfies Json,
+      store_id: savedAlias.store_id,
+    });
+  } catch {
+    // Audit logging is best-effort; alias saves should remain available to managers.
+  }
 }
 
 export async function getStaffAliasPageData({
@@ -171,6 +254,17 @@ export async function saveStaffAlias(
 
   let canonicalStaffName = sourceName;
   let contactId: string | null = null;
+  const normalizedSourceName = staffNameKey(sourceName);
+
+  const { data: existingAlias } = await supabase
+    .from("staff_name_aliases")
+    .select(
+      "id,store_id,source_name,normalized_source_name,source_type,canonical_staff_name,normalized_canonical_staff_name,employee_contact_id,is_active",
+    )
+    .eq("store_id", storeId)
+    .eq("normalized_source_name", normalizedSourceName)
+    .eq("source_type", sourceType)
+    .maybeSingle();
 
   if (createContact) {
     const { data: contact, error } = await supabase
@@ -209,27 +303,43 @@ export async function saveStaffAlias(
     contactId = contact.id;
   }
 
-  const { error } = await supabase.from("staff_name_aliases").upsert(
-    {
-      canonical_staff_name: canonicalStaffName,
-      created_by: profile.id,
-      employee_contact_id: contactId,
-      is_active: isActive,
-      normalized_canonical_staff_name: staffNameKey(canonicalStaffName),
-      normalized_source_name: staffNameKey(sourceName),
-      source_name: sourceName,
-      source_type: sourceType,
-      store_id: storeId,
-    },
-    { onConflict: "store_id,normalized_source_name,source_type" },
-  );
+  const { data: savedAlias, error } = await supabase
+    .from("staff_name_aliases")
+    .upsert(
+      {
+        canonical_staff_name: canonicalStaffName,
+        created_by: profile.id,
+        employee_contact_id: contactId,
+        is_active: isActive,
+        normalized_canonical_staff_name: staffNameKey(canonicalStaffName),
+        normalized_source_name: normalizedSourceName,
+        source_name: sourceName,
+        source_type: sourceType,
+        store_id: storeId,
+      },
+      { onConflict: "store_id,normalized_source_name,source_type" },
+    )
+    .select(
+      "id,store_id,source_name,normalized_source_name,source_type,canonical_staff_name,normalized_canonical_staff_name,employee_contact_id,is_active",
+    )
+    .single();
 
-  if (error) {
-    return { ok: false, message: error.message };
+  if (error || !savedAlias) {
+    return { ok: false, message: error?.message ?? "Unable to save staff alias." };
   }
+
+  await writeStaffAliasAuditLog({
+    action: staffAliasAuditAction(existingAlias, savedAlias),
+    existingAlias,
+    profile,
+    savedAlias,
+  });
 
   revalidatePath("/app/reports/staff-aliases");
   revalidatePath("/app/reports/staff");
   revalidatePath("/app/reports/sales/analytics");
+  revalidatePath("/app/reports/business");
+  revalidatePath("/app/today");
+  revalidatePath(`/app/stores/${storeId}`);
   return { ok: true, message: "Staff alias saved." };
 }

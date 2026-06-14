@@ -20,6 +20,7 @@ import {
   ShoppingBag,
   UploadCloud,
   UserRoundCheck,
+  UserRoundCog,
 } from "lucide-react";
 
 import { ChecklistCard } from "@/components/checklist/checklist-card";
@@ -151,6 +152,13 @@ const ownerCommandShortcuts = [
     title: "Staff Sales",
   },
   {
+    description: "Map uploaded staff names to real staff names so staff sales becomes accurate.",
+    href: "/app/reports/staff-aliases",
+    icon: UserRoundCog,
+    requiresStore: true,
+    title: "Fix Staff Names",
+  },
+  {
     description: "Delete, replace or bulk upload sales reports. Owner only.",
     href: "/app/reports/correction",
     icon: ShieldAlert,
@@ -268,6 +276,7 @@ export default async function TodayPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {ownerCommandShortcuts
             .filter((item) => !item.ownerOnly || profile?.role === "owner")
+            .filter((item) => !("requiresStore" in item) || !item.requiresStore || stores.length > 0)
             .map((item) => {
               const Icon = item.icon;
 
@@ -382,6 +391,32 @@ export default async function TodayPage() {
                     Staff alias review: {latestReport.summary.unmatchedStaffNames.slice(0, 3).join(", ")}
                     {latestReport.summary.unmatchedStaffNames.length > 3 ? "..." : ""}
                   </p>
+                ) : null}
+
+                {unmatchedStaffCount > 0 ? (
+                  <div className="mt-4 rounded-2xl border border-border bg-background p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-danger">Unmatched staff found</p>
+                        <p className="mt-2 text-sm leading-6 text-muted">
+                          {unmatchedStaffCount} uploaded staff name
+                          {unmatchedStaffCount === 1 ? "" : "s"} need mapping before staff sales is fully accurate.
+                        </p>
+                        {latestReport?.summary?.unmatchedStaffNames?.length ? (
+                          <p className="mt-2 text-sm font-medium">
+                            {latestReport.summary.unmatchedStaffNames.slice(0, 5).join(", ")}
+                            {latestReport.summary.unmatchedStaffNames.length > 5 ? "..." : ""}
+                          </p>
+                        ) : null}
+                      </div>
+                      <Link
+                        className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+                        href={`/app/reports/staff-aliases?storeId=${status.store.id}`}
+                      >
+                        Fix Staff Names
+                      </Link>
+                    </div>
+                  </div>
                 ) : null}
 
                 <div className="mt-4 flex flex-wrap gap-2">

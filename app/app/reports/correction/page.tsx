@@ -31,6 +31,13 @@ function summaryValue(report: CorrectionSalesReport, key: string) {
     : null;
 }
 
+function summaryStringArray(report: CorrectionSalesReport, key: string) {
+  const value = summaryValue(report, key);
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+}
+
 function formatDateTime(value?: string | null) {
   if (!value) return "Unknown";
 
@@ -164,7 +171,11 @@ export default async function SalesCorrectionPage({
 
       <section className="space-y-3">
         {reports.length ? (
-          reports.map((report) => (
+          reports.map((report) => {
+            const unmatchedStaffCount = Number(summaryValue(report, "unmatchedStaffCount") ?? 0);
+            const unmatchedStaffNames = summaryStringArray(report, "unmatchedStaffNames");
+
+            return (
             <article className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm" key={report.id}>
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
@@ -207,9 +218,36 @@ export default async function SalesCorrectionPage({
                 </div>
                 <div className="rounded-2xl border border-border p-3">
                   <p className="text-xs font-medium text-muted">Unmatched staff</p>
-                  <p className="mt-1 font-semibold">{String(summaryValue(report, "unmatchedStaffCount") ?? 0)}</p>
+                  <p className="mt-1 font-semibold">{unmatchedStaffCount}</p>
                 </div>
               </div>
+              {unmatchedStaffCount > 0 ? (
+                <div className="mt-4 rounded-2xl border border-border bg-background p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-danger">Unmatched staff in this upload</p>
+                      <p className="mt-2 text-sm leading-6 text-muted">
+                        {unmatchedStaffCount} uploaded staff name
+                        {unmatchedStaffCount === 1 ? "" : "s"} should be mapped before relying on staff sales.
+                      </p>
+                      {unmatchedStaffNames.length ? (
+                        <p className="mt-2 text-sm font-medium">
+                          {unmatchedStaffNames.slice(0, 8).join(", ")}
+                          {unmatchedStaffNames.length > 8 ? "..." : ""}
+                        </p>
+                      ) : null}
+                    </div>
+                    {report.store_id ? (
+                      <Link
+                        className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+                        href={`/app/reports/staff-aliases?storeId=${report.store_id}`}
+                      >
+                        Fix Staff Names
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
               <details className="mt-4 rounded-2xl border border-border p-3">
                 <summary className="cursor-pointer text-sm font-semibold">View details</summary>
                 <div className="mt-3 grid gap-3 text-xs leading-5 text-muted lg:grid-cols-2">
@@ -233,7 +271,8 @@ export default async function SalesCorrectionPage({
                 <ReplaceSalesReportForm action={replaceSalesReport} report={report} />
               </div>
             </article>
-          ))
+            );
+          })
         ) : (
           <div className="rounded-[1.35rem] border border-border bg-card p-5 text-sm leading-6 text-muted shadow-sm">
             No sales reports found for these filters.
@@ -311,4 +350,3 @@ export default async function SalesCorrectionPage({
     </div>
   );
 }
-

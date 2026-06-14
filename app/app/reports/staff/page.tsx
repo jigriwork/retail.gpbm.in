@@ -7,6 +7,7 @@ import {
   getStaffSalesSummary,
   type SalesPeriod,
 } from "@/lib/analytics/sales";
+import { getUnmatchedStaffWarningsFromReports } from "@/lib/reports/sales-queries";
 
 const periodLabels: Array<{ value: SalesPeriod; label: string }> = [
   { value: "today", label: "Today" },
@@ -55,14 +56,28 @@ export default async function StaffSalesPage({
     storeId && stores.some((store) => store.id === storeId)
       ? stores.filter((store) => store.id === storeId)
       : stores;
-  const staffRows = await getStaffSalesSummary({
-    storeIds: selectedStores.map((store) => store.id),
-    dateRange,
-  });
+  const selectedStoreIds = selectedStores.map((store) => store.id);
+  const [staffRows, unmatchedWarnings] = await Promise.all([
+    getStaffSalesSummary({
+      storeIds: selectedStoreIds,
+      dateRange,
+    }),
+    getUnmatchedStaffWarningsFromReports({
+      endDate: dateRange.endDate,
+      startDate: dateRange.startDate,
+      storeIds: selectedStoreIds,
+    }),
+  ]);
   const totalSales = staffRows.reduce((sum, staff) => sum + staff.totalSale, 0);
   const totalQuantity = staffRows.reduce((sum, staff) => sum + staff.quantitySold, 0);
   const totalBills = staffRows.reduce((sum, staff) => sum + staff.billCount, 0);
   const totalReturns = staffRows.reduce((sum, staff) => sum + staff.returnAmount, 0);
+  const unmatchedStaffCount = unmatchedWarnings.reduce((sum, warning) => sum + warning.count, 0);
+  const unmatchedStaffNames = [...new Set(unmatchedWarnings.flatMap((warning) => warning.names))].sort();
+  const aliasHref =
+    selectedStores.length === 1
+      ? `/app/reports/staff-aliases?storeId=${selectedStores[0].id}`
+      : "/app/reports/staff-aliases";
 
   return (
     <div className="space-y-5">
@@ -111,6 +126,40 @@ export default async function StaffSalesPage({
             Apply
           </button>
         </form>
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold">Staff names are combined using aliases.</p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Map uploaded staff names to real staff names so staff sales becomes accurate.
+            </p>
+          </div>
+          <Link
+            className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
+            href={aliasHref}
+          >
+            Fix Staff Names
+          </Link>
+        </div>
+        {unmatchedStaffCount > 0 ? (
+          <div className="mt-4 rounded-2xl border border-border bg-background p-4">
+            <p className="text-sm font-semibold text-danger">
+              Some uploaded staff names are not mapped. Staff sales may be split or missing.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              {unmatchedStaffCount} unmatched staff name
+              {unmatchedStaffCount === 1 ? "" : "s"} found in sales report summaries for this period.
+            </p>
+            {unmatchedStaffNames.length ? (
+              <p className="mt-2 text-sm font-medium">
+                {unmatchedStaffNames.slice(0, 8).join(", ")}
+                {unmatchedStaffNames.length > 8 ? "..." : ""}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">

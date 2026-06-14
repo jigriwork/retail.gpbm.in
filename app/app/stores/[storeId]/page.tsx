@@ -111,6 +111,8 @@ export default async function StoreDetailPage({
   const [salaryStatus] = salaryStatuses;
   const [stockStatus] = stockStatuses;
   const [reviewStatus] = reviewStatuses;
+  const latestSalesUnmatchedStaffCount = salesStatus?.latestReport?.summary?.unmatchedStaffCount ?? 0;
+  const latestSalesUnmatchedStaffNames = salesStatus?.latestReport?.summary?.unmatchedStaffNames ?? [];
   const targetProgress = calculateTargetProgress(store, monthSales.totalNetSale);
   const latestStockMonth = await getLatestStockMonth(store.id);
   const stockAnalytics = latestStockMonth
@@ -246,6 +248,32 @@ export default async function StoreDetailPage({
               </p>
             </div>
           </div>
+
+          {latestSalesUnmatchedStaffCount > 0 ? (
+            <div className="mt-5 rounded-2xl border border-border bg-background p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-danger">Unmatched staff in latest sales upload</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    {latestSalesUnmatchedStaffCount} uploaded staff name
+                    {latestSalesUnmatchedStaffCount === 1 ? "" : "s"} need mapping before staff sales is fully accurate.
+                  </p>
+                  {latestSalesUnmatchedStaffNames.length ? (
+                    <p className="mt-2 text-sm font-medium">
+                      {latestSalesUnmatchedStaffNames.slice(0, 8).join(", ")}
+                      {latestSalesUnmatchedStaffNames.length > 8 ? "..." : ""}
+                    </p>
+                  ) : null}
+                </div>
+                <Link
+                  className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+                  href={`/app/reports/staff-aliases?storeId=${store.id}`}
+                >
+                  Fix Staff Names
+                </Link>
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-5 space-y-3">
             <h3 className="text-lg font-semibold">Recent sales reports</h3>
