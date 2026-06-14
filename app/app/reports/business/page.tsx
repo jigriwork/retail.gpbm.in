@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BarChart3, Boxes, Layers3, PackageSearch, Ruler, Search, ShoppingBag, TrendingDown, UsersRound } from "lucide-react";
 
 import { BusinessReportActions } from "@/components/reports/business-report-actions";
+import { SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import {
   getBusinessDateRange,
@@ -14,6 +15,7 @@ import {
   type StaffSummary,
 } from "@/lib/analytics/business";
 import { getMissingSalesReportDates } from "@/lib/analytics/sales";
+import { getSuspiciousSalesReportWarningsFromReports } from "@/lib/reports/sales-queries";
 
 const periodOptions: Array<{ value: BusinessPeriod; label: string }> = [
   { value: "today", label: "Today" },
@@ -664,23 +666,31 @@ export default async function BusinessReportingPage({
     start: range.startDate,
     storeId: selectedStoreId,
   };
-  const report = await getBusinessReport(
-    {
-      brand: query.brand,
-      category: query.category,
+  const selectedStoreIds = selectedStores.map((store) => store.id);
+  const [report, missingSalesReports, suspiciousWarnings] = await Promise.all([
+    getBusinessReport(
+      {
+        brand: query.brand,
+        category: query.category,
+        endDate: range.endDate,
+        itemSearch: query.item,
+        period,
+        size: query.size,
+        startDate: range.startDate,
+        storeIds: selectedStoreIds,
+      },
+      selectedStores,
+    ),
+    getMissingSalesReportDates(selectedStores, {
       endDate: range.endDate,
-      itemSearch: query.item,
-      period,
-      size: query.size,
       startDate: range.startDate,
-      storeIds: selectedStores.map((store) => store.id),
-    },
-    selectedStores,
-  );
-  const missingSalesReports = await getMissingSalesReportDates(selectedStores, {
-    endDate: range.endDate,
-    startDate: range.startDate,
-  });
+    }),
+    getSuspiciousSalesReportWarningsFromReports({
+      endDate: range.endDate,
+      startDate: range.startDate,
+      storeIds: selectedStoreIds,
+    }),
+  ]);
   const storeLabel = selectedStoreId === "all" ? "All accessible stores" : selectedStores[0]?.name ?? "No store";
   const periodLabel = `${periodOptions.find((option) => option.value === period)?.label ?? "This month"} (${range.startDate} to ${range.endDate})`;
   const summaryText = buildSummaryText({
@@ -694,6 +704,7 @@ export default async function BusinessReportingPage({
   const weakItemRows = report.itemRows.filter((row) => row.matchConfidence === "weak item" || row.matchConfidence === "none").length;
   const missingDataCount =
     missingSalesReports.length +
+    suspiciousWarnings.length +
     (report.stockWarning ? 1 : 0) +
     (report.summary.salesSizeMissingRows ? 1 : 0) +
     (weakItemRows ? 1 : 0);
@@ -795,6 +806,18 @@ export default async function BusinessReportingPage({
         <p className="mt-4 text-sm leading-6 text-muted">
           Stock note: latest monthly stock, not live inventory.
         </p>
+        {suspiciousWarnings.length ? (
+          <div className="mt-4">
+            <SuspiciousSalesReportWarning />
+            <div className="mt-3 space-y-1 text-sm leading-6 text-muted">
+              {suspiciousWarnings.slice(0, 6).map((warning) => (
+                <p key={warning.reportId}>
+                  {warning.storeName} {warning.reportDate ?? "No date"} {warning.fileName ? `- ${warning.fileName}` : ""}
+                </p>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="grid gap-3 lg:grid-cols-4">

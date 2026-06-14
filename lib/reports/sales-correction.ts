@@ -6,9 +6,13 @@ import { requireOwner } from "@/lib/auth/session";
 import { staffNameKey } from "@/lib/employees/utils";
 import {
   matchesStoreName,
+  missingStaffColumnWarning,
   parseSalesFileDetailed,
+  rowsHaveAmountLikeColumns,
+  rowsHaveStaffColumn,
   summarizeSalesRows,
   type ParsedSalesRow,
+  unmappedAmountColumnsError,
 } from "@/lib/reports/sales-parser";
 import { createClient } from "@/lib/supabase/server";
 import type { Json, Tables, TablesInsert } from "@/lib/supabase/database.types";
@@ -89,6 +93,8 @@ function safeSummaryJson(
     detectedDate: string | null;
     returnsCount: number;
     skippedRows: number;
+    hasStaffColumn: boolean;
+    staffColumnWarning: string | null;
     unmatchedStaffCount: number;
     unmatchedStaffNames: string[];
   },
@@ -267,7 +273,13 @@ async function parseDailyReplacementFile(file: File, store: { id: string; name: 
 
   const reportRows = parsedRows.map((row) => ({ ...row, saleDate: row.saleDate ?? finalReportDate }));
   const summary = summarizeSalesRows(reportRows);
+
+  if (summary.totalNetSale === 0 && rowsHaveAmountLikeColumns(reportRows)) {
+    return { ok: false as const, message: unmappedAmountColumnsError };
+  }
+
   const unmatchedStaffNames = await getUnmatchedSalesStaffNames(store.id, uniqueStaffNames(reportRows));
+  const hasStaffColumn = rowsHaveStaffColumn(reportRows);
   const returnsCount = reportRows.filter(
     (row) => Number(row.quantity ?? 0) < 0 || Number(row.netSale ?? 0) < 0,
   ).length;
@@ -275,6 +287,8 @@ async function parseDailyReplacementFile(file: File, store: { id: string; name: 
     detectedDate: detectedDates[0] ?? null,
     returnsCount,
     skippedRows: parseResult.skippedTotalRows,
+    hasStaffColumn,
+    staffColumnWarning: hasStaffColumn ? null : missingStaffColumnWarning,
     unmatchedStaffCount: unmatchedStaffNames.length,
     unmatchedStaffNames,
   };
@@ -574,6 +588,7 @@ export async function replaceSalesReport(
         newRowCount: parsed.summary.rowCount,
         newSkippedFooterRows: parsed.metadata.skippedRows,
         newTotalSale: parsed.summary.totalNetSale,
+        staffColumnWarning: parsed.metadata.staffColumnWarning,
         oldBillCount:
           oldReport.summary && typeof oldReport.summary === "object" && !Array.isArray(oldReport.summary)
             ? (oldReport.summary as Record<string, unknown>).billCount
@@ -711,6 +726,16 @@ export async function bulkHistoricalSalesUpload(
     return { ok: false, message: "No BILL DATE values were detected." };
   }
 
+  const suspiciousDate = dates.find((date) => {
+    const dateRows = grouped.get(date) ?? [];
+    const summary = summarizeSalesRows(dateRows);
+    return summary.rowCount > 0 && summary.totalNetSale === 0 && rowsHaveAmountLikeColumns(dateRows);
+  });
+
+  if (suspiciousDate) {
+    return { ok: false, message: `${unmappedAmountColumnsError} First affected date: ${suspiciousDate}.` };
+  }
+
   const supabase = await createClient();
   const { data: existingReports } = await supabase
     .from("reports")
@@ -784,12 +809,15 @@ export async function bulkHistoricalSalesUpload(
 
     const summary = summarizeSalesRows(dateRows);
     const dateUnmatched = await getUnmatchedSalesStaffNames(store.id, uniqueStaffNames(dateRows));
+    const hasStaffColumn = rowsHaveStaffColumn(dateRows);
     dateUnmatched.forEach((name) => unmatchedStaff.add(name));
     const dateReturns = dateRows.filter((row) => Number(row.quantity ?? 0) < 0 || Number(row.netSale ?? 0) < 0).length;
     const summaryJson = safeSummaryJson(summary, {
       detectedDate: date,
       returnsCount: dateReturns,
       skippedRows: parseResult.skippedTotalRows,
+      hasStaffColumn,
+      staffColumnWarning: hasStaffColumn ? null : missingStaffColumnWarning,
       unmatchedStaffCount: dateUnmatched.length,
       unmatchedStaffNames: dateUnmatched,
     });
@@ -939,4 +967,3 @@ export async function bulkHistoricalSalesUpload(
     },
   };
 }
-

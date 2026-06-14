@@ -7,8 +7,12 @@ import { staffNameKey } from "@/lib/employees/utils";
 import {
   parseSalesFileDetailed,
   matchesStoreName,
+  missingStaffColumnWarning,
+  rowsHaveAmountLikeColumns,
+  rowsHaveStaffColumn,
   summarizeSalesRows,
   type ParsedSalesRow,
+  unmappedAmountColumnsError,
 } from "@/lib/reports/sales-parser";
 import { createClient } from "@/lib/supabase/server";
 import { completeMatchingTasks } from "@/lib/tasks/auto-complete";
@@ -29,6 +33,8 @@ export type SalesUploadState = {
     unmatchedStaffCount: number;
     returnsCount: number;
     skippedRows: number;
+    hasStaffColumn: boolean;
+    missingStaffColumnWarning: string | null;
     topBrands: Array<{ name: string; sale: number }>;
     topCategories: Array<{ name: string; sale: number }>;
   };
@@ -83,6 +89,8 @@ function safeSummaryJson(
     detectedDate: string | null;
     returnsCount: number;
     skippedRows: number;
+    hasStaffColumn: boolean;
+    staffColumnWarning: string | null;
     unmatchedStaffCount: number;
     unmatchedStaffNames: string[];
   },
@@ -366,8 +374,13 @@ export async function uploadSalesReport(
     return { ok: false, message: "At least one sales row is required." };
   }
 
+  if (summary.totalNetSale === 0 && rowsHaveAmountLikeColumns(reportRows)) {
+    return { ok: false, message: unmappedAmountColumnsError };
+  }
+
   const staffNames = uniqueStaffNames(reportRows);
   const unmatchedStaffNames = await getUnmatchedSalesStaffNames(storeId, staffNames);
+  const hasStaffColumn = rowsHaveStaffColumn(reportRows);
   const returnsCount = reportRows.filter(
     (row) => Number(row.quantity ?? 0) < 0 || Number(row.netSale ?? 0) < 0,
   ).length;
@@ -375,6 +388,8 @@ export async function uploadSalesReport(
     detectedDate: detectedDates[0] ?? null,
     returnsCount,
     skippedRows: parseResult.skippedTotalRows,
+    hasStaffColumn,
+    staffColumnWarning: hasStaffColumn ? null : missingStaffColumnWarning,
     unmatchedStaffCount: unmatchedStaffNames.length,
     unmatchedStaffNames,
   };
@@ -464,6 +479,7 @@ export async function uploadSalesReport(
       billCount: summary.billCount,
       staffNames: summary.staffNames,
       ...uploadMetadata,
+      missingStaffColumnWarning: uploadMetadata.staffColumnWarning,
       topBrands: summary.topBrands,
       topCategories: summary.topCategories,
     },

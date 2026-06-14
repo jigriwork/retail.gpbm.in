@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { UserRoundCheck } from "lucide-react";
 
+import { SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import {
   getDateRangeForPeriod,
   getStaffSalesSummary,
   type SalesPeriod,
 } from "@/lib/analytics/sales";
-import { getUnmatchedStaffWarningsFromReports } from "@/lib/reports/sales-queries";
+import {
+  getSuspiciousSalesReportWarningsFromReports,
+  getUnmatchedStaffWarningsFromReports,
+} from "@/lib/reports/sales-queries";
 
 const periodLabels: Array<{ value: SalesPeriod; label: string }> = [
   { value: "today", label: "Today" },
@@ -57,12 +61,17 @@ export default async function StaffSalesPage({
       ? stores.filter((store) => store.id === storeId)
       : stores;
   const selectedStoreIds = selectedStores.map((store) => store.id);
-  const [staffRows, unmatchedWarnings] = await Promise.all([
+  const [staffRows, unmatchedWarnings, suspiciousWarnings] = await Promise.all([
     getStaffSalesSummary({
       storeIds: selectedStoreIds,
       dateRange,
     }),
     getUnmatchedStaffWarningsFromReports({
+      endDate: dateRange.endDate,
+      startDate: dateRange.startDate,
+      storeIds: selectedStoreIds,
+    }),
+    getSuspiciousSalesReportWarningsFromReports({
       endDate: dateRange.endDate,
       startDate: dateRange.startDate,
       storeIds: selectedStoreIds,
@@ -158,6 +167,18 @@ export default async function StaffSalesPage({
                 {unmatchedStaffNames.length > 8 ? "..." : ""}
               </p>
             ) : null}
+          </div>
+        ) : null}
+        {suspiciousWarnings.length ? (
+          <div className="mt-4">
+            <SuspiciousSalesReportWarning />
+            <div className="mt-3 space-y-1 text-sm leading-6 text-muted">
+              {suspiciousWarnings.slice(0, 6).map((warning) => (
+                <p key={warning.reportId}>
+                  {warning.storeName} {warning.reportDate ?? "No date"} {warning.fileName ? `- ${warning.fileName}` : ""}
+                </p>
+              ))}
+            </div>
           </div>
         ) : null}
       </section>

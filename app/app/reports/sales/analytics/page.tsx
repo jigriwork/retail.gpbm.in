@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BarChart3, CircleAlert, LineChart, Target, Trophy } from "lucide-react";
 
+import { SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import {
   calculateTargetProgress,
@@ -10,6 +11,7 @@ import {
   getSalesSummary,
   type SalesPeriod,
 } from "@/lib/analytics/sales";
+import { getSuspiciousSalesReportWarningsFromReports } from "@/lib/reports/sales-queries";
 
 const periodLabels: Array<{ value: SalesPeriod; label: string }> = [
   { value: "today", label: "Today" },
@@ -84,10 +86,15 @@ export default async function SalesAnalyticsPage({
       ? stores.filter((store) => store.id === storeId)
       : stores;
   const selectedStoreIds = selectedStores.map((store) => store.id);
-  const [summary, missingDates, monthSummary] = await Promise.all([
+  const [summary, missingDates, monthSummary, suspiciousWarnings] = await Promise.all([
     getSalesSummary({ storeIds: selectedStoreIds, dateRange }, selectedStores),
     getMissingSalesReportDates(selectedStores, dateRange),
     getSalesSummary({ storeIds: selectedStoreIds, dateRange: currentMonthRange() }, selectedStores),
+    getSuspiciousSalesReportWarningsFromReports({
+      endDate: dateRange.endDate,
+      startDate: dateRange.startDate,
+      storeIds: selectedStoreIds,
+    }),
   ]);
   const maxTrendSale = Math.max(...summary.dailyTrend.map((point) => point.totalSale), 1);
   const targetProgress =
@@ -161,6 +168,19 @@ export default async function SalesAnalyticsPage({
           </button>
         </form>
       </section>
+
+      {suspiciousWarnings.length ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+          <SuspiciousSalesReportWarning />
+          <div className="mt-3 space-y-1 text-sm leading-6 text-muted">
+            {suspiciousWarnings.slice(0, 6).map((warning) => (
+              <p key={warning.reportId}>
+                {warning.storeName} {warning.reportDate ?? "No date"} {warning.fileName ? `- ${warning.fileName}` : ""}
+              </p>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[

@@ -7,6 +7,7 @@ import {
   DeleteSalesReportForm,
   ReplaceSalesReportForm,
 } from "@/components/reports/sales-correction-forms";
+import { MissingStaffSalesWarning, SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
 import { getAccessibleStores, requireOwner, requireProfile } from "@/lib/auth/session";
 import {
   bulkHistoricalSalesUpload,
@@ -16,6 +17,11 @@ import {
   replaceSalesReport,
   type CorrectionSalesReport,
 } from "@/lib/reports/sales-correction";
+import {
+  getSuspiciousSalesReportWarningsForReportIds,
+  isSalesReportSummarySuspicious,
+  salesReportMayBeMissingStaff,
+} from "@/lib/reports/sales-queries";
 
 function formatMoney(value: unknown) {
   return new Intl.NumberFormat("en-IN", {
@@ -92,6 +98,8 @@ export default async function SalesCorrectionPage({
     }),
     getRecentCorrectionAuditLogs(25),
   ]);
+  const suspiciousWarnings = await getSuspiciousSalesReportWarningsForReportIds(reports.map((report) => report.id));
+  const suspiciousWarningByReportId = new Map(suspiciousWarnings.map((warning) => [warning.reportId, warning]));
   const totalPages = Math.max(Math.ceil(count / pageSize), 1);
 
   return (
@@ -174,6 +182,9 @@ export default async function SalesCorrectionPage({
           reports.map((report) => {
             const unmatchedStaffCount = Number(summaryValue(report, "unmatchedStaffCount") ?? 0);
             const unmatchedStaffNames = summaryStringArray(report, "unmatchedStaffNames");
+            const suspiciousWarning = suspiciousWarningByReportId.get(report.id);
+            const suspicious = Boolean(suspiciousWarning) || isSalesReportSummarySuspicious(report);
+            const missingStaff = salesReportMayBeMissingStaff(report);
 
             return (
             <article className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm" key={report.id}>
@@ -248,6 +259,35 @@ export default async function SalesCorrectionPage({
                   </div>
                 </div>
               ) : null}
+              {suspicious ? (
+                <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background p-4">
+                  <SuspiciousSalesReportWarning />
+                  {suspiciousWarning?.summaryMismatch ? (
+                    <p className="text-sm leading-6 text-muted">
+                      Report summary differs from saved sales rows. Summary total {formatMoney(suspiciousWarning.totalNetSale)}, rows total{" "}
+                      {formatMoney(suspiciousWarning.salesRowsNetSale)}.
+                    </p>
+                  ) : null}
+                  <p className="text-sm leading-6 text-muted">Reprocess with latest parser coming later.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold">
+                      Replace Report
+                    </span>
+                    <span className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold">
+                      Delete Report
+                    </span>
+                    {unmatchedStaffCount > 0 && report.store_id ? (
+                      <Link
+                        className="inline-flex h-10 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+                        href={`/app/reports/staff-aliases?storeId=${report.store_id}`}
+                      >
+                        Fix Staff Names
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+              {missingStaff ? <MissingStaffSalesWarning className="mt-4" /> : null}
               <details className="mt-4 rounded-2xl border border-border p-3">
                 <summary className="cursor-pointer text-sm font-semibold">View details</summary>
                 <div className="mt-3 grid gap-3 text-xs leading-5 text-muted lg:grid-cols-2">

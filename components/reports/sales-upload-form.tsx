@@ -150,6 +150,12 @@ export function SalesUploadForm({
               </Link>
             </div>
           ) : null}
+          {state.summary.missingStaffColumnWarning ? (
+            <div className="mt-5 rounded-2xl border border-border bg-background p-4">
+              <p className="text-sm font-semibold text-danger">Staff column missing</p>
+              <p className="mt-2 text-sm leading-6 text-muted">{state.summary.missingStaffColumnWarning}</p>
+            </div>
+          ) : null}
           <div className="mt-5 grid gap-4 lg:grid-cols-3">
             <div>
               <p className="text-sm font-semibold">Staff found</p>

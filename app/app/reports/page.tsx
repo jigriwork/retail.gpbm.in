@@ -15,8 +15,14 @@ import {
 } from "lucide-react";
 
 import { SalesReportList } from "@/components/reports/sales-report-list";
+import { MissingStaffSalesWarning, SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
-import { getRecentSalesReports, getStoreSalesStatuses } from "@/lib/reports/sales-queries";
+import {
+  getRecentSalesReports,
+  getStoreSalesStatuses,
+  isSalesReportSummarySuspicious,
+  salesReportMayBeMissingStaff,
+} from "@/lib/reports/sales-queries";
 import { getSalaryAttendanceOverview } from "@/lib/reports/salary-queries";
 import { getStockOverview } from "@/lib/reports/stock-queries";
 
@@ -71,11 +77,12 @@ export default async function ReportsPage() {
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {statuses.map((status) => (
-              <div
-                className="rounded-2xl border border-border p-4"
-                key={status.store.id}
-              >
+            {statuses.map((status) => {
+              const suspicious = status.latestReport ? isSalesReportSummarySuspicious(status.latestReport) : false;
+              const missingStaff = status.latestReport ? salesReportMayBeMissingStaff(status.latestReport) : false;
+
+              return (
+              <div className="rounded-2xl border border-border p-4" key={status.store.id}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold">{status.store.name}</p>
@@ -99,8 +106,11 @@ export default async function ReportsPage() {
                 <p className="mt-1 text-xs font-medium text-muted">
                   Latest: {status.latestReport?.report_date ?? "No upload yet"}
                 </p>
+                {suspicious ? <SuspiciousSalesReportWarning className="mt-4" /> : null}
+                {missingStaff ? <MissingStaffSalesWarning className="mt-4" /> : null}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {missingStores.length ? (

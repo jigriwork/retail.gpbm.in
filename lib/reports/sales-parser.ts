@@ -53,7 +53,7 @@ const headerAliases = {
   category: ["category", "department", "section", "group", "group1.grp1"],
   size: ["size"],
   color: ["color", "colour"],
-  quantity: ["sale qty", "sale quantity", "quantity", "qty", "pcs", "pieces"],
+  quantity: ["sale qty", "sale quantity", "net sale qty", "net qty", "quantity", "qty", "pcs", "pieces"],
   mrp: ["mrp", "m.r.p", "m.r.p.", "rate", "price"],
   discount: ["discount", "disc", "discount amount"],
   netSale: [
@@ -67,6 +67,10 @@ const headerAliases = {
     "total amount",
     "total",
     "final amount",
+    "net sale value",
+    "sales value",
+    "bill value",
+    "taxable amount",
     "taxable value",
   ],
   staffName: ["agent name", "staff", "staff name", "salesman", "sales person", "salesperson", "sold by", "user name"],
@@ -78,6 +82,20 @@ const headerScanRowLimit = 20;
 const minimumHeaderMatches = 4;
 const salesIdentityFields = ["billNo", "itemName", "brand", "category", "staffName"] as const;
 const totalRowPattern = /\b(grand\s+totals?|godown\s+wise\s+totals?|godown\s+totals?|sub\s*totals?|totals?)\b/i;
+const amountLikeHeaderAliases = [
+  "net sale value",
+  "net amount",
+  "net sale",
+  "taxable amount",
+  "sales value",
+  "bill value",
+];
+
+export const unmappedAmountColumnsError =
+  "This file has sale amount columns but the app could not map them. Upload the correct agent-wise report or contact owner to update parser mapping.";
+
+export const missingStaffColumnWarning =
+  "This file has no staff/agent column. Total sales may work, but Staff Sales will be 0 or unavailable.";
 
 function normalizeHeader(value: unknown) {
   return String(value ?? "")
@@ -187,6 +205,19 @@ function buildColumnMap(headers: unknown[]) {
   }
 
   return map;
+}
+
+function rowHasAnyRawHeader(row: ParsedSalesRow, aliases: string[]) {
+  const aliasSet = new Set(aliases.map(normalizeHeader));
+  return Object.keys(row.rawData).some((header) => aliasSet.has(normalizeHeader(header)));
+}
+
+export function rowsHaveAmountLikeColumns(rows: ParsedSalesRow[]) {
+  return rows.some((row) => rowHasAnyRawHeader(row, amountLikeHeaderAliases));
+}
+
+export function rowsHaveStaffColumn(rows: ParsedSalesRow[]) {
+  return rows.some((row) => rowHasAnyRawHeader(row, headerAliases.staffName));
 }
 
 function findHeaderRow(rows: unknown[][]) {

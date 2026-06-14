@@ -82,7 +82,7 @@ export function DeleteSalesReportForm({
       />
       <Button className="h-10 rounded-xl px-3 text-xs" disabled={pending} type="submit" variant="secondary">
         {pending ? <Loader2 className="size-3 animate-spin" /> : <AlertTriangle className="size-3" />}
-        Delete sales report
+        Delete Report
       </Button>
       <ActionResult state={state} />
     </form>
@@ -123,7 +123,7 @@ export function ReplaceSalesReportForm({
       </p>
       <Button className="h-10 rounded-xl px-3 text-xs" disabled={pending} type="submit" variant="secondary">
         {pending ? <Loader2 className="size-3 animate-spin" /> : <UploadCloud className="size-3" />}
-        Replace sales report
+        Replace Report
       </Button>
       <ActionResult state={state} />
     </form>
@@ -205,4 +205,3 @@ export function BulkSalesUploadForm({
     </form>
   );
 }
-

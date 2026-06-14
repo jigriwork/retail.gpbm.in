@@ -25,10 +25,13 @@ import {
 
 import { ChecklistCard } from "@/components/checklist/checklist-card";
 import { StatusCard } from "@/components/app/status-card";
+import { MissingStaffSalesWarning, SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import {
   getStoreSalesStatuses,
+  isSalesReportSummarySuspicious,
+  salesReportMayBeMissingStaff,
   type SalesReportWithStore,
   type StoreSalesStatus,
 } from "@/lib/reports/sales-queries";
@@ -310,6 +313,8 @@ export default async function TodayPage() {
             const latestReport = status.latestReport;
             const latestStatus = latestUploadStatus(status);
             const unmatchedStaffCount = latestReport?.summary?.unmatchedStaffCount ?? 0;
+            const suspicious = latestReport ? isSalesReportSummarySuspicious(latestReport) : false;
+            const missingStaff = latestReport ? salesReportMayBeMissingStaff(latestReport) : false;
 
             return (
               <article
@@ -418,6 +423,9 @@ export default async function TodayPage() {
                     </div>
                   </div>
                 ) : null}
+
+                {suspicious ? <SuspiciousSalesReportWarning className="mt-4" /> : null}
+                {missingStaff ? <MissingStaffSalesWarning className="mt-4" /> : null}
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link

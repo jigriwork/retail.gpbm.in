@@ -1,8 +1,13 @@
 import Link from "next/link";
 
 import { SalesRepairButton } from "@/components/reports/sales-repair-button";
+import { MissingStaffSalesWarning, SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
 import type { SalesRepairState } from "@/lib/reports/sales-actions";
-import type { SalesReportWithStore } from "@/lib/reports/sales-queries";
+import {
+  isSalesReportSummarySuspicious,
+  salesReportMayBeMissingStaff,
+  type SalesReportWithStore,
+} from "@/lib/reports/sales-queries";
 
 function formatMoney(value?: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -37,11 +42,12 @@ export function SalesReportList({
 
   return (
     <div className="space-y-3">
-      {reports.map((report) => (
-        <article
-          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm"
-          key={report.id}
-        >
+      {reports.map((report) => {
+        const suspicious = isSalesReportSummarySuspicious(report);
+        const missingStaff = salesReportMayBeMissingStaff(report);
+
+        return (
+        <article className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm" key={report.id}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-lg font-semibold">
@@ -76,6 +82,8 @@ export function SalesReportList({
               </span>
             ))}
           </div>
+          {suspicious ? <SuspiciousSalesReportWarning className="mt-4" /> : null}
+          {missingStaff ? <MissingStaffSalesWarning className="mt-4" /> : null}
           <div className="mt-4 flex flex-wrap items-start gap-3">
             {report.store_id ? (
               <Link
@@ -90,7 +98,8 @@ export function SalesReportList({
             ) : null}
           </div>
         </article>
-      ))}
+        );
+      })}
     </div>
   );
 }

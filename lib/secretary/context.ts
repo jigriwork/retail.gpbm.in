@@ -2,7 +2,7 @@ import { getAccessibleStores, type Profile } from "@/lib/auth/session";
 import { getAccessibleChecklists } from "@/lib/checklist/queries";
 import { getSalaryAttendanceOverview } from "@/lib/reports/salary-queries";
 import { getStockOverview } from "@/lib/reports/stock-queries";
-import { getStoreSalesStatuses } from "@/lib/reports/sales-queries";
+import { getStoreSalesStatuses, getSuspiciousSalesReportWarningsFromReports } from "@/lib/reports/sales-queries";
 import { currentMonthRange, getDateRangeForPeriod, getSalesSummary, getStaffSalesSummary } from "@/lib/analytics/sales";
 import { getLatestStockMonth, getStockSummary } from "@/lib/analytics/stock";
 import { getPreviousWeekRangeAsiaKolkata, getWeeklyAuditSummaries, isWeeklyAuditDay } from "@/lib/audit/weekly";
@@ -62,6 +62,7 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
   const stores = await getAccessibleStores(profile);
   const storeIds = stores.map((store) => store.id);
   const supabase = await createClient();
+  const monthRange = currentMonthRange();
 
   const [
     checklists,
@@ -74,10 +75,11 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
     updateSummary,
     memories,
     latestStockMonth,
+    suspiciousSalesReports,
   ] = await Promise.all([
     getAccessibleChecklists(profile),
     getStoreSalesStatuses(stores),
-    getSalesSummary({ storeIds, dateRange: currentMonthRange() }, stores),
+    getSalesSummary({ storeIds, dateRange: monthRange }, stores),
     getStaffSalesSummary({ storeIds, dateRange: getDateRangeForPeriod("yesterday") }),
     getSalaryAttendanceOverview(stores),
     getStockOverview(stores),
@@ -85,6 +87,11 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
     getTodayUpdateSummary(stores),
     getActiveAiMemories(profile.id),
     getLatestStockMonth(),
+    getSuspiciousSalesReportWarningsFromReports({
+      endDate: monthRange.endDate,
+      startDate: monthRange.startDate,
+      storeIds,
+    }),
   ]);
 
   const stockPulse = latestStockMonth
@@ -130,6 +137,12 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
         `- ${status.store.name}: latest report ${status.latestReport?.report_date ?? "none"}, uploaded by ${
           status.latestReport?.profiles?.full_name ?? status.latestReport?.profiles?.email ?? "unknown"
         }, upload time ${uploadTime(status.latestReport?.created_at)}, total ${money(status.latestReport?.summary?.totalNetSale ?? 0)}.`,
+    ),
+    "",
+    `Suspicious sales reports this month: ${suspiciousSalesReports.length}.`,
+    ...suspiciousSalesReports.slice(0, 5).map(
+      (warning) =>
+        `- ${warning.storeName}: ${warning.reportDate ?? "no date"}, file ${warning.fileName ?? "unknown"}; ${warning.warning}`,
     ),
     "",
     "This month sales by store:",
