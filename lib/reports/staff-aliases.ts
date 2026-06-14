@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 
 import { canAccessStore, getAccessibleStores, requireProfile, type Profile } from "@/lib/auth/session";
 import { normalizeStaffName, staffNameKey } from "@/lib/employees/utils";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import type { Json, Tables } from "@/lib/supabase/database.types";
 
 export type StaffAliasState = {
@@ -86,6 +86,102 @@ function staffAliasAuditAction(
   }
 
   return "update_staff_alias";
+}
+
+function summaryObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function summaryStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+}
+
+function sameStringArray(left: string[], right: string[]) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+async function refreshSalesReportUnmatchedStaffSummaries(storeId: string) {
+  const supabase = createAdminClient() ?? (await createClient());
+  const { data: reports, error: reportsError } = await supabase
+    .from("reports")
+    .select("id,summary")
+    .eq("report_type", "sales")
+    .eq("store_id", storeId)
+    .eq("status", "processed");
+
+  if (reportsError) {
+    return { error: reportsError, updatedCount: 0 };
+  }
+
+  const reportSummaries = (reports ?? []).map((report) => ({
+    id: report.id,
+    summary: summaryObject(report.summary),
+  }));
+  const staffNames = [
+    ...new Set(
+      reportSummaries.flatMap((report) => summaryStringArray(report.summary.staffNames)),
+    ),
+  ];
+  const normalizedNames = [...new Set(staffNames.map(staffNameKey).filter(Boolean))];
+  const matchedNames = new Set<string>();
+
+  if (normalizedNames.length) {
+    const { data: aliases, error: aliasesError } = await supabase
+      .from("staff_name_aliases")
+      .select("normalized_source_name")
+      .eq("store_id", storeId)
+      .eq("source_type", sourceType)
+      .eq("is_active", true)
+      .in("normalized_source_name", normalizedNames);
+
+    if (aliasesError) {
+      return { error: aliasesError, updatedCount: 0 };
+    }
+
+    for (const alias of aliases ?? []) {
+      if (alias.normalized_source_name) {
+        matchedNames.add(alias.normalized_source_name);
+      }
+    }
+  }
+
+  let updatedCount = 0;
+
+  for (const report of reportSummaries) {
+    const reportStaffNames = summaryStringArray(report.summary.staffNames);
+    const unmatchedStaffNames = reportStaffNames
+      .filter((name) => !matchedNames.has(staffNameKey(name)))
+      .sort();
+    const previousNames = summaryStringArray(report.summary.unmatchedStaffNames).sort();
+    const previousCount = Number(report.summary.unmatchedStaffCount ?? 0);
+
+    if (previousCount === unmatchedStaffNames.length && sameStringArray(previousNames, unmatchedStaffNames)) {
+      continue;
+    }
+
+    const { error: updateError } = await supabase
+      .from("reports")
+      .update({
+        summary: {
+          ...report.summary,
+          unmatchedStaffCount: unmatchedStaffNames.length,
+          unmatchedStaffNames,
+        } satisfies Json,
+      })
+      .eq("id", report.id);
+
+    if (updateError) {
+      return { error: updateError, updatedCount };
+    }
+
+    updatedCount += 1;
+  }
+
+  return { error: null, updatedCount };
 }
 
 async function writeStaffAliasAuditLog({
@@ -336,12 +432,19 @@ export async function saveStaffAlias(
     profile,
     savedAlias,
   });
+  const refreshResult = await refreshSalesReportUnmatchedStaffSummaries(storeId);
 
   revalidatePath("/app/reports/staff-aliases");
   revalidatePath("/app/reports/staff");
   revalidatePath("/app/reports/sales/analytics");
   revalidatePath("/app/reports/business");
+  revalidatePath("/app/reports/correction");
   revalidatePath("/app/today");
   revalidatePath(`/app/stores/${storeId}`);
-  return { ok: true, message: "Staff alias saved." };
+  return {
+    ok: true,
+    message: refreshResult.error
+      ? "Staff alias saved. Report warning summary could not refresh automatically."
+      : `Staff alias saved. Refreshed ${refreshResult.updatedCount} report warning summar${refreshResult.updatedCount === 1 ? "y" : "ies"}.`,
+  };
 }

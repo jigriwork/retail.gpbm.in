@@ -1,4 +1,5 @@
 import { addDays, getIndiaToday } from "@/lib/tasks/dates";
+import { staffNameKey } from "@/lib/employees/utils";
 import { createClient } from "@/lib/supabase/server";
 
 export type SalesReportSummary = {
@@ -118,6 +119,64 @@ function getReportStaffNames(summary: SalesReportSummary | null) {
   return summaryStringArray(summary?.staffNames);
 }
 
+async function applyLiveUnmatchedStaff(reports: SalesReportWithStore[]) {
+  const storeIds = [...new Set(reports.map((report) => report.store_id).filter((id): id is string => Boolean(id)))];
+
+  if (!storeIds.length) {
+    return reports;
+  }
+
+  const normalizedNames = [
+    ...new Set(
+      reports.flatMap((report) =>
+        getReportStaffNames(summaryObject(report.summary)).map(staffNameKey).filter(Boolean),
+      ),
+    ),
+  ];
+
+  if (!normalizedNames.length) {
+    return reports.map((report) => ({
+      ...report,
+      summary: report.summary
+        ? { ...report.summary, unmatchedStaffCount: 0, unmatchedStaffNames: [] }
+        : report.summary,
+    }));
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("staff_name_aliases")
+    .select("store_id,normalized_source_name")
+    .in("store_id", storeIds)
+    .eq("source_type", "sales_report")
+    .eq("is_active", true)
+    .in("normalized_source_name", normalizedNames);
+  const matched = new Set(
+    (data ?? []).map((alias) => `${alias.store_id}:${alias.normalized_source_name}`),
+  );
+
+  return reports.map((report) => {
+    const summary = summaryObject(report.summary);
+
+    if (!summary || !report.store_id) {
+      return report;
+    }
+
+    const unmatchedStaffNames = getReportStaffNames(summary)
+      .filter((name) => !matched.has(`${report.store_id}:${staffNameKey(name)}`))
+      .sort();
+
+    return {
+      ...report,
+      summary: {
+        ...summary,
+        unmatchedStaffCount: unmatchedStaffNames.length,
+        unmatchedStaffNames,
+      },
+    };
+  });
+}
+
 export function isSalesReportSummarySuspicious(report: SuspiciousReportLike) {
   const summary = summaryObject(report.summary);
   const rowCount = Number(report.row_count ?? summary?.rowCount ?? 0);
@@ -189,7 +248,7 @@ export async function getRecentSalesReports(limit = 8) {
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  return (data ?? []).map(asSalesReport);
+  return applyLiveUnmatchedStaff((data ?? []).map(asSalesReport));
 }
 
 export async function getSalesReportsForStore(storeId: string, limit = 5) {
@@ -203,7 +262,7 @@ export async function getSalesReportsForStore(storeId: string, limit = 5) {
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  return (data ?? []).map(asSalesReport);
+  return applyLiveUnmatchedStaff((data ?? []).map(asSalesReport));
 }
 
 export async function getSalesReportForStoreDate(storeId: string, reportDate: string) {
@@ -216,7 +275,8 @@ export async function getSalesReportForStoreDate(storeId: string, reportDate: st
     .eq("report_date", reportDate)
     .maybeSingle();
 
-  return data ? asSalesReport(data) : null;
+  const reports = data ? await applyLiveUnmatchedStaff([asSalesReport(data)]) : [];
+  return reports[0] ?? null;
 }
 
 export async function getUnmatchedStaffWarningsFromReports({
@@ -235,15 +295,16 @@ export async function getUnmatchedStaffWarningsFromReports({
   const supabase = await createClient();
   const { data } = await supabase
     .from("reports")
-    .select("id,store_id,report_date,summary")
+    .select(salesReportSelect)
     .eq("report_type", "sales")
     .in("store_id", storeIds)
     .gte("report_date", startDate)
     .lte("report_date", endDate);
 
+  const reports = await applyLiveUnmatchedStaff((data ?? []).map((report) => asSalesReport(report)));
   const warningMap = new Map<string, UnmatchedStaffReportWarning>();
 
-  for (const report of data ?? []) {
+  for (const report of reports) {
     if (!report.store_id) {
       continue;
     }
@@ -301,7 +362,7 @@ export async function getSuspiciousSalesReportWarningsFromReports({
     .in("store_id", storeIds)
     .gte("report_date", startDate)
     .lte("report_date", endDate);
-  const reports = (data ?? []).map(asSalesReport);
+  const reports = await applyLiveUnmatchedStaff((data ?? []).map(asSalesReport));
   const summaryWarnings = reports
     .filter(isSalesReportSummarySuspicious)
     .map((report) => buildSuspiciousSalesReportWarning(report));
