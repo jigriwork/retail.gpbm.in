@@ -142,8 +142,9 @@ function buildReportCsv(report: Awaited<ReturnType<typeof getBusinessReport>>) {
     ),
     csvSection(
       "Item/Product Performance",
-      ["Brand", "Product", "Category", "Size", "Stock Qty", "Sold Qty", "Net Sales", "Return Qty", "MRP Value", "Staff", "Restock Signal", "Match Confidence", "Barcode", "SKU"],
+      ["Store", "Brand", "Product", "Category", "Size", "Stock Qty", "Sold Qty", "Net Sales", "Return Qty", "MRP Value", "Staff", "Restock Signal", "Match Confidence", "Barcode", "SKU"],
       report.itemRows.map((row) => [
+        row.storeName,
         row.brand,
         row.itemName,
         row.category,
@@ -176,8 +177,9 @@ function buildReportCsv(report: Awaited<ReturnType<typeof getBusinessReport>>) {
     ),
     csvSection(
       "Restock Suggestions",
-      ["Signal", "Brand", "Product", "Category", "Size", "Sold Qty", "Stock Qty", "Return Qty", "Net Sales", "Latest Stock Month", "Match Confidence"],
+      ["Store", "Signal", "Brand", "Product", "Category", "Size", "Sold Qty", "Stock Qty", "Return Qty", "Net Sales", "Latest Stock Month", "Match Confidence"],
       report.restockRows.map((row) => [
+        row.storeName,
         row.signal,
         row.brand,
         row.itemName,
@@ -193,8 +195,9 @@ function buildReportCsv(report: Awaited<ReturnType<typeof getBusinessReport>>) {
     ),
     csvSection(
       "Slow / No-sale Signals",
-      ["Brand", "Product", "Category", "Size", "Stock Qty", "Sold Qty", "Net Sales", "MRP Value", "Suggested Action", "Match Confidence"],
+      ["Store", "Brand", "Product", "Category", "Size", "Stock Qty", "Sold Qty", "Net Sales", "MRP Value", "Suggested Action", "Match Confidence"],
       report.slowRows.map((row) => [
+        row.storeName,
         row.brand,
         row.itemName,
         row.category,
@@ -233,17 +236,22 @@ function DecisionItem({
   itemName,
   netSales,
   soldQuantity,
+  storeName,
   stockQuantity,
 }: {
   brand?: string | null;
   itemName: string;
   netSales: number;
   soldQuantity: number;
+  storeName?: string | null;
   stockQuantity: number;
 }) {
   return (
     <div className="rounded-2xl border border-border p-3">
-      <p className="text-xs font-medium text-muted">{brand ?? "No brand"}</p>
+      <p className="text-xs font-medium text-muted">
+        {storeName ? `${storeName} - ` : ""}
+        {brand ?? "No brand"}
+      </p>
       <p className="mt-1 font-semibold">{itemName}</p>
       <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
         <div>
@@ -429,6 +437,7 @@ function ItemTable({ hasItemSearch, rows }: { hasItemSearch: boolean; rows: Busi
       <table className="w-full min-w-[1240px] text-left text-sm">
         <thead className="border-b border-border text-xs uppercase text-muted">
           <tr>
+            <th className="px-3 py-3 font-semibold">Store</th>
             <th className="px-3 py-3 font-semibold">Brand</th>
             <th className="px-3 py-3 font-semibold">Item/Product Name</th>
             <th className="px-3 py-3 font-semibold">Category</th>
@@ -446,6 +455,7 @@ function ItemTable({ hasItemSearch, rows }: { hasItemSearch: boolean; rows: Busi
         <tbody className="divide-y divide-border">
           {rows.map((row) => (
             <tr key={row.key}>
+              <td className="px-3 py-3 font-semibold">{row.storeName ?? "Store"}</td>
               <td className="px-3 py-3">{row.brand ?? "None"}</td>
               <td className="px-3 py-3">
                 <p className="font-semibold">{row.itemName}</p>
@@ -506,6 +516,7 @@ function SignalTable({
       <table className="w-full min-w-[980px] text-left text-sm">
         <thead className="border-b border-border text-xs uppercase text-muted">
           <tr>
+            <th className="px-3 py-3 font-semibold">Store</th>
             {mode === "restock" ? <th className="px-3 py-3 font-semibold">Signal</th> : null}
             <th className="px-3 py-3 font-semibold">Brand</th>
             <th className="px-3 py-3 font-semibold">Item/Product</th>
@@ -525,6 +536,7 @@ function SignalTable({
         <tbody className="divide-y divide-border">
           {rows.map((row) => (
             <tr key={row.key}>
+              <td className="px-3 py-3 font-semibold">{row.storeName ?? "Store"}</td>
               {mode === "restock" ? <td className="px-3 py-3 font-semibold">{row.signal}</td> : null}
               <td className="px-3 py-3">{row.brand ?? "None"}</td>
               <td className="px-3 py-3 font-semibold">{row.itemName}</td>
@@ -830,6 +842,7 @@ export default async function BusinessReportingPage({
                 key={row.key}
                 netSales={row.netSales}
                 soldQuantity={row.soldQuantity}
+                storeName={row.storeName}
                 stockQuantity={row.stockQuantity}
               />
             ))}
@@ -844,6 +857,7 @@ export default async function BusinessReportingPage({
                 key={row.key}
                 netSales={row.netSales}
                 soldQuantity={row.soldQuantity}
+                storeName={row.storeName}
                 stockQuantity={row.stockQuantity}
               />
             ))}
@@ -858,6 +872,7 @@ export default async function BusinessReportingPage({
                 key={row.key}
                 netSales={row.netSales}
                 soldQuantity={row.soldQuantity}
+                storeName={row.storeName}
                 stockQuantity={row.stockQuantity}
               />
             ))}
@@ -872,6 +887,7 @@ export default async function BusinessReportingPage({
                 key={row.key}
                 netSales={row.netSales}
                 soldQuantity={row.soldQuantity}
+                storeName={row.storeName}
                 stockQuantity={row.stockQuantity}
               />
             ))}

@@ -49,6 +49,7 @@ type StockRow = {
 
 export type BusinessRank = {
   name: string;
+  storeName: string | null;
   netSales: number;
   soldQuantity: number;
   returnAmount: number;
@@ -67,6 +68,7 @@ export type BusinessRank = {
 
 export type BusinessItem = {
   key: string;
+  storeName: string | null;
   itemName: string;
   brand: string | null;
   category: string | null;
@@ -86,6 +88,7 @@ export type BusinessItem = {
 
 export type BusinessSignalRow = {
   key: string;
+  storeName: string | null;
   signal: string;
   suggestedAction: string;
   brand: string | null;
@@ -471,6 +474,7 @@ function emptyRank(name: string): BusinessRank {
     returnAmount: 0,
     returnQuantity: 0,
     soldQuantity: 0,
+    storeName: null,
     stockMrpValue: 0,
     stockQuantity: 0,
     topBrand: null,
@@ -487,6 +491,7 @@ export async function getBusinessReport(
   stores: Array<Pick<Store, "id" | "name" | "code">>,
 ): Promise<BusinessReport> {
   const latestStockMap = await getLatestStockMonths(stores);
+  const storeById = new Map(stores.map((store) => [store.id, store.name]));
   const [salesRows, stockRows, aliases] = await Promise.all([
     getSalesRows(filters),
     getStockRows(filters, latestStockMap),
@@ -576,6 +581,7 @@ export async function getBusinessReport(
       signal: "Balanced",
       size,
       soldQuantity: 0,
+      storeName: row.store_id ? storeById.get(row.store_id) ?? null : null,
       stockQuantity: 0,
       suggestedAction: "Watch",
     };
@@ -598,6 +604,7 @@ export async function getBusinessReport(
       sku: cleanNullable(row.sku),
       soldQuantity: 0,
       staff: [],
+      storeName: row.store_id ? storeById.get(row.store_id) ?? null : null,
       stockMrpValue: 0,
       stockQuantity: 0,
     };
@@ -727,6 +734,7 @@ export async function getBusinessReport(
       signal: "Balanced",
       size,
       soldQuantity: 0,
+      storeName: row.store_id ? storeById.get(row.store_id) ?? null : null,
       stockQuantity: 0,
       suggestedAction: "Watch",
     };
@@ -753,6 +761,7 @@ export async function getBusinessReport(
       sku: cleanNullable(row.sku),
       soldQuantity: 0,
       staff: [],
+      storeName: row.store_id ? storeById.get(row.store_id) ?? null : null,
       stockMrpValue: 0,
       stockQuantity: 0,
     };

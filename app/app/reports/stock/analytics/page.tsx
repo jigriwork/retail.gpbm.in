@@ -73,90 +73,28 @@ function CandidateList({
   );
 }
 
-export default async function StockAnalyticsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ storeId?: string; stockMonth?: string; lookback?: string }>;
-}) {
-  const { storeId, stockMonth: rawStockMonth, lookback } = await searchParams;
-  const { profile } = await requireProfile();
-  const stores = await getAccessibleStores(profile);
-  const selectedStores =
-    storeId && stores.some((store) => store.id === storeId)
-      ? stores.filter((store) => store.id === storeId)
-      : stores;
-  const latestMonth =
-    rawStockMonth ??
-    (selectedStores.length === 1
-      ? await getLatestStockMonth(selectedStores[0].id)
-      : await getLatestStockMonth()) ??
-    getIndiaMonthStart();
-  const selectedLookback = safeLookback(lookback);
-  const summary = await getStockSummary({
-    storeIds: selectedStores.map((store) => store.id),
-    stockMonth: latestMonth,
-    lookbackDays: selectedLookback,
-    stores: selectedStores,
-  });
-
+function SummaryMetricCards({ summary }: { summary: Awaited<ReturnType<typeof getStockSummary>> }) {
   return (
-    <div className="space-y-5">
-      <div>
-        <Link className="text-sm font-semibold text-muted" href="/app/reports">
-          Back to reports
-        </Link>
-        <h1 className="mt-2 text-3xl font-semibold">Stock analytics</h1>
-        <p className="mt-2 text-sm leading-6 text-muted">
-          Slow stock, possible dead stock and fast moving low-stock candidates from stock and sales rows.
-        </p>
-      </div>
+    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      {[
+        ["Stock quantity", formatNumber(summary.totalStockQuantity)],
+        ["Stock MRP value", formatMoney(summary.totalStockMrpValue)],
+        ["Items", String(summary.itemCount)],
+        ["Brands", String(summary.brandCount)],
+        ["Categories", String(summary.categoryCount)],
+      ].map(([label, value]) => (
+        <div className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm" key={label}>
+          <p className="text-xs font-medium text-muted">{label}</p>
+          <p className="mt-2 text-2xl font-semibold">{value}</p>
+        </div>
+      ))}
+    </section>
+  );
+}
 
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Store</span>
-            <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
-              defaultValue={storeId ?? "all"}
-              name="storeId"
-            >
-              <option value="all">All accessible stores</option>
-              {stores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Stock month</span>
-            <input
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
-              defaultValue={latestMonth}
-              name="stockMonth"
-              type="date"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Sales lookback</span>
-            <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
-              defaultValue={selectedLookback}
-              name="lookback"
-            >
-              {lookbackOptions.map((days) => (
-                <option key={days} value={days}>
-                  {days} days
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="mt-7 h-12 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85">
-            Apply
-          </button>
-        </form>
-      </section>
-
+function StockSummarySections({ summary }: { summary: Awaited<ReturnType<typeof getStockSummary>> }) {
+  return (
+    <>
       {summary.dataQualityNote ? (
         <section className="rounded-[1.35rem] border border-border bg-card p-4 text-sm leading-6 text-muted shadow-sm">
           <span className="font-semibold text-foreground">Data quality note:</span> Some stock rows do not
@@ -164,20 +102,7 @@ export default async function StockAnalyticsPage({
         </section>
       ) : null}
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {[
-          ["Stock quantity", formatNumber(summary.totalStockQuantity)],
-          ["Stock MRP value", formatMoney(summary.totalStockMrpValue)],
-          ["Items", String(summary.itemCount)],
-          ["Brands", String(summary.brandCount)],
-          ["Categories", String(summary.categoryCount)],
-        ].map(([label, value]) => (
-          <div className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm" key={label}>
-            <p className="text-xs font-medium text-muted">{label}</p>
-            <p className="mt-2 text-2xl font-semibold">{value}</p>
-          </div>
-        ))}
-      </section>
+      <SummaryMetricCards summary={summary} />
 
       <section className="grid gap-5 lg:grid-cols-3">
         <div className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
@@ -260,6 +185,119 @@ export default async function StockAnalyticsPage({
           />
         </div>
       </section>
+    </>
+  );
+}
+
+export default async function StockAnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ storeId?: string; stockMonth?: string; lookback?: string }>;
+}) {
+  const { storeId, stockMonth: rawStockMonth, lookback } = await searchParams;
+  const { profile } = await requireProfile();
+  const stores = await getAccessibleStores(profile);
+  const selectedStores =
+    storeId && stores.some((store) => store.id === storeId)
+      ? stores.filter((store) => store.id === storeId)
+      : stores;
+  const latestMonth =
+    rawStockMonth ??
+    (selectedStores.length === 1
+      ? await getLatestStockMonth(selectedStores[0].id)
+      : await getLatestStockMonth()) ??
+    getIndiaMonthStart();
+  const selectedLookback = safeLookback(lookback);
+  const storeSummaries = await Promise.all(
+    selectedStores.map(async (store) => {
+      const storeStockMonth = rawStockMonth ?? (await getLatestStockMonth(store.id)) ?? getIndiaMonthStart();
+      const summary = await getStockSummary({
+        storeIds: [store.id],
+        stockMonth: storeStockMonth,
+        lookbackDays: selectedLookback,
+        stores: [store],
+      });
+
+      return { store, summary };
+    }),
+  );
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <Link className="text-sm font-semibold text-muted" href="/app/reports">
+          Back to reports
+        </Link>
+        <h1 className="mt-2 text-3xl font-semibold">Stock analytics</h1>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Slow stock, possible dead stock and fast moving low-stock candidates from stock and sales rows.
+        </p>
+      </div>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-muted">Store</span>
+            <select
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              defaultValue={storeId ?? "all"}
+              name="storeId"
+            >
+              <option value="all">All accessible stores</option>
+              {stores.map((store) => (
+                <option key={store.id} value={store.id}>
+                  {store.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-muted">Stock month</span>
+            <input
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              defaultValue={latestMonth}
+              name="stockMonth"
+              type="date"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-muted">Sales lookback</span>
+            <select
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              defaultValue={selectedLookback}
+              name="lookback"
+            >
+              {lookbackOptions.map((days) => (
+                <option key={days} value={days}>
+                  {days} days
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="mt-7 h-12 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85">
+            Apply
+          </button>
+        </form>
+      </section>
+
+      {storeSummaries.length > 1 ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-4 text-sm leading-6 text-muted shadow-sm">
+          Showing store-wise stock analytics. All accessible stores are listed separately so stock and buying signals are not mixed across stores.
+        </section>
+      ) : null}
+
+      {storeSummaries.map(({ store, summary: storeSummary }) => (
+        <section className="space-y-5" key={store.id}>
+          {storeSummaries.length > 1 ? (
+            <div className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+              <p className="text-sm font-medium text-muted">Store-wise stock report</p>
+              <h2 className="mt-2 text-2xl font-semibold">{store.name}</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">Stock month: {storeSummary.stockMonth}</p>
+            </div>
+          ) : null}
+          <StockSummarySections summary={storeSummary} />
+        </section>
+      ))}
     </div>
   );
 }
