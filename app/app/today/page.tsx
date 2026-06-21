@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { ChecklistCard } from "@/components/checklist/checklist-card";
+import { SyncNowButton } from "@/components/app/sync-now-button";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { getAccessibleStores, requireProfile, type Store as RetailStore } from "@/lib/auth/session";
 import { getAccessibleChecklists } from "@/lib/checklist/queries";
@@ -753,11 +754,16 @@ function OwnerToday({
   return (
     <>
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <p className="text-sm font-medium text-muted">Today</p>
-        <h1 className="mt-2 text-3xl font-semibold">Owner Command Center</h1>
-        <p className="mt-2 text-sm leading-6 text-muted">
-          Start with exceptions, uploads, staff issues, and buying actions.
-        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Today</p>
+            <h1 className="mt-2 text-3xl font-semibold">Owner Command Center</h1>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Start with exceptions, uploads, staff issues, and buying actions.
+            </p>
+          </div>
+          <SyncNowButton />
+        </div>
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -867,9 +873,14 @@ function ManagerToday({
   return (
     <>
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <p className="text-sm font-medium text-muted">Today</p>
-        <h1 className="mt-2 text-3xl font-semibold">My Store Command Center</h1>
-        <p className="mt-2 text-sm leading-6 text-muted">Complete your daily store actions here.</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Today</p>
+            <h1 className="mt-2 text-3xl font-semibold">My Store Command Center</h1>
+            <p className="mt-2 text-sm leading-6 text-muted">Complete your daily store actions here.</p>
+          </div>
+          <SyncNowButton />
+        </div>
       </section>
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
@@ -944,9 +955,14 @@ export default async function TodayPage({
   if (!isOwner && stores.length === 0) {
     return (
       <section className="rounded-[1.35rem] border border-border bg-card p-6 shadow-sm">
-        <p className="text-sm font-medium text-muted">Today</p>
-        <h1 className="mt-2 text-3xl font-semibold">No store assigned</h1>
-        <p className="mt-3 text-sm leading-6 text-muted">Please contact owner to assign a store.</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted">Today</p>
+            <h1 className="mt-2 text-3xl font-semibold">No store assigned</h1>
+            <p className="mt-3 text-sm leading-6 text-muted">Please contact owner to assign a store.</p>
+          </div>
+          <SyncNowButton />
+        </div>
       </section>
     );
   }

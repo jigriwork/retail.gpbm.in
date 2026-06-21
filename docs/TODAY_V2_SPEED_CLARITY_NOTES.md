@@ -15,6 +15,7 @@ Scope: Phase 4 speed and Today v2 clarity. This release improves `/app/today`, m
 - Removed generic bottom status cards from the first load.
 - Moved stock pulse, weekly audit, review details, salary attendance detail, receivables, and store list behind explicit load/show-more controls.
 - Kept Daily Sales Upload Status visible because it is the main operational trust block.
+- Added a `Sync now` button on Today so owner or manager can manually refresh the latest dashboard data.
 - Added `/app/today/loading.tsx` skeleton UI so navigation to Today shows immediate feedback.
 - Bumped visible app version labels to v7.6.0.
 
@@ -85,11 +86,14 @@ These sections no longer load on first render:
 
 Today now shows clear controls:
 
+- `Sync now`
 - `Load Stock Pulse`
 - `Load Weekly Audit`
 - `Show More Details`
 
 This keeps heavy or lower-priority sections available without making every Today visit wait for them.
+
+`Sync now` refreshes the current server-rendered Today data from Supabase. It does not create a background sync job, mutate reports, or bypass existing permissions.
 
 ## Performance Approach
 
