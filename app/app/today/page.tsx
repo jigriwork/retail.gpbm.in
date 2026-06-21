@@ -546,15 +546,21 @@ function StockStatusMini({ stockOverview }: { stockOverview: StockOverview }) {
 }
 
 async function StockPulseSection({ stores }: { stores: TodayStore[] }) {
-  const latestStockMonth = await getLatestStockMonth();
-  const stockPulse = latestStockMonth
-    ? await getStockSummary({
-        storeIds: stores.map((store) => store.id),
-        stockMonth: latestStockMonth,
-        lookbackDays: 30,
-        stores,
-      })
-    : null;
+  const stockPulses = await Promise.all(
+    stores.map(async (store) => {
+      const latestStockMonth = await getLatestStockMonth(store.id);
+      const stockPulse = latestStockMonth
+        ? await getStockSummary({
+            storeIds: [store.id],
+            stockMonth: latestStockMonth,
+            lookbackDays: 30,
+            stores: [store],
+          })
+        : null;
+
+      return { latestStockMonth, stockPulse, store };
+    }),
+  );
 
   return (
     <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
@@ -563,23 +569,42 @@ async function StockPulseSection({ stores }: { stores: TodayStore[] }) {
           <p className="text-sm font-medium text-muted">Loaded Stock Pulse</p>
           <h2 className="mt-2 text-2xl font-semibold">Stock movement snapshot</h2>
           <p className="mt-2 text-sm leading-6 text-muted">
-            This section is loaded only on request because stock analytics can scan many stock and sales rows.
+            This section is loaded only on request and shown store-wise so stock signals are not mixed across stores.
           </p>
         </div>
         <Link className="inline-flex h-11 items-center justify-center rounded-2xl border border-border px-4 text-sm font-semibold" href="/app/reports/stock/analytics">
           Full Stock Analytics
         </Link>
       </div>
-      {stockPulse ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard icon={PackageSearch} label="Latest month" value={stockPulse.stockMonth} />
-          <MetricCard icon={TriangleAlert} label="Slow stock" value={String(stockPulse.slowStockCandidates.length)} />
-          <MetricCard icon={AlertTriangle} label="No-sale stock" value={String(stockPulse.deadStockCandidates.length)} />
-          <MetricCard icon={ShoppingBag} label="Fast low stock" value={String(stockPulse.fastMovingLowStockCandidates.length)} />
-        </div>
-      ) : (
-        <p className="text-sm leading-6 text-muted">No stock report found yet.</p>
-      )}
+      <div className="grid gap-3 lg:grid-cols-2">
+        {stockPulses.map(({ latestStockMonth, stockPulse, store }) => (
+          <div className="rounded-2xl border border-border p-4" key={store.id}>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">{store.name}</p>
+                <p className="mt-1 text-xs font-medium text-muted">
+                  {latestStockMonth ? `Stock month ${latestStockMonth}` : "No stock report found"}
+                </p>
+              </div>
+              <Link
+                className="text-xs font-semibold text-muted underline-offset-4 hover:underline"
+                href={`/app/reports/stock/analytics?storeId=${store.id}`}
+              >
+                Open store report
+              </Link>
+            </div>
+            {stockPulse ? (
+              <div className="grid gap-2 sm:grid-cols-3">
+                <MetricCard icon={TriangleAlert} label="Slow stock" value={String(stockPulse.slowStockCandidates.length)} />
+                <MetricCard icon={AlertTriangle} label="No-sale stock" value={String(stockPulse.deadStockCandidates.length)} />
+                <MetricCard icon={ShoppingBag} label="Fast low stock" value={String(stockPulse.fastMovingLowStockCandidates.length)} />
+              </div>
+            ) : (
+              <p className="text-sm leading-6 text-muted">Upload stock for this store to see movement signals.</p>
+            )}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

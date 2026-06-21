@@ -429,7 +429,7 @@ export async function getSuspiciousSalesReportWarningsForReportIds(reportIds: st
     .eq("report_type", "sales")
     .eq("status", "processed")
     .in("id", uniqueReportIds);
-  const reports = (data ?? []).map(asSalesReport);
+  const reports = await applyLiveUnmatchedStaff((data ?? []).map(asSalesReport));
   const { data: rows } = await supabase
     .from("sales_rows")
     .select("report_id,net_sale")

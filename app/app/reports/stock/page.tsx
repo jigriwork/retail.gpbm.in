@@ -43,7 +43,7 @@ export default async function StockReportsPage({
           </div>
           <h2 className="text-xl font-semibold">Stock analytics</h2>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Slow stock, possible dead stock and fast moving low-stock candidates.
+            Open all stores as separate store-wise stock reports, or use each store card below.
           </p>
         </Link>
         {overview.statuses.map((status) => (
@@ -70,6 +70,12 @@ export default async function StockReportsPage({
                 ? `${status.report.row_count ?? 0} rows processed.`
                 : "Upload the current month stock report."}
             </p>
+            <Link
+              className="mt-4 inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
+              href={`/app/reports/stock/analytics?storeId=${status.store.id}`}
+            >
+              Open {status.store.name} Stock Analytics
+            </Link>
           </div>
         ))}
       </section>
