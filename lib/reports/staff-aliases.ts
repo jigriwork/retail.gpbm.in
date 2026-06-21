@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 
 import { canAccessStore, getAccessibleStores, requireProfile, type Profile } from "@/lib/auth/session";
 import { normalizeStaffName, staffNameKey } from "@/lib/employees/utils";
+import { getKnownSalesStaffNameKeys } from "@/lib/reports/staff-name-matching";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import type { Json, Tables } from "@/lib/supabase/database.types";
 
@@ -127,34 +128,17 @@ async function refreshSalesReportUnmatchedStaffSummaries(storeId: string) {
     ),
   ];
   const normalizedNames = [...new Set(staffNames.map(staffNameKey).filter(Boolean))];
-  const matchedNames = new Set<string>();
-
-  if (normalizedNames.length) {
-    const { data: aliases, error: aliasesError } = await supabase
-      .from("staff_name_aliases")
-      .select("normalized_source_name")
-      .eq("store_id", storeId)
-      .eq("source_type", sourceType)
-      .eq("is_active", true)
-      .in("normalized_source_name", normalizedNames);
-
-    if (aliasesError) {
-      return { error: aliasesError, updatedCount: 0 };
-    }
-
-    for (const alias of aliases ?? []) {
-      if (alias.normalized_source_name) {
-        matchedNames.add(alias.normalized_source_name);
-      }
-    }
-  }
+  const knownNames = await getKnownSalesStaffNameKeys({
+    staffNames: normalizedNames,
+    storeIds: [storeId],
+  });
 
   let updatedCount = 0;
 
   for (const report of reportSummaries) {
     const reportStaffNames = summaryStringArray(report.summary.staffNames);
     const unmatchedStaffNames = reportStaffNames
-      .filter((name) => !matchedNames.has(staffNameKey(name)))
+      .filter((name) => !knownNames.has(`${storeId}:${staffNameKey(name)}`))
       .sort();
     const previousNames = summaryStringArray(report.summary.unmatchedStaffNames).sort();
     const previousCount = Number(report.summary.unmatchedStaffCount ?? 0);
@@ -274,11 +258,10 @@ export async function getStaffAliasPageData({
   const contacts = ((contactsResult.data ?? []) as StaffContactOption[]).filter(
     (contact) => contact.is_active !== false,
   );
-  const activeAliases = new Set(
-    (aliasesResult.data ?? [])
-      .filter((alias) => alias.is_active !== false)
-      .map((alias) => `${alias.store_id}:${alias.normalized_source_name}`),
-  );
+  const knownStaffKeys = new Set([
+    ...(aliasesResult.data ?? []).map((alias) => `${alias.store_id}:${alias.normalized_source_name}`),
+    ...(contactsResult.data ?? []).map((contact) => `${contact.store_id}:${staffNameKey(contact.staff_name)}`),
+  ]);
   const unmatchedMap = new Map<string, UnmatchedStaffName>();
 
   for (const row of salesResult.data ?? []) {
@@ -290,7 +273,7 @@ export async function getStaffAliasPageData({
     const normalizedSourceName = staffNameKey(sourceName);
     const key = `${row.store_id}:${normalizedSourceName}`;
 
-    if (activeAliases.has(key)) {
+    if (knownStaffKeys.has(key)) {
       continue;
     }
 

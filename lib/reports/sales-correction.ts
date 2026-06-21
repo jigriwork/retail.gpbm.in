@@ -14,6 +14,7 @@ import {
   type ParsedSalesRow,
   unmappedAmountColumnsError,
 } from "@/lib/reports/sales-parser";
+import { getKnownSalesStaffNameKeys } from "@/lib/reports/staff-name-matching";
 import { createClient } from "@/lib/supabase/server";
 import type { Json, Tables, TablesInsert } from "@/lib/supabase/database.types";
 import { addDays, getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
@@ -158,17 +159,12 @@ async function getUnmatchedSalesStaffNames(storeId: string, staffNames: string[]
     return [];
   }
 
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("staff_name_aliases")
-    .select("normalized_source_name")
-    .eq("store_id", storeId)
-    .eq("source_type", "sales_report")
-    .eq("is_active", true)
-    .in("normalized_source_name", normalizedNames);
-  const matched = new Set((data ?? []).map((alias) => alias.normalized_source_name));
+  const known = await getKnownSalesStaffNameKeys({
+    staffNames: normalizedNames,
+    storeIds: [storeId],
+  });
 
-  return staffNames.filter((name) => !matched.has(staffNameKey(name)));
+  return staffNames.filter((name) => !known.has(`${storeId}:${staffNameKey(name)}`));
 }
 
 async function insertSalesRowsInBatches(

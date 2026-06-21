@@ -1,5 +1,6 @@
 import { addDays, getIndiaToday } from "@/lib/tasks/dates";
 import { staffNameKey } from "@/lib/employees/utils";
+import { getKnownSalesStaffNameKeys } from "@/lib/reports/staff-name-matching";
 import { createClient } from "@/lib/supabase/server";
 
 export type SalesReportSummary = {
@@ -144,17 +145,10 @@ async function applyLiveUnmatchedStaff(reports: SalesReportWithStore[]) {
     }));
   }
 
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("staff_name_aliases")
-    .select("store_id,normalized_source_name")
-    .in("store_id", storeIds)
-    .eq("source_type", "sales_report")
-    .eq("is_active", true)
-    .in("normalized_source_name", normalizedNames);
-  const matched = new Set(
-    (data ?? []).map((alias) => `${alias.store_id}:${alias.normalized_source_name}`),
-  );
+  const known = await getKnownSalesStaffNameKeys({
+    staffNames: normalizedNames,
+    storeIds,
+  });
 
   return reports.map((report) => {
     const summary = summaryObject(report.summary);
@@ -164,7 +158,7 @@ async function applyLiveUnmatchedStaff(reports: SalesReportWithStore[]) {
     }
 
     const unmatchedStaffNames = getReportStaffNames(summary)
-      .filter((name) => !matched.has(`${report.store_id}:${staffNameKey(name)}`))
+      .filter((name) => !known.has(`${report.store_id}:${staffNameKey(name)}`))
       .sort();
 
     return {
