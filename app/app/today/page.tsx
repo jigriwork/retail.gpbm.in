@@ -1,67 +1,201 @@
 import Link from "next/link";
 import {
+  AlertTriangle,
+  BarChart3,
+  Bot,
   CalendarCheck,
   ClipboardCheck,
-  HeartPulse,
+  History,
   LineChart,
   ListTodo,
   MessageSquareText,
   PackageSearch,
-  Phone,
-  Sparkles,
-  SprayCan,
-  Store,
-  TriangleAlert,
-  AlertTriangle,
-  WalletCards,
-  Bot,
-  FileText,
   ShieldAlert,
   ShoppingBag,
+  Sparkles,
+  Store,
+  TriangleAlert,
   UploadCloud,
   UserRoundCheck,
   UserRoundCog,
+  WalletCards,
 } from "lucide-react";
 
 import { ChecklistCard } from "@/components/checklist/checklist-card";
-import { StatusCard } from "@/components/app/status-card";
-import { MissingStaffSalesWarning, SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
-import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
-import {
-  getStoreSalesStatuses,
-  isSalesReportSummarySuspicious,
-  salesReportMayBeMissingStaff,
-  type SalesReportWithStore,
-  type StoreSalesStatus,
-} from "@/lib/reports/sales-queries";
-import { getSalaryAttendanceOverview } from "@/lib/reports/salary-queries";
-import { getStockOverview } from "@/lib/reports/stock-queries";
-import { getReviewStatuses } from "@/lib/reviews/queries";
-import { getTaskSummary } from "@/lib/tasks/queries";
-import { getTodayUpdateSummary } from "@/lib/updates/queries";
-import { UpdateCard } from "@/components/updates/update-card";
+import { getAccessibleStores, requireProfile, type Store as RetailStore } from "@/lib/auth/session";
 import { getAccessibleChecklists } from "@/lib/checklist/queries";
+import { getMissingEmployeePhoneCount } from "@/lib/employees/queries";
+import { getLatestStockMonth, getStockSummary } from "@/lib/analytics/stock";
 import {
   getPreviousWeekRangeAsiaKolkata,
   getWeeklyAuditSummaries,
   isWeeklyAuditDay,
 } from "@/lib/audit/weekly";
 import {
-  currentMonthRange,
-  getDateRangeForPeriod,
-  getSalesSummary,
-  getStaffSalesSummary,
-} from "@/lib/analytics/sales";
-import { getLatestStockMonth, getStockSummary } from "@/lib/analytics/stock";
-import { getMissingEmployeePhoneCount } from "@/lib/employees/queries";
+  getStoreSalesStatuses,
+  isSalesReportSummarySuspicious,
+  salesReportMayBeMissingStaff,
+  type SalesReportSummary,
+  type StoreSalesStatus,
+} from "@/lib/reports/sales-queries";
+import { getSalaryAttendanceOverview } from "@/lib/reports/salary-queries";
+import { getStockOverview, type StockOverview } from "@/lib/reports/stock-queries";
+import { getReviewStatuses } from "@/lib/reviews/queries";
+import { createClient } from "@/lib/supabase/server";
+import { getTaskSummary } from "@/lib/tasks/queries";
+import { getTodayUpdateSummary } from "@/lib/updates/queries";
 import {
   getAvailableReceivableMonths,
   getReceivableSummaryForMonth,
 } from "@/lib/payslips/receivables-queries";
 import { formatMonth as formatPayslipMonth } from "@/lib/payslips/utils";
 
-function formatMoney(value?: number) {
+type TodaySearchParams = {
+  audit?: string;
+  more?: string;
+  stock?: string;
+};
+
+type TodayStore = RetailStore;
+
+type HistoricalImportSummary = {
+  latest: {
+    detected_end_date: string | null;
+    detected_start_date: string | null;
+    failed_dates: number | null;
+    imported_dates: number | null;
+    original_file_name: string | null;
+    replaced_dates: number | null;
+    skipped_dates: number | null;
+    status: string | null;
+    stores: { name: string | null; code: string | null } | null;
+    total_dates: number | null;
+  } | null;
+  warningCount: number;
+};
+
+const ownerShortcuts = [
+  {
+    description: "Upload today's store sales report.",
+    href: "/app/reports/sales",
+    icon: UploadCloud,
+    title: "Upload Daily Sales",
+  },
+  {
+    description: "Check daily uploads, suspicious reports and latest sale summaries.",
+    href: "/app/reports",
+    icon: LineChart,
+    title: "Daily Sales Status",
+  },
+  {
+    description: "Search sales vs stock for reorder and avoid-buying decisions.",
+    href: "/app/reports/business",
+    icon: ShoppingBag,
+    title: "Buying & Restock",
+  },
+  {
+    description: "See staff sales from mapped report names.",
+    href: "/app/reports/staff",
+    icon: UserRoundCheck,
+    title: "Staff Sales",
+  },
+  {
+    description: "Map uploaded staff names to real staff records.",
+    href: "/app/reports/staff-aliases",
+    icon: UserRoundCog,
+    title: "Fix Staff Names",
+  },
+  {
+    description: "Delete, replace or import historical sales safely.",
+    href: "/app/reports/correction",
+    icon: ShieldAlert,
+    title: "Fix Wrong Upload",
+  },
+  {
+    description: "Import month-to-date or financial-year sales.",
+    href: "/app/reports/correction",
+    icon: History,
+    title: "Historical Sales Import",
+  },
+  {
+    description: "Ask what needs attention today.",
+    href: "/app/secretary",
+    icon: Bot,
+    title: "AI Secretary",
+  },
+  {
+    description: "Review pending work and follow-ups.",
+    href: "/app/tasks",
+    icon: ListTodo,
+    title: "Tasks",
+  },
+  {
+    description: "Check daily store discipline.",
+    href: "/app/checklist",
+    icon: ClipboardCheck,
+    title: "Checklist",
+  },
+  {
+    description: "Upload monthly stock reports.",
+    href: "/app/reports/stock",
+    icon: PackageSearch,
+    title: "Upload Stock",
+  },
+];
+
+const managerShortcuts = [
+  {
+    description: "Upload today's assigned-store sales.",
+    href: "/app/reports/sales",
+    icon: UploadCloud,
+    title: "Upload Daily Sales",
+  },
+  {
+    description: "Upload monthly assigned-store stock.",
+    href: "/app/reports/stock",
+    icon: PackageSearch,
+    title: "Upload Stock",
+  },
+  {
+    description: "Map uploaded staff names for your store.",
+    href: "/app/reports/staff-aliases",
+    icon: UserRoundCog,
+    title: "Fix Staff Names",
+  },
+  {
+    description: "Check staff-wise sales for your assigned store.",
+    href: "/app/reports/staff",
+    icon: UserRoundCheck,
+    title: "Staff Sales",
+  },
+  {
+    description: "Complete today's store checklist.",
+    href: "/app/checklist",
+    icon: ClipboardCheck,
+    title: "Checklist",
+  },
+  {
+    description: "See assigned tasks and urgent work.",
+    href: "/app/tasks",
+    icon: ListTodo,
+    title: "Tasks",
+  },
+  {
+    description: "Send an issue or store update.",
+    href: "/app/updates/new",
+    icon: MessageSquareText,
+    title: "Send Update",
+  },
+  {
+    description: "Open your assigned store page.",
+    href: "/app/stores",
+    icon: Store,
+    title: "Assigned Store",
+  },
+];
+
+function formatMoney(value?: number | null) {
   return new Intl.NumberFormat("en-IN", {
     currency: "INR",
     maximumFractionDigits: 0,
@@ -69,7 +203,7 @@ function formatMoney(value?: number) {
   }).format(value ?? 0);
 }
 
-function formatUploadTime(value?: string | null) {
+function formatDateTime(value?: string | null) {
   if (!value) return "No upload";
 
   return new Intl.DateTimeFormat("en-IN", {
@@ -79,646 +213,422 @@ function formatUploadTime(value?: string | null) {
   }).format(new Date(value));
 }
 
-function salesUploadLabel(report: SalesReportWithStore | null) {
-  return report ? "Uploaded" : "Missing";
+function badgeClass(tone: "danger" | "success" | "warning") {
+  if (tone === "danger") {
+    return "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger";
+  }
+
+  if (tone === "warning") {
+    return "rounded-full border border-border px-3 py-1 text-xs font-semibold text-warning";
+  }
+
+  return "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success";
 }
 
-function salesUploadBadgeClass(report: SalesReportWithStore | null) {
+function summaryNumber(summary: SalesReportSummary | null | undefined, key: keyof SalesReportSummary) {
+  const value = summary?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function salesUploadBadge(report: StoreSalesStatus["todayReport"]) {
   return report
-    ? "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success"
-    : "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger";
+    ? { className: badgeClass("success"), label: "Uploaded" }
+    : { className: badgeClass("danger"), label: "Missing" };
 }
 
-function latestUploadStatus(status: StoreSalesStatus) {
-  const unmatchedStaffCount = status.latestReport?.summary?.unmatchedStaffCount ?? 0;
+function latestUploadBadge(status: StoreSalesStatus) {
+  const unmatchedStaffCount = summaryNumber(status.latestReport?.summary, "unmatchedStaffCount");
 
   if (unmatchedStaffCount > 0) {
-    return {
-      className: "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger",
-      label: "Needs Staff Alias Review",
-    };
+    return { className: badgeClass("danger"), label: "Needs Staff Fix" };
   }
 
   if (status.todayReport || status.yesterdayReport) {
-    return {
-      className: "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success",
-      label: "Uploaded",
-    };
+    return { className: badgeClass("success"), label: "Uploaded" };
   }
 
   if (status.latestReport) {
-    return {
-      className: "rounded-full border border-border px-3 py-1 text-xs font-semibold text-warning",
-      label: "Late",
-    };
+    return { className: badgeClass("warning"), label: "Late" };
   }
 
+  return { className: badgeClass("danger"), label: "Missing" };
+}
+
+function topStaffFromSummaries(statuses: StoreSalesStatus[]) {
+  return statuses
+    .flatMap((status) =>
+      (status.latestReport?.summary?.topStaff ?? []).map((staff) => ({
+        ...staff,
+        storeName: status.store.name,
+      })),
+    )
+    .sort((left, right) => right.sale - left.sale)[0];
+}
+
+function salesIssueSummary(statuses: StoreSalesStatus[]) {
+  const missingToday = statuses.filter((status) => !status.todayReport).length;
+  const missingYesterday = statuses.filter((status) => !status.yesterdayReport).length;
+  const suspiciousReports = statuses.filter(
+    (status) => status.latestReport && isSalesReportSummarySuspicious(status.latestReport),
+  );
+  const missingStaffReports = statuses.filter(
+    (status) => status.latestReport && salesReportMayBeMissingStaff(status.latestReport),
+  );
+  const unmatchedStaffCount = statuses.reduce(
+    (sum, status) => sum + summaryNumber(status.latestReport?.summary, "unmatchedStaffCount"),
+    0,
+  );
+
   return {
-    className: "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger",
-    label: "Missing",
+    missingToday,
+    missingYesterday,
+    suspiciousCount: suspiciousReports.length,
+    missingStaffCount: missingStaffReports.length,
+    unmatchedStaffCount,
+    topStaff: topStaffFromSummaries(statuses),
   };
 }
 
-function salesUploader(report: SalesReportWithStore | null) {
-  return report?.profiles?.full_name ?? report?.profiles?.email ?? "No upload";
+function queryHref(params: TodaySearchParams) {
+  const query = new URLSearchParams();
+  if (params.stock) query.set("stock", params.stock);
+  if (params.audit) query.set("audit", params.audit);
+  if (params.more) query.set("more", params.more);
+  const text = query.toString();
+  return `/app/today${text ? `?${text}` : ""}`;
 }
 
-const ownerCommandShortcuts = [
-  {
-    description: "Search brand, product, category and size. Check stock vs sales and what to reorder.",
-    href: "/app/reports/business",
-    icon: ShoppingBag,
-    title: "Buying & Restock",
-  },
-  {
-    description: "Open owner-ready copy, WhatsApp, print and CSV report actions.",
-    href: "/app/reports/business",
-    icon: LineChart,
-    title: "Business Reports / Downloads",
-  },
-  {
-    description: "Upload today's store sales report.",
-    href: "/app/reports/sales",
-    icon: UploadCloud,
-    title: "Upload Daily Sales",
-  },
-  {
-    description: "Upload monthly stock report and view stock status.",
-    href: "/app/reports/stock",
-    icon: PackageSearch,
-    title: "Upload Stock",
-  },
-  {
-    description: "See staff-wise sales for today, week and month.",
-    href: "/app/reports/staff",
-    icon: UserRoundCheck,
-    title: "Staff Sales",
-  },
-  {
-    description: "Map uploaded staff names to real staff names so staff sales becomes accurate.",
-    href: "/app/reports/staff-aliases",
-    icon: UserRoundCog,
-    requiresStore: true,
-    title: "Fix Staff Names",
-  },
-  {
-    description: "Import month-to-date or financial-year sales, delete or replace wrong reports. Owner only.",
-    href: "/app/reports/correction",
-    icon: ShieldAlert,
-    ownerOnly: true,
-    title: "Historical Sales Import",
-  },
-  {
-    description: "Ask business questions and get owner summary.",
-    href: "/app/secretary",
-    icon: Bot,
-    ownerOnly: true,
-    title: "AI Secretary",
-  },
-  {
-    description: "Check pending tasks and manager follow-ups.",
-    href: "/app/tasks",
-    icon: ListTodo,
-    title: "Store Tasks",
-  },
-  {
-    description: "Check daily store discipline.",
-    href: "/app/checklist",
-    icon: ClipboardCheck,
-    title: "Daily Checklist",
-  },
-];
-
-export default async function TodayPage() {
-  const { profile } = await requireProfile();
-  const stores = await getAccessibleStores(profile);
+async function getHistoricalImportSummary(stores: Array<{ id: string }>): Promise<HistoricalImportSummary> {
   const storeIds = stores.map((store) => store.id);
-  const defaultTaskSummary = { todayCount: 0, urgentCount: 0, privateCount: 0, storeCounts: [] };
+
+  if (!storeIds.length) {
+    return { latest: null, warningCount: 0 };
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("sales_upload_batches")
+    .select(
+      "original_file_name,status,detected_start_date,detected_end_date,total_dates,imported_dates,skipped_dates,replaced_dates,failed_dates,stores(name,code)",
+    )
+    .in("store_id", storeIds)
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const batches = (data ?? []) as HistoricalImportSummary["latest"][];
+  const warningCount = batches.filter((batch) => {
+    if (!batch) return false;
+    return batch.status === "partial" || batch.status === "failed" || Number(batch.failed_dates ?? 0) > 0;
+  }).length;
+
+  return { latest: batches[0] ?? null, warningCount };
+}
+
+function ShortcutGrid({
+  shortcuts,
+}: {
+  shortcuts: Array<{ description: string; href: string; icon: React.ComponentType<{ className?: string }>; title: string }>;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {shortcuts.map((item) => {
+        const Icon = item.icon;
+
+        return (
+          <Link
+            className="rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:border-foreground hover:bg-black/[0.02]"
+            href={item.href}
+            key={`${item.title}-${item.href}`}
+          >
+            <Icon className="mb-4 size-5 text-muted" />
+            <h3 className="font-semibold">{item.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-muted">{item.description}</p>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function MetricCard({
+  href,
+  icon: Icon,
+  label,
+  tone = "default",
+  value,
+}: {
+  href?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  tone?: "danger" | "default" | "success" | "warning";
+  value: string;
+}) {
+  const className = [
+    "rounded-[1.35rem] border border-border bg-card p-4 shadow-sm",
+    href ? "transition hover:border-foreground" : "",
+  ].join(" ");
+  const valueClass =
+    tone === "danger"
+      ? "text-danger"
+      : tone === "warning"
+        ? "text-warning"
+        : tone === "success"
+          ? "text-success"
+          : "";
+  const content = (
+    <>
+      <Icon className="mb-4 size-5 text-muted" />
+      <p className="text-xs font-medium text-muted">{label}</p>
+      <p className={`mt-1 text-2xl font-semibold ${valueClass}`}>{value}</p>
+    </>
+  );
+
+  return href ? (
+    <Link className={className} href={href}>
+      {content}
+    </Link>
+  ) : (
+    <div className={className}>{content}</div>
+  );
+}
+
+function SalesStatusCards({ statuses }: { statuses: StoreSalesStatus[] }) {
+  return (
+    <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-muted">Daily Sales Upload Status</p>
+          <h2 className="mt-2 text-2xl font-semibold">Today, yesterday and latest upload by store</h2>
+        </div>
+        <UploadCloud className="size-5 text-muted" />
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {statuses.map((status) => {
+          const latestReport = status.latestReport;
+          const todayBadge = salesUploadBadge(status.todayReport);
+          const yesterdayBadge = salesUploadBadge(status.yesterdayReport);
+          const latestBadge = latestUploadBadge(status);
+          const unmatchedStaffCount = summaryNumber(latestReport?.summary, "unmatchedStaffCount");
+          const suspicious = latestReport ? isSalesReportSummarySuspicious(latestReport) : false;
+          const missingStaff = latestReport ? salesReportMayBeMissingStaff(latestReport) : false;
+
+          return (
+            <article className="rounded-2xl border border-border p-4" key={status.store.id}>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">{status.store.name}</h3>
+                  <p className="mt-1 text-xs font-medium text-muted">
+                    Latest upload: {latestReport?.report_date ?? "No upload"}
+                  </p>
+                </div>
+                <span className={latestBadge.className}>{latestBadge.label}</span>
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-xl border border-border p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-muted">Today</p>
+                    <span className={todayBadge.className}>{todayBadge.label}</span>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold">{status.todayDate}</p>
+                </div>
+                <div className="rounded-xl border border-border p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-muted">Yesterday</p>
+                    <span className={yesterdayBadge.className}>{yesterdayBadge.label}</span>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold">{status.yesterdayDate}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-xl border border-border p-3">
+                  <p className="text-xs font-medium text-muted">Uploaded by</p>
+                  <p className="mt-1 break-words text-sm font-semibold">
+                    {latestReport?.profiles?.full_name ?? latestReport?.profiles?.email ?? "No upload"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border p-3">
+                  <p className="text-xs font-medium text-muted">Upload time</p>
+                  <p className="mt-1 text-sm font-semibold">{formatDateTime(latestReport?.created_at)}</p>
+                </div>
+                <div className="rounded-xl border border-border p-3">
+                  <p className="text-xs font-medium text-muted">Total sale</p>
+                  <p className="mt-1 text-sm font-semibold">{formatMoney(latestReport?.summary?.totalNetSale)}</p>
+                </div>
+                <div className="rounded-xl border border-border p-3">
+                  <p className="text-xs font-medium text-muted">Bills</p>
+                  <p className="mt-1 text-sm font-semibold">{latestReport?.summary?.billCount ?? 0}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
+                  href={`/app/reports/sales?storeId=${status.store.id}`}
+                >
+                  Upload / View Sales
+                </Link>
+                <Link
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
+                  href={`/app/reports/staff-aliases?storeId=${status.store.id}`}
+                >
+                  Fix Staff Names
+                </Link>
+                <Link
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
+                  href={`/app/reports/business?storeId=${status.store.id}`}
+                >
+                  Buying Report
+                </Link>
+              </div>
+
+              {unmatchedStaffCount > 0 || suspicious || missingStaff ? (
+                <div className="mt-4 rounded-2xl border border-border bg-background p-4 text-sm leading-6">
+                  {unmatchedStaffCount > 0 ? (
+                    <p className="font-semibold text-danger">{unmatchedStaffCount} unmatched staff name(s) need fixing.</p>
+                  ) : null}
+                  {suspicious ? (
+                    <p className="font-semibold text-danger">Suspicious sales summary found. Owner should review this upload.</p>
+                  ) : null}
+                  {missingStaff ? (
+                    <p className="font-semibold text-warning">This report may not contain a staff column.</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function StockStatusMini({ stockOverview }: { stockOverview: StockOverview }) {
+  return (
+    <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-muted">Stock Upload Status</p>
+          <h2 className="mt-2 text-2xl font-semibold">{stockOverview.headline}</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">Monthly stock report due {stockOverview.dueDate}.</p>
+        </div>
+        <Link
+          className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+          href="/app/reports/stock"
+        >
+          Upload Stock
+        </Link>
+      </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard icon={PackageSearch} label="Uploaded" value={String(stockOverview.uploadedCount)} />
+        <MetricCard
+          icon={AlertTriangle}
+          label="Missing"
+          tone={stockOverview.missingCount ? "danger" : "success"}
+          value={String(stockOverview.missingCount)}
+        />
+        {stockOverview.statuses.map((status) => (
+          <Link
+            className="rounded-2xl border border-border p-3 transition hover:border-foreground"
+            href={`/app/reports/stock?storeId=${status.store.id}`}
+            key={status.store.id}
+          >
+            <p className="text-xs font-medium text-muted">{status.store.name}</p>
+            <p className={status.report ? "mt-1 text-lg font-semibold text-success" : "mt-1 text-lg font-semibold text-danger"}>
+              {status.report ? "Uploaded" : "Pending"}
+            </p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+async function StockPulseSection({ stores }: { stores: TodayStore[] }) {
+  const latestStockMonth = await getLatestStockMonth();
+  const stockPulse = latestStockMonth
+    ? await getStockSummary({
+        storeIds: stores.map((store) => store.id),
+        stockMonth: latestStockMonth,
+        lookbackDays: 30,
+        stores,
+      })
+    : null;
+
+  return (
+    <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-muted">Loaded Stock Pulse</p>
+          <h2 className="mt-2 text-2xl font-semibold">Stock movement snapshot</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            This section is loaded only on request because stock analytics can scan many stock and sales rows.
+          </p>
+        </div>
+        <Link className="inline-flex h-11 items-center justify-center rounded-2xl border border-border px-4 text-sm font-semibold" href="/app/reports/stock/analytics">
+          Full Stock Analytics
+        </Link>
+      </div>
+      {stockPulse ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard icon={PackageSearch} label="Latest month" value={stockPulse.stockMonth} />
+          <MetricCard icon={TriangleAlert} label="Slow stock" value={String(stockPulse.slowStockCandidates.length)} />
+          <MetricCard icon={AlertTriangle} label="No-sale stock" value={String(stockPulse.deadStockCandidates.length)} />
+          <MetricCard icon={ShoppingBag} label="Fast low stock" value={String(stockPulse.fastMovingLowStockCandidates.length)} />
+        </div>
+      ) : (
+        <p className="text-sm leading-6 text-muted">No stock report found yet.</p>
+      )}
+    </section>
+  );
+}
+
+async function WeeklyAuditSection({ stores }: { stores: TodayStore[] }) {
   const previousWeekRange = getPreviousWeekRangeAsiaKolkata();
-  const weeklyAuditDay = isWeeklyAuditDay();
-  const yesterdayRange = getDateRangeForPeriod("yesterday");
-  const monthRange = currentMonthRange();
-  const [
-    taskSummary,
-    salesStatuses,
-    salaryOverview,
-    stockOverview,
-    reviewStatuses,
-    updateSummary,
-    checklists,
-    latestStockMonth,
-    yesterdaySalesPulse,
-    monthSalesPulse,
-    yesterdayStaffPulse,
-    missingPhoneCount,
-  ] = await Promise.all([
-    profile ? getTaskSummary(profile, stores) : Promise.resolve(defaultTaskSummary),
-    getStoreSalesStatuses(stores),
-    getSalaryAttendanceOverview(stores),
-    getStockOverview(stores),
+  const weeklyAudits = await getWeeklyAuditSummaries(stores, previousWeekRange);
+  const missingSalesReports = weeklyAudits.reduce((sum, audit) => sum + audit.missingSalesReports.length, 0);
+  const urgentUpdates = weeklyAudits.reduce((sum, audit) => sum + audit.updates.openUrgentCount, 0);
+
+  return (
+    <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+      <p className="text-sm font-medium text-muted">Loaded Weekly Audit</p>
+      <h2 className="mt-2 text-2xl font-semibold">
+        Previous week: {previousWeekRange.startDate} to {previousWeekRange.endDate}
+      </h2>
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <MetricCard icon={CalendarCheck} label="Stores audited" value={String(weeklyAudits.length)} />
+        <MetricCard icon={AlertTriangle} label="Missing sales days" tone={missingSalesReports ? "danger" : "success"} value={String(missingSalesReports)} />
+        <MetricCard icon={MessageSquareText} label="Urgent updates" tone={urgentUpdates ? "warning" : "success"} value={String(urgentUpdates)} />
+      </div>
+    </section>
+  );
+}
+
+async function MoreDetailsSection({
+  profileRole,
+  stores,
+}: {
+  profileRole: "manager" | "owner" | string;
+  stores: TodayStore[];
+}) {
+  const [checklists, reviewStatuses, salaryOverview] = await Promise.all([
+    getAccessibleChecklists(undefined, stores),
     getReviewStatuses(stores),
-    getTodayUpdateSummary(stores),
-    getAccessibleChecklists(profile, stores),
-    getLatestStockMonth(),
-    getSalesSummary(
-      { storeIds, dateRange: yesterdayRange },
-      stores,
-    ),
-    getSalesSummary(
-      { storeIds, dateRange: monthRange },
-      stores,
-    ),
-    getStaffSalesSummary({
-      storeIds,
-      dateRange: yesterdayRange,
-    }),
-    getMissingEmployeePhoneCount(storeIds),
+    getSalaryAttendanceOverview(stores),
   ]);
-  // Owner-only: receivable summary
   let receivableSummary: { pendingCount: number; pendingTotal: number } | null = null;
   let latestReceivableMonth = "";
-  if (profile?.role === "owner") {
+
+  if (profileRole === "owner") {
     const receivableMonths = await getAvailableReceivableMonths();
     latestReceivableMonth = receivableMonths[0] ?? "";
     if (latestReceivableMonth) {
       receivableSummary = await getReceivableSummaryForMonth(latestReceivableMonth);
     }
   }
-  const stockPulse = latestStockMonth
-    ? await getStockSummary({
-        storeIds,
-        stockMonth: latestStockMonth,
-        lookbackDays: 30,
-        stores,
-      })
-    : null;
-  const weeklyAudits = weeklyAuditDay ? await getWeeklyAuditSummaries(stores, previousWeekRange) : [];
-  const weeklyMissingSalesReports = weeklyAudits.reduce(
-    (sum, audit) => sum + audit.missingSalesReports.length,
-    0,
-  );
 
   return (
     <div className="space-y-5">
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <p className="text-sm font-medium text-muted">Today</p>
-        <h1 className="mt-2 text-3xl font-semibold">
-          {profile?.full_name ?? "GPBM user"}
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-muted">
-          Signed in as <span className="font-semibold capitalize">{profile?.role}</span>.
-          Store data below follows your role and assignments.
-        </p>
-      </section>
-
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <div className="mb-4">
-          <p className="text-sm font-medium text-muted">Owner Command Center</p>
-          <h2 className="mt-2 text-2xl font-semibold">Quick actions for sales, stock, staff, restock and store control.</h2>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {ownerCommandShortcuts
-            .filter((item) => !item.ownerOnly || profile?.role === "owner")
-            .filter((item) => !("requiresStore" in item) || !item.requiresStore || stores.length > 0)
-            .map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  className="rounded-2xl border border-border p-4 transition hover:border-foreground hover:bg-black/[0.02]"
-                  href={item.href}
-                  key={`${item.title}-${item.href}`}
-                >
-                  <Icon className="mb-4 size-5 text-muted" />
-                  <h3 className="font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-muted">{item.description}</p>
-                </Link>
-              );
-          })}
-        </div>
-      </section>
-
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted">Daily Sales Upload Status</p>
-            <h2 className="mt-2 text-2xl font-semibold">
-              See whether daily store sales were uploaded and who uploaded them.
-            </h2>
-          </div>
-          <UploadCloud className="size-5 text-muted" />
-        </div>
-        <div className="grid gap-3 lg:grid-cols-2">
-          {salesStatuses.map((status) => {
-            const latestReport = status.latestReport;
-            const latestStatus = latestUploadStatus(status);
-            const unmatchedStaffCount = latestReport?.summary?.unmatchedStaffCount ?? 0;
-            const suspicious = latestReport ? isSalesReportSummarySuspicious(latestReport) : false;
-            const missingStaff = latestReport ? salesReportMayBeMissingStaff(latestReport) : false;
-
-            return (
-              <article
-                className="rounded-2xl border border-border p-4"
-                key={status.store.id}
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold">{status.store.name}</h3>
-                    <p className="mt-1 text-xs font-medium text-muted">
-                      Latest upload: {latestReport?.report_date ?? "No upload"}
-                    </p>
-                  </div>
-                  <span className={latestStatus.className}>{latestStatus.label}</span>
-                </div>
-
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  <div className="rounded-xl border border-border p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-medium text-muted">Today Report</p>
-                      <span className={salesUploadBadgeClass(status.todayReport)}>
-                        {salesUploadLabel(status.todayReport)}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm font-semibold">{status.todayDate}</p>
-                  </div>
-                  <div className="rounded-xl border border-border p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-medium text-muted">Yesterday Report</p>
-                      <span className={salesUploadBadgeClass(status.yesterdayReport)}>
-                        {salesUploadLabel(status.yesterdayReport)}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm font-semibold">{status.yesterdayDate}</p>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-xl border border-border p-3">
-                    <p className="text-xs font-medium text-muted">Uploaded by</p>
-                    <p className="mt-1 break-words text-sm font-semibold">{salesUploader(latestReport)}</p>
-                  </div>
-                  <div className="rounded-xl border border-border p-3">
-                    <p className="text-xs font-medium text-muted">Upload time</p>
-                    <p className="mt-1 text-sm font-semibold">{formatUploadTime(latestReport?.created_at)}</p>
-                  </div>
-                  <div className="rounded-xl border border-border p-3">
-                    <p className="text-xs font-medium text-muted">Total sale</p>
-                    <p className="mt-1 text-sm font-semibold">
-                      {formatMoney(latestReport?.summary?.totalNetSale)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-border p-3">
-                    <p className="text-xs font-medium text-muted">Bills</p>
-                    <p className="mt-1 text-sm font-semibold">{latestReport?.summary?.billCount ?? 0}</p>
-                  </div>
-                  <div className="rounded-xl border border-border p-3">
-                    <p className="text-xs font-medium text-muted">Returns</p>
-                    <p className="mt-1 text-sm font-semibold">{latestReport?.summary?.returnsCount ?? 0}</p>
-                  </div>
-                  <div className="rounded-xl border border-border p-3">
-                    <p className="text-xs font-medium text-muted">Unmatched staff</p>
-                    <p className={unmatchedStaffCount ? "mt-1 text-sm font-semibold text-danger" : "mt-1 text-sm font-semibold"}>
-                      {unmatchedStaffCount}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-border p-3 sm:col-span-2">
-                    <p className="text-xs font-medium text-muted">Latest Upload</p>
-                    <p className="mt-1 break-words text-sm font-semibold">
-                      {latestReport
-                        ? `${latestReport.report_date ?? "No date"} - ${latestReport.file_name ?? "No file name"}`
-                        : "No upload found"}
-                    </p>
-                  </div>
-                </div>
-
-                {latestReport?.summary?.unmatchedStaffNames?.length ? (
-                  <p className="mt-3 text-sm leading-6 text-muted">
-                    Staff alias review: {latestReport.summary.unmatchedStaffNames.slice(0, 3).join(", ")}
-                    {latestReport.summary.unmatchedStaffNames.length > 3 ? "..." : ""}
-                  </p>
-                ) : null}
-
-                {unmatchedStaffCount > 0 ? (
-                  <div className="mt-4 rounded-2xl border border-border bg-background p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-danger">Unmatched staff found</p>
-                        <p className="mt-2 text-sm leading-6 text-muted">
-                          {unmatchedStaffCount} uploaded staff name
-                          {unmatchedStaffCount === 1 ? "" : "s"} need mapping before staff sales is fully accurate.
-                        </p>
-                        {latestReport?.summary?.unmatchedStaffNames?.length ? (
-                          <p className="mt-2 text-sm font-medium">
-                            {latestReport.summary.unmatchedStaffNames.slice(0, 5).join(", ")}
-                            {latestReport.summary.unmatchedStaffNames.length > 5 ? "..." : ""}
-                          </p>
-                        ) : null}
-                      </div>
-                      <Link
-                        className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
-                        href={`/app/reports/staff-aliases?storeId=${status.store.id}`}
-                      >
-                        Fix Staff Names
-                      </Link>
-                    </div>
-                  </div>
-                ) : null}
-
-                {suspicious ? <SuspiciousSalesReportWarning className="mt-4" /> : null}
-                {missingStaff ? <MissingStaffSalesWarning className="mt-4" /> : null}
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link
-                    className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
-                    href={`/app/reports/sales?storeId=${status.store.id}`}
-                  >
-                    View Sales
-                  </Link>
-                  <Link
-                    className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
-                    href={`/app/reports/staff?storeId=${status.store.id}`}
-                  >
-                    Staff Sales
-                  </Link>
-                  <Link
-                    className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
-                    href={`/app/reports/business?storeId=${status.store.id}`}
-                  >
-                    Buying Report
-                  </Link>
-                  {profile?.role === "owner" ? (
-                    <Link
-                      className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
-                      href={`/app/reports/correction?storeId=${status.store.id}`}
-                    >
-                      Fix Wrong Upload
-                    </Link>
-                  ) : null}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      {profile?.role === "owner" ? (
-        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted">AI Secretary</p>
-              <h2 className="mt-2 text-2xl font-semibold">Ask what needs attention today</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Opens the AI chat only when you ask, so Gemini is not called on dashboard load.
-              </p>
-            </div>
-            <Link
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
-              href="/app/secretary"
-            >
-              <Bot className="size-4" />
-              Open Secretary
-            </Link>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted">Staff phones</p>
-            <h2 className="mt-2 text-2xl font-semibold">
-              {missingPhoneCount ? `${missingPhoneCount} missing phone${missingPhoneCount === 1 ? "" : "s"}` : "Phone directory ready"}
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              {profile?.role === "owner"
-                ? "Maintain staff phone numbers across active stores."
-                : "Maintain phone numbers for your assigned stores. Payslips stay owner-only."}
-            </p>
-          </div>
-          <Link
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
-            href={missingPhoneCount ? "/app/employees?missing=1" : "/app/employees"}
-          >
-            <Phone className="size-4" />
-            Staff Phone Directory
-          </Link>
-        </div>
-      </section>
-
-      {profile?.role === "owner" ? (
-        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted">Payslips</p>
-              <h2 className="mt-2 text-2xl font-semibold">Generate salary slips</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Upload salary Excel, review warnings, and download PDFs.
-              </p>
-            </div>
-            <Link
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
-              href="/app/payslips"
-            >
-              <FileText className="size-4" />
-              Open Payslips
-            </Link>
-          </div>
-        </section>
-      ) : null}
-
-      {profile?.role === "owner" && receivableSummary && latestReceivableMonth ? (
-        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted">Salary Receivables</p>
-              <h2 className="mt-2 text-2xl font-semibold">
-                {receivableSummary.pendingCount
-                  ? `${receivableSummary.pendingCount} staff owe ₹${Math.round(receivableSummary.pendingTotal).toLocaleString("en-IN")}`
-                  : "No pending receivables"}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                {formatPayslipMonth(latestReceivableMonth)} — Track negative salary amounts.
-              </p>
-            </div>
-            <Link
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
-              href="/app/payslips/receivables"
-            >
-              <AlertTriangle className="size-4" />
-              Salary Receivables
-            </Link>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted">
-              {weeklyAuditDay ? "Weekly Audit Day" : "Weekly audit"}
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold">
-              {weeklyAuditDay ? "Review previous week" : "View weekly audit"}
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Previous week: {previousWeekRange.startDate} to {previousWeekRange.endDate}.
-              {weeklyAuditDay
-                ? ` Missing sales report days: ${weeklyMissingSalesReports}.`
-                : ""}
-            </p>
-          </div>
-          <Link
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
-            href="/app/audit"
-          >
-            Open audit
-          </Link>
-        </div>
-      </section>
-
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted">Stock pulse</p>
-            <h2 className="mt-2 text-2xl font-semibold">
-              {latestStockMonth ? `Latest stock ${latestStockMonth}` : "No stock report yet"}
-            </h2>
-          </div>
-          <Link
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
-            href="/app/reports/stock/analytics"
-          >
-            Stock analytics
-          </Link>
-        </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-border p-3">
-            <p className="text-xs font-medium text-muted">Possible dead</p>
-            <p className="mt-1 text-2xl font-semibold">{stockPulse?.deadStockCandidates.length ?? 0}</p>
-          </div>
-          <div className="rounded-2xl border border-border p-3">
-            <p className="text-xs font-medium text-muted">Slow candidates</p>
-            <p className="mt-1 text-2xl font-semibold">{stockPulse?.slowStockCandidates.length ?? 0}</p>
-          </div>
-          <div className="rounded-2xl border border-border p-3">
-            <p className="text-xs font-medium text-muted">Fast low stock</p>
-            <p className="mt-1 text-2xl font-semibold">
-              {stockPulse?.fastMovingLowStockCandidates.length ?? 0}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border p-3">
-            <p className="text-xs font-medium text-muted">Stock report status</p>
-            <p className="mt-1 text-sm font-semibold">
-              {stockOverview.missingCount
-                ? `${stockOverview.missingCount} missing`
-                : `${stockOverview.uploadedCount} uploaded`}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted">Sales pulse</p>
-            <h2 className="mt-2 text-2xl font-semibold">Yesterday and month view</h2>
-          </div>
-          <Link
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
-            href="/app/reports/sales/analytics"
-          >
-            Full analytics
-          </Link>
-        </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {stores.map((store) => {
-            const yesterday = yesterdaySalesPulse.storeSummaries.find((item) => item.store.id === store.id);
-            const month = monthSalesPulse.storeSummaries.find((item) => item.store.id === store.id);
-            const salesStatus = salesStatuses.find((item) => item.store.id === store.id);
-
-            return (
-              <div className="rounded-2xl border border-border p-3" key={store.id}>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold">{store.name}</p>
-                  <span
-                    className={
-                      salesStatus?.yesterdayReport
-                        ? "rounded-full border border-border px-2 py-1 text-xs font-semibold text-success"
-                        : "rounded-full border border-border px-2 py-1 text-xs font-semibold text-danger"
-                    }
-                  >
-                    {salesStatus?.yesterdayReport ? "Uploaded" : "Missing"}
-                  </span>
-                </div>
-                <p className="mt-4 text-xs font-medium text-muted">Yesterday</p>
-                <p className="mt-1 text-xl font-semibold">{formatMoney(yesterday?.totalNetSale)}</p>
-                <p className="mt-3 text-xs font-medium text-muted">This month</p>
-                <p className="mt-1 text-xl font-semibold">{formatMoney(month?.totalNetSale)}</p>
-              </div>
-            );
-          })}
-          <div className="rounded-2xl border border-border p-3">
-            <p className="text-xs font-medium text-muted">Top staff yesterday</p>
-            {yesterdayStaffPulse[0] ? (
-              <>
-                <p className="mt-2 text-xl font-semibold">{yesterdayStaffPulse[0].staffName}</p>
-                <p className="mt-1 text-sm font-medium text-muted">
-                  {formatMoney(yesterdayStaffPulse[0].totalSale)}
-                </p>
-              </>
-            ) : (
-              <p className="mt-2 text-sm leading-6 text-muted">No staff sales found.</p>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted">Monthly stock workflow</p>
-            <h2 className="mt-2 text-2xl font-semibold">{stockOverview.headline}</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Stock report due {stockOverview.dueDate}.
-            </p>
-          </div>
-          <Link
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
-            href="/app/reports/stock"
-          >
-            Open upload
-          </Link>
-        </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-border p-3">
-            <p className="text-xs font-medium text-muted">Uploaded</p>
-            <p className="mt-1 text-2xl font-semibold">{stockOverview.uploadedCount}</p>
-          </div>
-          <div className="rounded-2xl border border-border p-3">
-            <p className="text-xs font-medium text-muted">Missing</p>
-            <p className="mt-1 text-2xl font-semibold">{stockOverview.missingCount}</p>
-          </div>
-          {stockOverview.statuses.map((status) => (
-            <Link
-              className="rounded-2xl border border-border p-3 transition hover:border-foreground"
-              href={`/app/reports/stock?storeId=${status.store.id}`}
-              key={status.store.id}
-            >
-              <p className="text-xs font-medium text-muted">{status.store.name}</p>
-              <p
-                className={
-                  status.report
-                    ? "mt-1 text-lg font-semibold text-success"
-                    : "mt-1 text-lg font-semibold text-danger"
-                }
-              >
-                {status.report ? "Uploaded" : stockOverview.dayOfMonth === 1 ? "Due today" : "Pending"}
-              </p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-xl font-semibold">Daily checklist</h2>
@@ -756,44 +666,13 @@ export default async function TodayPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Link
-          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
-          href="/app/tasks"
-        >
-          <ListTodo className="mb-5 size-5 text-muted" />
-          <p className="text-sm text-muted">Today tasks</p>
-          <p className="mt-1 text-3xl font-semibold">{taskSummary.todayCount}</p>
-        </Link>
-        <Link
-          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
-          href="/app/tasks?tab=today"
-        >
-          <TriangleAlert className="mb-5 size-5 text-muted" />
-          <p className="text-sm text-muted">Urgent today</p>
-          <p className="mt-1 text-3xl font-semibold">{taskSummary.urgentCount}</p>
-        </Link>
-        {profile?.role === "owner" ? (
-          <Link
-            className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
-            href="/app/tasks?tab=today"
-          >
-            <HeartPulse className="mb-5 size-5 text-muted" />
-            <p className="text-sm text-muted">Personal/private</p>
-            <p className="mt-1 text-3xl font-semibold">
-              {taskSummary.privateCount}
-            </p>
-          </Link>
-        ) : null}
-      </section>
-
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-sm font-medium text-muted">Monthly salary workflow</p>
+            <p className="text-sm font-medium text-muted">Salary Attendance Upload</p>
             <h2 className="mt-2 text-2xl font-semibold">{salaryOverview.headline}</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Attendance due {salaryOverview.dueDate}. Salary day {salaryOverview.salaryDate}.
+              Attendance due {salaryOverview.dueDate}. Payslips remain owner-only.
             </p>
           </div>
           <Link
@@ -804,144 +683,22 @@ export default async function TodayPage() {
           </Link>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-border p-3">
-            <p className="text-xs font-medium text-muted">Uploaded</p>
-            <p className="mt-1 text-2xl font-semibold">{salaryOverview.uploadedCount}</p>
-          </div>
-          <div className="rounded-2xl border border-border p-3">
-            <p className="text-xs font-medium text-muted">Missing</p>
-            <p className="mt-1 text-2xl font-semibold">{salaryOverview.missingCount}</p>
-          </div>
-          {salaryOverview.statuses.map((status) => (
-            <Link
-              className="rounded-2xl border border-border p-3 transition hover:border-foreground"
-              href={`/app/reports/salary-attendance?storeId=${status.store.id}`}
-              key={status.store.id}
-            >
-              <p className="text-xs font-medium text-muted">{status.store.name}</p>
-              <p
-                className={
-                  status.report
-                    ? "mt-1 text-lg font-semibold text-success"
-                    : "mt-1 text-lg font-semibold text-danger"
-                }
-              >
-                {status.report ? "Uploaded" : salaryOverview.dayOfMonth === 1 ? "Due today" : "Missing"}
-              </p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Manager updates</h2>
-          <MessageSquareText className="size-5 text-muted" />
-        </div>
-        <div className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Link
-              className="rounded-2xl border border-border p-3 transition hover:border-foreground"
-              href="/app/updates?status=open&urgency=urgent"
-            >
-              <p className="text-xs font-medium text-muted">Open urgent</p>
-              <p className="mt-1 text-2xl font-semibold">{updateSummary.openUrgentCount}</p>
-            </Link>
-            {updateSummary.storeCounts.map((item) => (
-              <Link
-                className="rounded-2xl border border-border p-3 transition hover:border-foreground"
-                href={`/app/updates?storeId=${item.store.id}&status=open`}
-                key={item.store.id}
-              >
-                <p className="text-xs font-medium text-muted">{item.store.name}</p>
-                <p className="mt-1 text-2xl font-semibold">{item.count}</p>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Link
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
-              href="/app/updates/new"
-            >
-              Add store update
-            </Link>
-            <Link
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
-              href="/app/updates"
-            >
-              View updates
-            </Link>
-          </div>
-        </div>
-        {updateSummary.latestOpen.length ? (
-          <div className="mt-3 grid gap-3 lg:grid-cols-3">
-            {updateSummary.latestOpen.map((update) => (
-              <UpdateCard compact key={update.id} update={update} />
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Manager quick actions</h2>
-          <ListTodo className="size-5 text-muted" />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-          <Link
-            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
-            href="/app/checklist"
-          >
-            My checklist
-          </Link>
-          <Link
-            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
-            href="/app/reports/sales"
-          >
-            Upload sales
-          </Link>
-          <Link
-            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
-            href="/app/reports/salary-attendance"
-          >
-            Salary attendance
-          </Link>
-          <Link
-            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
-            href="/app/reports/stock"
-          >
-            Upload stock
-          </Link>
-          <Link
-            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
-            href="/app/reviews/rack"
-          >
-            Rack review
-          </Link>
-          <Link
-            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
-            href="/app/reviews/cleaning"
-          >
-            Cleaning review
-          </Link>
-          <Link
-            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
-            href="/app/updates/new"
-          >
-            Add update
-          </Link>
-          <Link
-            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
-            href="/app/tasks/new"
-          >
-            Add task
-          </Link>
-          <Link
-            className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
-            href="/app/tasks"
-          >
-            Assigned tasks
-          </Link>
+          <MetricCard icon={CalendarCheck} label="Uploaded" value={String(salaryOverview.uploadedCount)} />
+          <MetricCard
+            icon={AlertTriangle}
+            label="Missing"
+            tone={salaryOverview.missingCount ? "warning" : "success"}
+            value={String(salaryOverview.missingCount)}
+          />
+          {profileRole === "owner" && receivableSummary ? (
+            <MetricCard
+              href="/app/payslips/receivables"
+              icon={WalletCards}
+              label={`Receivables ${formatPayslipMonth(latestReceivableMonth)}`}
+              tone={receivableSummary.pendingCount ? "warning" : "success"}
+              value={formatMoney(receivableSummary.pendingTotal)}
+            />
+          ) : null}
         </div>
       </section>
 
@@ -950,118 +707,325 @@ export default async function TodayPage() {
           <h2 className="text-xl font-semibold">Accessible stores</h2>
           <Store className="size-5 text-muted" />
         </div>
-        {stores.length ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {stores.map((store) => (
-              <Link
-                className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
-                href={`/app/stores/${store.id}`}
-                key={store.id}
-              >
-                <p className="text-lg font-semibold">{store.name}</p>
-                <p className="mt-1 text-sm text-muted">{store.code}</p>
-                <p className="mt-6 text-sm font-medium text-muted">
-                  {taskSummary.storeCounts.find((item) => item.store.id === store.id)
-                    ?.count ?? 0}{" "}
-                  task
-                  {(taskSummary.storeCounts.find((item) => item.store.id === store.id)
-                    ?.count ?? 0) === 1
-                    ? ""
-                    : "s"}{" "}
-                  today
-                </p>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-[1.35rem] border border-border bg-card p-5 text-sm leading-6 text-muted shadow-sm">
-            No active store is assigned yet.
-          </div>
-        )}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {stores.map((store) => (
+            <Link
+              className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
+              href={`/app/stores/${store.id}`}
+              key={store.id}
+            >
+              <p className="text-lg font-semibold">{store.name}</p>
+              <p className="mt-1 text-sm text-muted">{store.code}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function OwnerToday({
+  historicalImport,
+  missingPhoneCount,
+  salesIssues,
+  salesStatuses,
+  stockOverview,
+  taskSummary,
+  updateSummary,
+}: {
+  historicalImport: HistoricalImportSummary;
+  missingPhoneCount: number;
+  salesIssues: ReturnType<typeof salesIssueSummary>;
+  salesStatuses: StoreSalesStatus[];
+  stockOverview: StockOverview;
+  taskSummary: Awaited<ReturnType<typeof getTaskSummary>>;
+  updateSummary: Awaited<ReturnType<typeof getTodayUpdateSummary>>;
+}) {
+  const criticalSalesIssues =
+    salesIssues.missingToday + salesIssues.missingYesterday + salesIssues.suspiciousCount + salesIssues.missingStaffCount;
+  const historicalTone = historicalImport.warningCount ? "warning" : historicalImport.latest ? "success" : "default";
+  const historicalText = historicalImport.latest
+    ? `${historicalImport.latest.status ?? "uploaded"}: ${historicalImport.latest.detected_start_date ?? "?"} to ${
+        historicalImport.latest.detected_end_date ?? "?"
+      }`
+    : "No recent batch";
+
+  return (
+    <>
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <p className="text-sm font-medium text-muted">Today</p>
+        <h1 className="mt-2 text-3xl font-semibold">Owner Command Center</h1>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Start with exceptions, uploads, staff issues, and buying actions.
+        </p>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          href="/app/reports"
+          icon={criticalSalesIssues ? AlertTriangle : LineChart}
+          label="Missing / suspicious sales"
+          tone={criticalSalesIssues ? "danger" : "success"}
+          value={criticalSalesIssues ? String(criticalSalesIssues) : "Clear"}
+        />
+        <MetricCard
+          href="/app/reports/correction"
+          icon={History}
+          label="Historical import status"
+          tone={historicalTone}
+          value={historicalText}
+        />
+        <MetricCard
+          href="/app/reports/business"
+          icon={ShoppingBag}
+          label="Buying / stock action"
+          tone={stockOverview.missingCount ? "warning" : "success"}
+          value={stockOverview.missingCount ? `${stockOverview.missingCount} stock pending` : "Stock ready"}
+        />
+        <MetricCard
+          href="/app/reports/staff-aliases"
+          icon={UserRoundCog}
+          label="Staff issues"
+          tone={salesIssues.unmatchedStaffCount || salesIssues.missingStaffCount ? "danger" : "success"}
+          value={
+            salesIssues.unmatchedStaffCount || salesIssues.missingStaffCount
+              ? `${salesIssues.unmatchedStaffCount} unmatched`
+              : "Clear"
+          }
+        />
+        <MetricCard
+          href="/app/tasks"
+          icon={ListTodo}
+          label="Today tasks"
+          tone={taskSummary.urgentCount ? "warning" : "default"}
+          value={`${taskSummary.todayCount} total`}
+        />
+        <MetricCard
+          href="/app/updates?status=open&urgency=urgent"
+          icon={MessageSquareText}
+          label="Urgent manager updates"
+          tone={updateSummary.openUrgentCount ? "warning" : "success"}
+          value={String(updateSummary.openUrgentCount)}
+        />
+        <MetricCard href="/app/reports/correction" icon={ShieldAlert} label="Fix Wrong Upload" value="Open" />
+        <MetricCard href="/app/secretary" icon={Bot} label="AI Secretary" value="Ask" />
+      </section>
+
+      {salesIssues.topStaff ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+          <p className="text-sm font-medium text-muted">Lightweight staff pulse</p>
+          <h2 className="mt-2 text-2xl font-semibold">{salesIssues.topStaff.name}</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Top staff from latest uploaded report summaries: {formatMoney(salesIssues.topStaff.sale)} at{" "}
+            {salesIssues.topStaff.storeName}.
+          </p>
+        </section>
+      ) : missingPhoneCount > 0 ? (
+        <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+          <p className="text-sm font-medium text-muted">Staff directory</p>
+          <h2 className="mt-2 text-2xl font-semibold">{missingPhoneCount} staff phone(s) missing</h2>
+          <Link className="mt-4 inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold" href="/app/employees">
+            Open Staff Directory
+          </Link>
+        </section>
+      ) : null}
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Owner shortcuts</h2>
+          <BarChart3 className="size-5 text-muted" />
+        </div>
+        <ShortcutGrid shortcuts={ownerShortcuts} />
+      </section>
+
+      <SalesStatusCards statuses={salesStatuses} />
+      <StockStatusMini stockOverview={stockOverview} />
+    </>
+  );
+}
+
+function ManagerToday({
+  salesStatuses,
+  stockOverview,
+  stores,
+  taskSummary,
+  updateSummary,
+}: {
+  salesStatuses: StoreSalesStatus[];
+  stockOverview: StockOverview;
+  stores: TodayStore[];
+  taskSummary: Awaited<ReturnType<typeof getTaskSummary>>;
+  updateSummary: Awaited<ReturnType<typeof getTodayUpdateSummary>>;
+}) {
+  const assignedStoreLabel = stores.map((store) => store.name).join(", ");
+  const missingSalesCount = salesStatuses.filter((status) => !status.todayReport || !status.yesterdayReport).length;
+  const staffIssues = salesStatuses.reduce(
+    (sum, status) => sum + summaryNumber(status.latestReport?.summary, "unmatchedStaffCount"),
+    0,
+  );
+
+  return (
+    <>
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <p className="text-sm font-medium text-muted">Today</p>
+        <h1 className="mt-2 text-3xl font-semibold">My Store Command Center</h1>
+        <p className="mt-2 text-sm leading-6 text-muted">Complete your daily store actions here.</p>
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <p className="text-sm font-medium text-muted">My assigned store{stores.length === 1 ? "" : "s"}</p>
+        <h2 className="mt-2 text-2xl font-semibold">{assignedStoreLabel}</h2>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            href="/app/reports/sales"
+            icon={UploadCloud}
+            label="Sales upload warnings"
+            tone={missingSalesCount ? "danger" : "success"}
+            value={missingSalesCount ? `${missingSalesCount} store issue(s)` : "Clear"}
+          />
+          <MetricCard
+            href="/app/reports/stock"
+            icon={PackageSearch}
+            label="Stock upload"
+            tone={stockOverview.missingCount ? "warning" : "success"}
+            value={stockOverview.missingCount ? `${stockOverview.missingCount} pending` : "Uploaded"}
+          />
+          <MetricCard
+            href="/app/reports/staff-aliases"
+            icon={UserRoundCog}
+            label="Staff names"
+            tone={staffIssues ? "danger" : "success"}
+            value={staffIssues ? `${staffIssues} unmatched` : "Clear"}
+          />
+          <MetricCard
+            href="/app/tasks"
+            icon={ListTodo}
+            label="Tasks today"
+            tone={taskSummary.urgentCount ? "warning" : "default"}
+            value={`${taskSummary.todayCount} total`}
+          />
+          <MetricCard href="/app/checklist" icon={ClipboardCheck} label="Checklist" value="Open" />
+          <MetricCard href="/app/updates/new" icon={MessageSquareText} label="Send update" value="Open" />
+          <MetricCard href="/app/reports/staff" icon={UserRoundCheck} label="Staff Sales" value="Open" />
+          <MetricCard
+            href="/app/updates?status=open&urgency=urgent"
+            icon={TriangleAlert}
+            label="Open urgent updates"
+            tone={updateSummary.openUrgentCount ? "warning" : "success"}
+            value={String(updateSummary.openUrgentCount)}
+          />
+        </div>
       </section>
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Yesterday sales reports</h2>
-          <LineChart className="size-5 text-muted" />
+          <h2 className="text-xl font-semibold">Manager shortcuts</h2>
+          <Store className="size-5 text-muted" />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {salesStatuses.map((status) => (
-            <div
-              className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm"
-              key={status.store.id}
+        <ShortcutGrid shortcuts={managerShortcuts} />
+      </section>
+
+      <SalesStatusCards statuses={salesStatuses} />
+      <StockStatusMini stockOverview={stockOverview} />
+    </>
+  );
+}
+
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<TodaySearchParams>;
+}) {
+  const params = await searchParams;
+  const { profile } = await requireProfile();
+  const stores = (await getAccessibleStores(profile)) as TodayStore[];
+  const isOwner = profile?.role === "owner";
+
+  if (!isOwner && stores.length === 0) {
+    return (
+      <section className="rounded-[1.35rem] border border-border bg-card p-6 shadow-sm">
+        <p className="text-sm font-medium text-muted">Today</p>
+        <h1 className="mt-2 text-3xl font-semibold">No store assigned</h1>
+        <p className="mt-3 text-sm leading-6 text-muted">Please contact owner to assign a store.</p>
+      </section>
+    );
+  }
+
+  const defaultTaskSummary = { todayCount: 0, urgentCount: 0, privateCount: 0, storeCounts: [] };
+  const [taskSummary, salesStatuses, stockOverview, updateSummary, missingPhoneCount, historicalImport] = await Promise.all([
+    profile ? getTaskSummary(profile, stores) : Promise.resolve(defaultTaskSummary),
+    getStoreSalesStatuses(stores),
+    getStockOverview(stores),
+    getTodayUpdateSummary(stores),
+    isOwner ? getMissingEmployeePhoneCount(stores.map((store) => store.id)) : Promise.resolve(0),
+    isOwner ? getHistoricalImportSummary(stores) : Promise.resolve({ latest: null, warningCount: 0 }),
+  ]);
+  const salesIssues = salesIssueSummary(salesStatuses);
+  const showStock = params.stock === "1";
+  const showAudit = params.audit === "1";
+  const showMore = params.more === "1";
+  const weeklyAuditAvailable = isOwner && isWeeklyAuditDay();
+
+  return (
+    <div className="space-y-5">
+      {isOwner ? (
+        <OwnerToday
+          historicalImport={historicalImport}
+          missingPhoneCount={missingPhoneCount}
+          salesIssues={salesIssues}
+          salesStatuses={salesStatuses}
+          stockOverview={stockOverview}
+          taskSummary={taskSummary}
+          updateSummary={updateSummary}
+        />
+      ) : (
+        <ManagerToday
+          salesStatuses={salesStatuses}
+          stockOverview={stockOverview}
+          stores={stores}
+          taskSummary={taskSummary}
+          updateSummary={updateSummary}
+        />
+      )}
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        <p className="text-sm font-medium text-muted">More details</p>
+        <h2 className="mt-2 text-2xl font-semibold">Load heavier sections only when needed</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Stock pulse, weekly audit, reviews, receivables, salary attendance detail and store lists are kept out of
+          the first render so Today opens faster.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {!showStock ? (
+            <Link
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
+              href={queryHref({ ...params, stock: "1" })}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-lg font-semibold">{status.store.name}</p>
-                  <p className="mt-1 text-xs font-medium text-muted">
-                    Due for {status.yesterdayDate}
-                  </p>
-                </div>
-                <span
-                  className={
-                    status.yesterdayReport
-                      ? "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success"
-                      : "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger"
-                  }
-                >
-                  {status.yesterdayReport ? "Uploaded" : "Missing"}
-                </span>
-              </div>
-              <p className="mt-5 text-2xl font-semibold">
-                {formatMoney(status.latestReport?.summary?.totalNetSale)}
-              </p>
-              <p className="mt-1 text-xs font-medium text-muted">
-                Latest upload: {status.latestReport?.report_date ?? "None yet"}
-              </p>
-              {!status.yesterdayReport ? (
-                <p className="mt-3 text-sm font-medium text-danger">
-                  Missing yesterday sales report.
-                </p>
-              ) : null}
-              <Link
-                className="mt-4 inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
-                href={`/app/reports/sales?storeId=${status.store.id}`}
-              >
-                Upload report
-              </Link>
-            </div>
-          ))}
+              Load Stock Pulse
+            </Link>
+          ) : null}
+          {isOwner && !showAudit ? (
+            <Link
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
+              href={queryHref({ ...params, audit: "1" })}
+            >
+              {weeklyAuditAvailable ? "Load Weekly Audit" : "Load Weekly Audit Anyway"}
+            </Link>
+          ) : null}
+          {!showMore ? (
+            <Link
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              href={queryHref({ ...params, more: "1" })}
+            >
+              Show More Details
+            </Link>
+          ) : null}
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <StatusCard
-          body="Daily sales upload is active from Reports."
-          icon={LineChart}
-          title="Sales report status"
-        />
-        <StatusCard
-          body={`${stockOverview.uploadedCount} uploaded, ${stockOverview.missingCount} missing for ${stockOverview.periodMonth}.`}
-          icon={PackageSearch}
-          title="Stock report status"
-        />
-        <StatusCard
-          body={`${salaryOverview.uploadedCount} uploaded, ${salaryOverview.missingCount} missing for ${salaryOverview.periodMonth}.`}
-          icon={CalendarCheck}
-          title="Salary attendance"
-        />
-        <StatusCard
-          body={`Salary day is ${salaryOverview.salaryDate}.`}
-          icon={WalletCards}
-          title="Salary day"
-        />
-        <StatusCard
-          body="Daily rack review is active from Reviews."
-          icon={Sparkles}
-          title="Rack review"
-        />
-        <StatusCard
-          body="Daily cleaning review is active from Reviews."
-          icon={SprayCan}
-          title="Cleaning review"
-        />
-      </section>
+      {showStock ? <StockPulseSection stores={stores} /> : null}
+      {isOwner && showAudit ? <WeeklyAuditSection stores={stores} /> : null}
+      {showMore ? <MoreDetailsSection profileRole={profile?.role ?? "manager"} stores={stores} /> : null}
     </div>
   );
 }

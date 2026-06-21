@@ -3,10 +3,16 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import type { Database } from "@/lib/supabase/database.types";
 
+const publicAuthRoutes = new Set(["/login", "/forgot-password", "/reset-password"]);
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request,
   });
+
+  if (publicAuthRoutes.has(request.nextUrl.pathname)) {
+    return response;
+  }
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,6 +46,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|favicon-32.png|favicon-48.png|icon.svg|icon-192.png|apple-touch-icon.png|manifest.webmanifest).*)",
+    "/((?!_next/static|_next/image|favicon.ico|favicon-32.png|favicon-48.png|icon.svg|icon-192.png|apple-touch-icon.png|manifest.webmanifest|sw.js).*)",
   ],
 };

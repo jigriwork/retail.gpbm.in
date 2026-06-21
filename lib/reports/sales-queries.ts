@@ -14,6 +14,7 @@ export type SalesReportSummary = {
   unmatchedStaffNames?: string[];
   topBrands?: Array<{ name: string; sale: number }>;
   topCategories?: Array<{ name: string; sale: number }>;
+  topStaff?: Array<{ name: string; sale: number }>;
 };
 
 export type SalesReportWithStore = {
