@@ -297,6 +297,103 @@ function DecisionCard({
   );
 }
 
+function BusinessFilterPanel({
+  period,
+  query,
+  range,
+  report,
+  selectedStoreId,
+  stores,
+}: {
+  period: BusinessPeriod;
+  query: Record<string, string | undefined>;
+  range: { startDate: string; endDate: string };
+  report: Awaited<ReturnType<typeof getBusinessReport>>;
+  selectedStoreId: string;
+  stores: Awaited<ReturnType<typeof getAccessibleStores>>;
+}) {
+  return (
+    <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+      <div className="mb-4">
+        <p className="text-sm font-medium text-muted">Choose store first</p>
+        <h2 className="mt-2 text-2xl font-semibold">Stock and buying filters</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Select one store for a single-store buying plan, or choose all stores to see separate store-wise plans.
+        </p>
+      </div>
+      <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-muted">Store</span>
+          <select className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={selectedStoreId} name="storeId">
+            <option value="all">All accessible stores - show separately</option>
+            {stores.map((store) => (
+              <option key={store.id} value={store.id}>
+                {store.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-muted">Period</span>
+          <select className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={period} name="period">
+            {periodOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-muted">Start</span>
+          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={range.startDate} name="start" type="date" />
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-muted">End</span>
+          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={range.endDate} name="end" type="date" />
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-muted">Brand</span>
+          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.brand} list="business-brands" name="brand" placeholder="All brands" />
+          <datalist id="business-brands">
+            {report.options.brands.map((brand) => (
+              <option key={brand} value={brand} />
+            ))}
+          </datalist>
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-muted">Category</span>
+          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.category} list="business-categories" name="category" placeholder="All categories" />
+          <datalist id="business-categories">
+            {report.options.categories.map((category) => (
+              <option key={category} value={category} />
+            ))}
+          </datalist>
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-muted">Item/Product</span>
+          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.item} name="item" placeholder="Name, barcode, SKU" />
+          <span className="mt-2 block text-xs leading-5 text-muted">
+            Searches within the selected store, period, brand and category.
+          </span>
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-muted">Size</span>
+          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.size} list="business-sizes" name="size" placeholder="All sizes" />
+          <datalist id="business-sizes">
+            {report.options.sizes.map((size) => (
+              <option key={size} value={size} />
+            ))}
+          </datalist>
+        </label>
+        <button className="h-12 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85 lg:col-span-4">
+          <Search className="mr-2 inline size-4" />
+          Apply filters
+        </button>
+      </form>
+    </section>
+  );
+}
+
 function statusClass(status: "ok" | "warning" | "danger") {
   if (status === "danger") return "text-danger";
   if (status === "warning") return "text-warning";
@@ -647,6 +744,128 @@ function StaffTable({ rows }: { rows: StaffSummary[] }) {
   );
 }
 
+function StoreWiseBuyingPlan({
+  query,
+  report,
+  storeName,
+}: {
+  query: Record<string, string | undefined>;
+  report: Awaited<ReturnType<typeof getBusinessReport>>;
+  storeName: string;
+}) {
+  const topSellingRows = [...report.itemRows]
+    .sort((left, right) => right.soldQuantity - left.soldQuantity || right.netSales - left.netSales)
+    .slice(0, 3);
+  const urgentRestockRows = report.restockRows.filter((row) => row.signal === "Restock Urgent");
+  const avoidBuyingRows = report.slowRows;
+  const lowStockRows = report.lowStockRows;
+
+  return (
+    <section className="space-y-4 rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-muted">Store-wise buying plan</p>
+          <h2 className="mt-2 text-2xl font-semibold">{storeName}</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Latest stock month: {report.summary.latestStockMonthLabel || "None"}. This section uses only this store stock and sales rows.
+          </p>
+        </div>
+        <span className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted">
+          Stock {formatNumber(report.summary.stockQuantity)}
+        </span>
+      </div>
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard label="Net Sales" value={formatMoney(report.summary.netSales)} />
+        <MetricCard label="Sold Qty" value={formatNumber(report.summary.soldQuantity)} />
+        <MetricCard label="Current Stock" value={formatNumber(report.summary.stockQuantity)} />
+        <MetricCard label="Stock MRP" value={formatMoney(report.summary.stockMrpValue)} />
+      </section>
+
+      <section className="grid gap-3 lg:grid-cols-4">
+        <DecisionCard count={topSellingRows.length} emptyText="No sales found for this store and period." title="Top Selling">
+          <div className="space-y-2">
+            {topSellingRows.map((row) => (
+              <DecisionItem
+                brand={row.brand}
+                itemName={row.itemName}
+                key={row.key}
+                netSales={row.netSales}
+                soldQuantity={row.soldQuantity}
+                storeName={row.storeName}
+                stockQuantity={row.stockQuantity}
+              />
+            ))}
+          </div>
+        </DecisionCard>
+        <DecisionCard count={urgentRestockRows.length} emptyText="No urgent restock signal for this store." title="Restock Urgent">
+          <div className="space-y-2">
+            {urgentRestockRows.slice(0, 3).map((row) => (
+              <DecisionItem
+                brand={row.brand}
+                itemName={row.itemName}
+                key={row.key}
+                netSales={row.netSales}
+                soldQuantity={row.soldQuantity}
+                storeName={row.storeName}
+                stockQuantity={row.stockQuantity}
+              />
+            ))}
+          </div>
+        </DecisionCard>
+        <DecisionCard count={avoidBuyingRows.length} emptyText="No avoid-buying signal for this store." title="Avoid Buying">
+          <div className="space-y-2">
+            {avoidBuyingRows.slice(0, 3).map((row) => (
+              <DecisionItem
+                brand={row.brand}
+                itemName={row.itemName}
+                key={row.key}
+                netSales={row.netSales}
+                soldQuantity={row.soldQuantity}
+                storeName={row.storeName}
+                stockQuantity={row.stockQuantity}
+              />
+            ))}
+          </div>
+        </DecisionCard>
+        <DecisionCard count={lowStockRows.length} emptyText="No low-stock size signal for this store." title="Low Stock">
+          <div className="space-y-2">
+            {lowStockRows.slice(0, 3).map((row) => (
+              <DecisionItem
+                brand={row.brand}
+                itemName={`${row.itemName} / ${row.size}`}
+                key={row.key}
+                netSales={row.netSales}
+                soldQuantity={row.soldQuantity}
+                storeName={row.storeName}
+                stockQuantity={row.stockQuantity}
+              />
+            ))}
+          </div>
+        </DecisionCard>
+      </section>
+
+      <details className="rounded-2xl border border-border p-4">
+        <summary className="cursor-pointer text-sm font-semibold">Open detailed rows for {storeName}</summary>
+        <div className="mt-4 space-y-5">
+          <div>
+            <h3 className="mb-3 font-semibold">Item/Product Performance</h3>
+            <ItemTable hasItemSearch={Boolean(query.item)} rows={report.itemRows} />
+          </div>
+          <div>
+            <h3 className="mb-3 font-semibold">Restock Suggestions</h3>
+            <SignalTable mode="restock" rows={report.restockRows} />
+          </div>
+          <div>
+            <h3 className="mb-3 font-semibold">Overstock / Slow Movement</h3>
+            <SignalTable mode="slow" rows={report.slowRows} />
+          </div>
+        </div>
+      </details>
+    </section>
+  );
+}
+
 export default async function BusinessReportingPage({
   searchParams,
 }: {
@@ -749,6 +968,70 @@ export default async function BusinessReportingPage({
         ? { label: "Mixed / weak matches present", tone: "warning" as const }
         : { label: "Strong", tone: "ok" as const };
 
+  if (selectedStoreId === "all") {
+    const storeWiseReports = await Promise.all(
+      selectedStores.map(async (store) => {
+        const storeReport = await getBusinessReport(
+          {
+            brand: query.brand,
+            category: query.category,
+            endDate: range.endDate,
+            itemSearch: query.item,
+            period,
+            size: query.size,
+            startDate: range.startDate,
+            storeIds: [store.id],
+          },
+          [store],
+        );
+
+        return { report: storeReport, store };
+      }),
+    );
+
+    return (
+      <div className="space-y-5">
+        <div>
+          <Link className="text-sm font-semibold text-muted" href="/app/reports">
+            Back to reports
+          </Link>
+          <div className="mt-2 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-muted">Business Reporting</p>
+              <h1 className="mt-2 text-3xl font-semibold">Buying & Restock Report</h1>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Choose one store for a single buying plan, or keep all stores to see separate store-wise plans.
+              </p>
+            </div>
+            <BarChart3 className="size-5 text-muted" />
+          </div>
+        </div>
+
+        <BusinessFilterPanel
+          period={period}
+          query={query}
+          range={range}
+          report={report}
+          selectedStoreId={selectedStoreId}
+          stores={stores}
+        />
+
+        <section className="rounded-[1.35rem] border border-border bg-card p-4 text-sm leading-6 text-muted shadow-sm">
+          Showing all accessible stores separately. Stock quantity, restock signals, and avoid-buying suggestions are not mixed between stores.
+        </section>
+
+        {storeWiseReports.map(({ report: storeReport, store }) => (
+          <StoreWiseBuyingPlan
+            key={store.id}
+            query={query}
+            report={storeReport}
+            storeName={store.name}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div>
@@ -766,6 +1049,15 @@ export default async function BusinessReportingPage({
           <BarChart3 className="size-5 text-muted" />
         </div>
       </div>
+
+      <BusinessFilterPanel
+        period={period}
+        query={query}
+        range={range}
+        report={report}
+        selectedStoreId={selectedStoreId}
+        stores={stores}
+      />
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -907,78 +1199,6 @@ export default async function BusinessReportingPage({
             summary={summaryText}
           />
         </div>
-      </section>
-
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Store</span>
-            <select className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={selectedStoreId} name="storeId">
-              <option value="all">All accessible stores</option>
-              {stores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Period</span>
-            <select className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={period} name="period">
-              {periodOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Start</span>
-            <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={range.startDate} name="start" type="date" />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">End</span>
-            <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={range.endDate} name="end" type="date" />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Brand</span>
-            <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.brand} list="business-brands" name="brand" placeholder="All brands" />
-            <datalist id="business-brands">
-              {report.options.brands.map((brand) => (
-                <option key={brand} value={brand} />
-              ))}
-            </datalist>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Category</span>
-            <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.category} list="business-categories" name="category" placeholder="All categories" />
-            <datalist id="business-categories">
-              {report.options.categories.map((category) => (
-                <option key={category} value={category} />
-              ))}
-            </datalist>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Item/Product</span>
-            <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.item} name="item" placeholder="Name, barcode, SKU" />
-            <span className="mt-2 block text-xs leading-5 text-muted">
-              Searches within the selected store, period, brand and category. For best results, first select brand or category, then search item.
-            </span>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Size</span>
-            <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.size} list="business-sizes" name="size" placeholder="All sizes" />
-            <datalist id="business-sizes">
-              {report.options.sizes.map((size) => (
-                <option key={size} value={size} />
-              ))}
-            </datalist>
-          </label>
-          <button className="h-12 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85 lg:col-span-4">
-            <Search className="mr-2 inline size-4" />
-            Apply filters
-          </button>
-        </form>
       </section>
 
       {report.stockWarning ? (
