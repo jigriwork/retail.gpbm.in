@@ -8,7 +8,7 @@ import { PayslipSentStatusActions } from "@/components/payslips/sent-status-acti
 import { PayslipWhatsAppActions } from "@/components/payslips/whatsapp-actions";
 import { requireProfile } from "@/lib/auth/session";
 import { generatePayslipForRow, updatePayslipRowPhone } from "@/lib/payslips/actions";
-import { getPayslipBatch, getPayslipRows } from "@/lib/payslips/queries";
+import { getPayslipBatch, getPayslipRows, getPayrollVersionsForBatch } from "@/lib/payslips/queries";
 import { formatMoney, formatMonth, payslipFileName } from "@/lib/payslips/utils";
 
 type RowWithGenerated = Awaited<ReturnType<typeof getPayslipRows>>[number];
@@ -55,7 +55,7 @@ export default async function PayslipBatchPage({
     return <AccessDenied message="Payslip generation is reserved for the owner account." />;
   }
 
-  const [batch, rows] = await Promise.all([getPayslipBatch(batchId), getPayslipRows(batchId)]);
+  const [batch, rows, versions] = await Promise.all([getPayslipBatch(batchId), getPayslipRows(batchId), getPayrollVersionsForBatch(batchId)]);
 
   if (!batch) {
     notFound();
@@ -94,6 +94,12 @@ export default async function PayslipBatchPage({
 
   return (
     <div className="space-y-5">
+      <section className="rounded-2xl border border-border p-4 text-sm">
+        {versions.length ? versions.map(version => <p key={version.id}>
+          {version.payroll_runs?.stores?.name} — {version.payroll_runs?.source_label}: {version.is_current ? "Current payroll version" : "Previous payroll version"}.
+          {version.previousBatchId ? <Link className="ml-2 underline" href={`/app/payslips/${version.previousBatchId}`}>View prior batch</Link> : null}
+        </p>) : <p>Legacy payroll batch. Retained independently; no duplicate assumption has been made.</p>}
+      </section>
       <div>
         <Link className="text-sm font-semibold text-muted" href="/app/payslips">
           Back to payslips

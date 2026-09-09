@@ -1,3 +1,8 @@
+"use client";
+
+import Link from "next/link";
+import { useActionState } from "react";
+import type { PayrollUploadState } from "@/lib/payslips/import";
 import { UploadCloud } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -9,12 +14,31 @@ export function PayslipUploadForm({
   error,
   stores,
 }: {
-  action: (formData: FormData) => Promise<void>;
+  action: (state: PayrollUploadState, formData: FormData) => Promise<PayrollUploadState>;
   error?: string;
   stores: Store[];
 }) {
+  const [state, submit, pending] = useActionState(action, { ok: false, message: "" });
   return (
-    <form action={action} className="space-y-4">
+    <form action={submit} className="space-y-4">
+      {state.importId ? <section className="space-y-3">
+        <input type="hidden" name="importId" value={state.importId} />
+        <input type="hidden" name="token" value={state.token ?? ""} />
+        <h2 className="font-semibold">Review payroll version</h2>
+        <p>Proposed workbook: {state.proposedRows ?? "reviewed"} rows; net payable {state.proposedTotal ?? "as reviewed"}.</p>
+        {(state.comparison ?? []).map(batch => <details key={batch.batch_id}>
+          <summary>{batch.file_name}: {batch.rows} rows, net payable {batch.total}{batch.legacy ? " (legacy batch: retained separately)" : " (current version)"}</summary>
+          <ul>{batch.employees.map((employee, index) => <li key={index}>{employee.staff_name}: {employee.net_payable}</li>)}</ul>
+        </details>)}
+        <p>Original workbooks, PDFs and payment history will be retained. A revised logical run becomes current only after the complete import succeeds.</p>
+        <label className="block">Type CREATE PAYROLL VERSION to confirm
+          <input className="mt-2 block w-full rounded-xl border p-3" name="confirmation" required pattern="CREATE PAYROLL VERSION" autoComplete="off" />
+        </label>
+        <Link className="underline" href="/app/payslips/upload">Cancel and choose another file</Link>
+      </section> : <>
+      <label className="block">Payroll source/run name
+        <input className="mt-2 block w-full rounded-xl border p-3" name="sourceLabel" defaultValue="monthly salary" required maxLength={80} />
+      </label>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Salary month</span>
@@ -61,11 +85,13 @@ export function PayslipUploadForm({
         </span>
       </label>
 
+      </>}
+      {state.message ? <p role="status">{state.message}</p> : null}
       {error ? <p className="text-sm font-medium text-danger">{error}</p> : null}
 
-      <Button size="lg">
+      <Button size="lg" disabled={pending}>
         <UploadCloud className="size-4" />
-        Upload and review
+        {pending ? "Processing…" : state.importId ? "Confirm payroll version" : "Upload and review"}
       </Button>
     </form>
   );

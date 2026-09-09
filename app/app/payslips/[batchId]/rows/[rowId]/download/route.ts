@@ -14,11 +14,11 @@ async function isOwner() {
     .eq("id", user.id)
     .maybeSingle();
 
-  return profile?.role === "owner" && profile.is_active !== false;
+  return profile?.role === "owner" && profile.is_active === true;
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ batchId: string; rowId: string }> },
 ) {
   if (!(await isOwner())) {
@@ -27,14 +27,16 @@ export async function GET(
 
   const { batchId, rowId } = await params;
   const supabase = await createClient();
-  const { data: generated } = await supabase
+  const version = new URL(request.url).searchParams.get("version");
+  let query = supabase
     .from("generated_payslips")
     .select("pdf_file_name,pdf_file_path")
     .eq("batch_id", batchId)
     .eq("payslip_row_id", rowId)
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+  query = version ? query.eq("id", version) : query.eq("is_current", true);
+  const { data: generated } = await query.maybeSingle();
 
   if (!generated?.pdf_file_path) {
     return new Response("Payslip PDF not found", { status: 404 });

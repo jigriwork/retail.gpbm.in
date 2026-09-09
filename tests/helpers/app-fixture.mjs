@@ -11,7 +11,7 @@ const root = path.resolve(import.meta.dirname, "../..");
 const clone = value => JSON.parse(JSON.stringify(value));
 // In-memory Supabase contract, deliberately without RLS filtering: application
 // authorization must stand on its own. No real Supabase client or env is loaded.
-export function fixture({ role = "manager", active = true, assigned = ["gp"], anonymous = false, baseline = false } = {}) {
+export function fixture({ role = "manager", active = true, assigned = ["gp"], anonymous = false, baseline = false, modules = {}, globals = {} } = {}) {
   const db = {
     profiles: [{ id: "actor", role, is_active: active }],
     stores: [{ id: "gp", code: "GP", name: "GP", is_active: true }, { id: "bm", code: "BM", name: "BM", is_active: true }],
@@ -41,6 +41,7 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
     const predicates = [];
     const query = {
       select(columns = "*") { selection = columns; return this; },
+      is(key, value) { predicates.push(row => (row[key] ?? null) === value); return this; },
       eq(key, value) { predicates.push(row => row[key] === value); return this; },
       in(key, values) { predicates.push(row => values.includes(row[key])); return this; },
       gte(key, value) { predicates.push(row => row[key] >= value); return this; },
@@ -83,7 +84,7 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
     from,
     auth: { getUser: async () => ({ data: { user: anonymous ? null : { id: "actor" } }, error: null }) },
     storage: { from(bucket) {
-      assert.equal(bucket, "reports");
+      assert.ok(["reports", "payslips"].includes(bucket));
       return {
         async upload(key, file, options) {
           calls.push({ operation: "upload", key });
@@ -114,9 +115,10 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
     "@/lib/payslips/receivables": {},
   };
   function load(name) {
+    if (name in modules) return modules[name];
     if (name in mocks) return mocks[name];
     if (!name.startsWith("@/")) {
-      assert.ok(["xlsx", "date-fns", "date-fns-tz", "node:crypto"].includes(name), `Unmocked dependency ${name}`);
+      assert.ok(["xlsx", "date-fns", "date-fns-tz", "node:crypto", "node:child_process", "node:path", "jszip"].includes(name), `Unmocked dependency ${name}`);
       return require(name);
     }
     if (cache.has(name)) return cache.get(name);
@@ -127,8 +129,9 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
     const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
     const loadedModule = { exports: {} };
     const run = vm.runInNewContext(`(function(require, module, exports) {${compiled}\n})`, {
-      File, FormData, URL, Buffer, console,
+      File, FormData, URL, Buffer, Blob, AbortSignal, console, process, setTimeout, clearTimeout,
       fetch() { throw new Error("Network forbidden in regression tests"); },
+      ...globals,
     }, { filename });
     run(load, loadedModule, loadedModule.exports);
     cache.set(name, loadedModule.exports);

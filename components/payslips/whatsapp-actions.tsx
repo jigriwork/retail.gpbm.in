@@ -101,7 +101,7 @@ export function PayslipWhatsAppActions({
       showStatus(result.message, result.ok ? "success" : "danger");
       if (result.ok) router.refresh();
     });
-    showStatus("Opening WhatsApp text and marking sent.", "muted");
+    showStatus("Opening WhatsApp text. Confirm delivery separately.", "muted");
   }
 
   async function markSentAfterShare(method: string) {

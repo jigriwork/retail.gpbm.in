@@ -1,3 +1,4 @@
+import { readSpreadsheet } from "@/lib/spreadsheets/read";
 import * as XLSX from "xlsx";
 
 export type ParsedStockRow = {
@@ -270,12 +271,7 @@ function parseStockRow(
 }
 
 export async function parseStockFileDetailed(file: File): Promise<StockParseResult> {
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, {
-    cellDates: true,
-    raw: false,
-    type: "array",
-  });
+  const workbook = await readSpreadsheet(file);
   const sheetName = workbook.SheetNames[0];
 
   if (!sheetName) {

@@ -1,3 +1,4 @@
+import { readSpreadsheet } from "@/lib/spreadsheets/read";
 import * as XLSX from "xlsx";
 
 import { appendWarning, normalizePhone, phoneHeaderAliases } from "@/lib/employees/utils";
@@ -105,7 +106,7 @@ function rowsFromSheet(worksheet: XLSX.WorkSheet) {
   const headers = matrix[headerIndex].map((header) => String(header ?? "").trim());
 
   return matrix.slice(headerIndex + 1).map((cells) => {
-    const row: Record<string, unknown> = {};
+    const row: Record<string, unknown> = Object.create(null);
 
     headers.forEach((header, index) => {
       if (header) {
@@ -117,18 +118,22 @@ function rowsFromSheet(worksheet: XLSX.WorkSheet) {
   });
 }
 
-export function parsePayslipWorkbook({
+export async function parsePayslipWorkbook({
   buffer,
+  fileName = "salary.xlsx",
+  mimeType = "",
   salaryMonth,
   stores,
   fallbackStoreId,
 }: {
   buffer: ArrayBuffer;
+  fileName?: string;
+  mimeType?: string;
   salaryMonth: string;
   stores: Store[];
   fallbackStoreId?: string;
 }) {
-  const workbook = XLSX.read(buffer, { cellDates: true, type: "array" });
+  const workbook = await readSpreadsheet(new File([buffer], fileName, { type: mimeType }));
   const fallbackStore = stores.find((store) => store.id === fallbackStoreId) ?? null;
   const rows: ParsedPayslipRow[] = [];
 

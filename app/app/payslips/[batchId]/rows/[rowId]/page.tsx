@@ -8,7 +8,7 @@ import { PayslipSentStatusActions } from "@/components/payslips/sent-status-acti
 import { PayslipWhatsAppActions } from "@/components/payslips/whatsapp-actions";
 import { requireProfile } from "@/lib/auth/session";
 import { generatePayslipForRow, updatePayslipRowPhone } from "@/lib/payslips/actions";
-import { getPayslipBatch, getPayslipRow } from "@/lib/payslips/queries";
+import { getPayslipBatch, getPayslipRow, getPayslipPdfHistory } from "@/lib/payslips/queries";
 import { payslipFileName } from "@/lib/payslips/utils";
 
 export default async function PayslipRowPage({
@@ -23,7 +23,7 @@ export default async function PayslipRowPage({
     return <AccessDenied message="Payslip previews are reserved for the owner account." />;
   }
 
-  const [batch, row] = await Promise.all([getPayslipBatch(batchId), getPayslipRow(rowId)]);
+  const [batch, row, history] = await Promise.all([getPayslipBatch(batchId), getPayslipRow(rowId), getPayslipPdfHistory(rowId)]);
   if (!batch || !row || row.batch_id !== batch.id) {
     notFound();
   }
@@ -101,6 +101,14 @@ export default async function PayslipRowPage({
         </div>
       ) : null}
 
+      <section className="rounded-2xl border border-border p-4">
+        <h2 className="font-semibold">PDF versions and delivery history</h2>
+        {history.map(version => <details key={version.id} className="mt-3">
+          <summary>{version.is_current ? "Current" : "Previous"} PDF — {version.created_at} — {version.sent_status ?? "not sent"}</summary>
+          <a className="underline" href={`/app/payslips/${batchId}/rows/${rowId}/download?version=${version.id}`}>Download this version</a>
+          <ul>{version.payslip_delivery_events.map((event, index) => <li key={index}>{event.created_at}: {event.kind} ({event.method})</li>)}</ul>
+        </details>)}
+      </section>
       <PayslipPreview row={row} />
     </div>
   );

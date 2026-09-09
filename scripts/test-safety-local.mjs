@@ -20,6 +20,7 @@ try{
  run('createdb',['-h','127.0.0.1','-p','55439','retail_safety']);
  const args=['-X','-q','-h','127.0.0.1','-p','55439','-d','retail_safety','-v','ON_ERROR_STOP=1'];
  run('psql',args,{input:readFileSync(path.join(root,'tests/sql/bootstrap.sql')),stdio:['pipe','inherit','inherit']});
+ run(process.execPath,['scripts/check-payroll-migration.mjs']);
  for(const file of readdirSync(path.join(root,'supabase/migrations')).filter(f=>f.endsWith('.sql')).sort())run('psql',[...args,'-f',path.join(root,'supabase/migrations',file)]);
  run(process.execPath,['--test','tests/database-safety.test.mjs']);
  rest=spawn('postgrest',[],{cwd:root,env:{...env,PGRST_DB_URI:'postgresql://authenticator@127.0.0.1:55439/retail_safety',PGRST_DB_SCHEMAS:'public,storage',PGRST_DB_ANON_ROLE:'anon',PGRST_SERVER_HOST:'127.0.0.1',PGRST_SERVER_PORT:'55440',PGRST_JWT_SECRET:'isolated-fixture-secret-never-use-in-production'},stdio:'ignore'});
@@ -27,7 +28,8 @@ try{
  for(let i=0;i<100;i++){try{await fetch('http://127.0.0.1:55440/');ready=true;break;}catch{await new Promise(resolve=>setTimeout(resolve,100));}}
  if(!ready)throw new Error('Local PostgREST did not start.');
  run(process.execPath,['--test','tests/postgrest-safety.test.mjs']);
- run(process.execPath,['--test','tests/security-recovery.test.mjs','tests/analytics-safety.test.mjs','tests/import-lifecycle.test.mjs']);
+ run(process.execPath,['--test','tests/payroll-database.test.mjs']);
+ run(process.execPath,['--test','tests/security-recovery.test.mjs','tests/analytics-safety.test.mjs','tests/import-lifecycle.test.mjs','tests/spreadsheet-security.test.mjs','tests/payroll-workflows.test.mjs']);
 }finally{
  if(rest && rest.exitCode===null){rest.kill('SIGTERM');await new Promise(resolve=>rest.once('exit',resolve));}
  if(started)run('pg_ctl',['-D',data,'-m','fast','-w','stop']);

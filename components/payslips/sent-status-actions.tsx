@@ -105,7 +105,7 @@ export function PayslipSentStatusActions({
         {sentNote ? <p>Note {sentNote}</p> : null}
         {lastShareAttemptAt ? <p>Last attempt {formatDateTime(lastShareAttemptAt)}</p> : null}
         {lastShareMethod ? <p>Attempt method {formatMethod(lastShareMethod)}</p> : null}
-        <p>Marked sent when WhatsApp text is opened. Use Mark Not Sent if you did not send it.</p>
+        <p>Opening WhatsApp records a share attempt only. Mark Sent after you confirm delivery.</p>
       </div>
       <div className="flex flex-wrap gap-2">
         <button

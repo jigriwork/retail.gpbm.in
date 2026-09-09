@@ -1,4 +1,5 @@
-import JSZip from "jszip";
+import { buildPayslipZip } from "@/lib/payslips/zip";
+import { completeQuery } from "@/lib/supabase/complete-query";
 
 import { formatMonth, salaryMonthFilePart } from "@/lib/payslips/utils";
 import { createClient } from "@/lib/supabase/server";
@@ -17,7 +18,7 @@ async function isOwner() {
     .eq("id", user.id)
     .maybeSingle();
 
-  return profile?.role === "owner" && profile.is_active !== false;
+  return profile?.role === "owner" && profile.is_active === true;
 }
 
 export async function GET(
@@ -35,28 +36,19 @@ export async function GET(
     .select("salary_month")
     .eq("id", batchId)
     .maybeSingle();
-  const { data: generated } = await supabase
+  const { data: generated } = await completeQuery(supabase
     .from("generated_payslips")
-    .select("pdf_file_name,pdf_file_path")
-    .eq("batch_id", batchId)
-    .order("pdf_file_name");
+    .select("id,pdf_file_name,pdf_file_path", { count: "exact" })
+    .eq("batch_id", batchId).eq("is_current", true)
+    .order("pdf_file_name"));
 
   if (!batch || !generated?.length) {
     return new Response("No generated payslips found", { status: 404 });
   }
 
-  const zip = new JSZip();
-
-  for (const item of generated) {
-    if (!item.pdf_file_path) continue;
-
-    const { data } = await supabase.storage.from("payslips").download(item.pdf_file_path);
-    if (!data) continue;
-
-    zip.file(item.pdf_file_name ?? item.pdf_file_path.split("/").at(-1) ?? "payslip.pdf", await data.arrayBuffer());
-  }
-
-  const bytes = await zip.generateAsync({ type: "uint8array" });
+  const result = await buildPayslipZip(generated, (path, signal) => supabase.storage.from("payslips").download(path, {}, { signal }));
+  if (!result.ok) return Response.json({ message: "ZIP not created: some PDFs failed to download. No files were silently omitted.", failedPdfIds: result.failures }, { status: 502 });
+  const bytes = result.bytes;
   const body = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   const fileName = `Payslips_${salaryMonthFilePart(batch.salary_month)}.zip`;
 

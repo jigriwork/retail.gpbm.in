@@ -1,3 +1,4 @@
+import { csvEscape } from "@/lib/spreadsheets/csv";
 import Link from "next/link";
 import { BarChart3, Boxes, Layers3, PackageSearch, Ruler, Search, ShoppingBag, TrendingDown, UsersRound } from "lucide-react";
 
@@ -51,11 +52,6 @@ function hrefWith(params: Record<string, string | undefined>) {
     if (value) url.set(key, value);
   }
   return `/app/reports/business?${url.toString()}`;
-}
-
-function csvEscape(value: unknown) {
-  const text = value === null || value === undefined ? "" : String(value);
-  return `"${text.replace(/"/g, '""')}"`;
 }
 
 function csvSection(title: string, headers: string[], rows: Array<Array<unknown>>) {

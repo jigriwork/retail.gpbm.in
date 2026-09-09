@@ -1,5 +1,6 @@
 "use server";
 
+import { readSpreadsheet, spreadsheetLimits } from "@/lib/spreadsheets/read";
 import { importReportFile } from "@/lib/reports/import-lifecycle";
 import { revalidatePath } from "next/cache";
 
@@ -79,6 +80,14 @@ export async function uploadSalaryAttendanceReport(
 
   if (!store || store.is_active === false) {
     return { ok: false, message: "Choose an active Go Planet or Brand Mark store." };
+  }
+
+  try {
+    if (file.size > spreadsheetLimits.bytes) throw new Error("File too large");
+    if (extension !== ".pdf") await readSpreadsheet(file);
+    else if ((file.type && file.type !== "application/pdf") || !(await file.slice(0, 5).text()).startsWith("%PDF-")) throw new Error("Invalid PDF");
+  } catch {
+    return { ok: false, message: "Invalid or oversized attendance file. Upload a valid spreadsheet or PDF within 15 MB." };
   }
 
   const summary = {

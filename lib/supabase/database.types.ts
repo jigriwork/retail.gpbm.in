@@ -9,6 +9,303 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      payslip_delivery_events: {
+        Row: {
+          id: string
+          generated_id: string
+          actor_id: string
+          kind: string
+          method: string
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          generated_id: string
+          actor_id: string
+          kind: string
+          method: string
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          generated_id?: string
+          actor_id?: string
+          kind?: string
+          method?: string
+          note?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "payslip_delivery_events_actor_id_fkey",
+            "columns": [
+              "actor_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "payslip_delivery_events_generated_id_fkey",
+            "columns": [
+              "generated_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "generated_payslips",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      payslip_pdf_jobs: {
+        Row: {
+          id: string
+          row_id: string
+          actor_id: string
+          previous_id: string | null
+          file_path: string
+          row_snapshot: Json
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          row_id: string
+          actor_id: string
+          previous_id?: string | null
+          file_path: string
+          row_snapshot: Json
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          row_id?: string
+          actor_id?: string
+          previous_id?: string | null
+          file_path?: string
+          row_snapshot?: Json
+          status?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "payslip_pdf_jobs_actor_id_fkey",
+            "columns": [
+              "actor_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "payslip_pdf_jobs_previous_id_fkey",
+            "columns": [
+              "previous_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "generated_payslips",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "payslip_pdf_jobs_row_id_fkey",
+            "columns": [
+              "row_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payslip_rows",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      payroll_imports: {
+        Row: {
+          id: string
+          actor_id: string
+          salary_month: string
+          source_label: string
+          fingerprint: string
+          scope: string[]
+          file_name: string
+          file_path: string
+          rows: Json
+          comparison: Json
+          comparison_token: string
+          status: string
+          batch_id: string | null
+          failure_message: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          actor_id: string
+          salary_month: string
+          source_label: string
+          fingerprint: string
+          scope: string[]
+          file_name: string
+          file_path: string
+          rows: Json
+          comparison: Json
+          comparison_token: string
+          status?: string
+          batch_id?: string | null
+          failure_message?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          actor_id?: string
+          salary_month?: string
+          source_label?: string
+          fingerprint?: string
+          scope?: string[]
+          file_name?: string
+          file_path?: string
+          rows?: Json
+          comparison?: Json
+          comparison_token?: string
+          status?: string
+          batch_id?: string | null
+          failure_message?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "payroll_imports_actor_id_fkey",
+            "columns": [
+              "actor_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "payroll_imports_batch_id_fkey",
+            "columns": [
+              "batch_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payslip_batches",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      payroll_run_versions: {
+        Row: {
+          id: string
+          run_id: string
+          batch_id: string
+          previous_id: string | null
+          fingerprint: string
+          is_current: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          run_id: string
+          batch_id: string
+          previous_id?: string | null
+          fingerprint: string
+          is_current?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          run_id?: string
+          batch_id?: string
+          previous_id?: string | null
+          fingerprint?: string
+          is_current?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "payroll_run_versions_batch_id_fkey",
+            "columns": [
+              "batch_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payslip_batches",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "payroll_run_versions_previous_id_fkey",
+            "columns": [
+              "previous_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payroll_run_versions",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "payroll_run_versions_run_id_fkey",
+            "columns": [
+              "run_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payroll_runs",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      payroll_runs: {
+        Row: {
+          id: string
+          store_id: string
+          firm_name: string
+          salary_month: string
+          source_label: string
+        }
+        Insert: {
+          id?: string
+          store_id: string
+          firm_name: string
+          salary_month: string
+          source_label: string
+        }
+        Update: {
+          id?: string
+          store_id?: string
+          firm_name?: string
+          salary_month?: string
+          source_label?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "payroll_runs_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
       ai_chats: {
         Row: {
           content: string | null
@@ -306,106 +603,139 @@ export type Database = {
       }
       generated_payslips: {
         Row: {
-          batch_id: string | null
-          created_at: string | null
-          employee_phone: string | null
-          firm_name: string
           id: string
-          last_share_attempt_at: string | null
-          last_share_method: string | null
+          batch_id: string | null
           payslip_row_id: string | null
+          store_id: string | null
+          staff_name: string
+          firm_name: string
+          store_name: string
+          salary_month: string
           pdf_file_name: string | null
           pdf_file_path: string | null
-          salary_month: string
+          zip_file_path: string | null
+          status: string | null
+          created_at: string | null
+          employee_phone: string | null
+          whatsapp_phone: string | null
+          sent_status: string | null
+          sent_method: string | null
           sent_at: string | null
           sent_by: string | null
-          sent_method: string | null
           sent_note: string | null
-          sent_status: string | null
-          staff_name: string
-          status: string | null
-          store_id: string | null
-          store_name: string
-          whatsapp_phone: string | null
-          zip_file_path: string | null
+          last_share_attempt_at: string | null
+          last_share_method: string | null
+          is_current: boolean
+          supersedes_id: string | null
         }
         Insert: {
-          batch_id?: string | null
-          created_at?: string | null
-          employee_phone?: string | null
-          firm_name: string
           id?: string
-          last_share_attempt_at?: string | null
-          last_share_method?: string | null
+          batch_id?: string | null
           payslip_row_id?: string | null
+          store_id?: string | null
+          staff_name: string
+          firm_name: string
+          store_name: string
+          salary_month: string
           pdf_file_name?: string | null
           pdf_file_path?: string | null
-          salary_month: string
+          zip_file_path?: string | null
+          status?: string | null
+          created_at?: string | null
+          employee_phone?: string | null
+          whatsapp_phone?: string | null
+          sent_status?: string | null
+          sent_method?: string | null
           sent_at?: string | null
           sent_by?: string | null
-          sent_method?: string | null
           sent_note?: string | null
-          sent_status?: string | null
-          staff_name: string
-          status?: string | null
-          store_id?: string | null
-          store_name: string
-          whatsapp_phone?: string | null
-          zip_file_path?: string | null
+          last_share_attempt_at?: string | null
+          last_share_method?: string | null
+          is_current?: boolean
+          supersedes_id?: string | null
         }
         Update: {
-          batch_id?: string | null
-          created_at?: string | null
-          employee_phone?: string | null
-          firm_name?: string
           id?: string
-          last_share_attempt_at?: string | null
-          last_share_method?: string | null
+          batch_id?: string | null
           payslip_row_id?: string | null
+          store_id?: string | null
+          staff_name?: string
+          firm_name?: string
+          store_name?: string
+          salary_month?: string
           pdf_file_name?: string | null
           pdf_file_path?: string | null
-          salary_month?: string
+          zip_file_path?: string | null
+          status?: string | null
+          created_at?: string | null
+          employee_phone?: string | null
+          whatsapp_phone?: string | null
+          sent_status?: string | null
+          sent_method?: string | null
           sent_at?: string | null
           sent_by?: string | null
-          sent_method?: string | null
           sent_note?: string | null
-          sent_status?: string | null
-          staff_name?: string
-          status?: string | null
-          store_id?: string | null
-          store_name?: string
-          whatsapp_phone?: string | null
-          zip_file_path?: string | null
+          last_share_attempt_at?: string | null
+          last_share_method?: string | null
+          is_current?: boolean
+          supersedes_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "generated_payslips_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "payslip_batches"
-            referencedColumns: ["id"]
+            "foreignKeyName": "generated_payslips_batch_id_fkey",
+            "columns": [
+              "batch_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payslip_batches",
+            "referencedColumns": [
+              "id"
+            ]
           },
           {
-            foreignKeyName: "generated_payslips_payslip_row_id_fkey"
-            columns: ["payslip_row_id"]
-            isOneToOne: false
-            referencedRelation: "payslip_rows"
-            referencedColumns: ["id"]
+            "foreignKeyName": "generated_payslips_payslip_row_id_fkey",
+            "columns": [
+              "payslip_row_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payslip_rows",
+            "referencedColumns": [
+              "id"
+            ]
           },
           {
-            foreignKeyName: "generated_payslips_sent_by_fkey"
-            columns: ["sent_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            "foreignKeyName": "generated_payslips_sent_by_fkey",
+            "columns": [
+              "sent_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
           },
           {
-            foreignKeyName: "generated_payslips_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
+            "foreignKeyName": "generated_payslips_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
           },
+          {
+            "foreignKeyName": "generated_payslips_supersedes_id_fkey",
+            "columns": [
+              "supersedes_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "generated_payslips",
+            "referencedColumns": [
+              "id"
+            ]
+          }
         ]
       }
       life_logs: {
@@ -536,160 +866,200 @@ export type Database = {
       }
       payslip_batches: {
         Row: {
-          created_at: string | null
-          generated_count: number | null
           id: string
+          uploaded_by: string | null
           salary_month: string
           source_file_name: string | null
           source_file_path: string | null
           status: string | null
-          summary: Json | null
           total_rows: number | null
-          updated_at: string | null
-          uploaded_by: string | null
           valid_rows: number | null
           warning_count: number | null
+          generated_count: number | null
+          summary: Json | null
+          created_at: string | null
+          updated_at: string | null
+          payroll_import_id: string | null
         }
         Insert: {
-          created_at?: string | null
-          generated_count?: number | null
           id?: string
+          uploaded_by?: string | null
           salary_month: string
           source_file_name?: string | null
           source_file_path?: string | null
           status?: string | null
-          summary?: Json | null
           total_rows?: number | null
-          updated_at?: string | null
-          uploaded_by?: string | null
           valid_rows?: number | null
           warning_count?: number | null
+          generated_count?: number | null
+          summary?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+          payroll_import_id?: string | null
         }
         Update: {
-          created_at?: string | null
-          generated_count?: number | null
           id?: string
+          uploaded_by?: string | null
           salary_month?: string
           source_file_name?: string | null
           source_file_path?: string | null
           status?: string | null
-          summary?: Json | null
           total_rows?: number | null
-          updated_at?: string | null
-          uploaded_by?: string | null
           valid_rows?: number | null
           warning_count?: number | null
+          generated_count?: number | null
+          summary?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+          payroll_import_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "payslip_batches_uploaded_by_fkey"
-            columns: ["uploaded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            "foreignKeyName": "payslip_batches_payroll_import_id_fkey",
+            "columns": [
+              "payroll_import_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payroll_imports",
+            "referencedColumns": [
+              "id"
+            ]
           },
+          {
+            "foreignKeyName": "payslip_batches_uploaded_by_fkey",
+            "columns": [
+              "uploaded_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
         ]
       }
       payslip_rows: {
         Row: {
-          abs_amount: number | null
-          abs_days: number | null
-          advance: number | null
-          batch_id: string | null
-          calculated_total_amount: number | null
-          commission: number | null
-          created_at: string | null
-          divided_by_days: number | null
-          employee_phone: string | null
-          firm_name: string
           id: string
-          net_payable: number | null
-          raw_data: Json | null
-          salary_amount: number | null
+          batch_id: string | null
+          store_id: string | null
+          firm_name: string
+          store_name: string
           salary_month: string
           staff_name: string | null
-          status: string | null
-          store_id: string | null
-          store_name: string
+          salary_amount: number | null
+          divided_by_days: number | null
+          abs_days: number | null
+          abs_amount: number | null
           sunday_pay: number | null
-          sunday_pay_amount: number | null
           sunday_present: number | null
-          updated_at: string | null
+          sunday_pay_amount: number | null
+          advance: number | null
+          commission: number | null
           uploaded_total_amount: number | null
+          calculated_total_amount: number | null
+          net_payable: number | null
           warning_message: string | null
+          status: string | null
+          raw_data: Json | null
+          created_at: string | null
+          updated_at: string | null
+          employee_phone: string | null
           whatsapp_phone: string | null
+          payroll_version_id: string | null
         }
         Insert: {
-          abs_amount?: number | null
-          abs_days?: number | null
-          advance?: number | null
-          batch_id?: string | null
-          calculated_total_amount?: number | null
-          commission?: number | null
-          created_at?: string | null
-          divided_by_days?: number | null
-          employee_phone?: string | null
-          firm_name: string
           id?: string
-          net_payable?: number | null
-          raw_data?: Json | null
-          salary_amount?: number | null
+          batch_id?: string | null
+          store_id?: string | null
+          firm_name: string
+          store_name: string
           salary_month: string
           staff_name?: string | null
-          status?: string | null
-          store_id?: string | null
-          store_name: string
+          salary_amount?: number | null
+          divided_by_days?: number | null
+          abs_days?: number | null
+          abs_amount?: number | null
           sunday_pay?: number | null
-          sunday_pay_amount?: number | null
           sunday_present?: number | null
-          updated_at?: string | null
+          sunday_pay_amount?: number | null
+          advance?: number | null
+          commission?: number | null
           uploaded_total_amount?: number | null
+          calculated_total_amount?: number | null
+          net_payable?: number | null
           warning_message?: string | null
+          status?: string | null
+          raw_data?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+          employee_phone?: string | null
           whatsapp_phone?: string | null
+          payroll_version_id?: string | null
         }
         Update: {
-          abs_amount?: number | null
-          abs_days?: number | null
-          advance?: number | null
-          batch_id?: string | null
-          calculated_total_amount?: number | null
-          commission?: number | null
-          created_at?: string | null
-          divided_by_days?: number | null
-          employee_phone?: string | null
-          firm_name?: string
           id?: string
-          net_payable?: number | null
-          raw_data?: Json | null
-          salary_amount?: number | null
+          batch_id?: string | null
+          store_id?: string | null
+          firm_name?: string
+          store_name?: string
           salary_month?: string
           staff_name?: string | null
-          status?: string | null
-          store_id?: string | null
-          store_name?: string
+          salary_amount?: number | null
+          divided_by_days?: number | null
+          abs_days?: number | null
+          abs_amount?: number | null
           sunday_pay?: number | null
-          sunday_pay_amount?: number | null
           sunday_present?: number | null
-          updated_at?: string | null
+          sunday_pay_amount?: number | null
+          advance?: number | null
+          commission?: number | null
           uploaded_total_amount?: number | null
+          calculated_total_amount?: number | null
+          net_payable?: number | null
           warning_message?: string | null
+          status?: string | null
+          raw_data?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+          employee_phone?: string | null
           whatsapp_phone?: string | null
+          payroll_version_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "payslip_rows_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "payslip_batches"
-            referencedColumns: ["id"]
+            "foreignKeyName": "payslip_rows_batch_id_fkey",
+            "columns": [
+              "batch_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payslip_batches",
+            "referencedColumns": [
+              "id"
+            ]
           },
           {
-            foreignKeyName: "payslip_rows_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
+            "foreignKeyName": "payslip_rows_payroll_version_id_fkey",
+            "columns": [
+              "payroll_version_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payroll_run_versions",
+            "referencedColumns": [
+              "id"
+            ]
           },
+          {
+            "foreignKeyName": "payslip_rows_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
         ]
       }
       profiles: {
@@ -978,107 +1348,144 @@ export type Database = {
       }
       salary_receivables: {
         Row: {
-          balance_amount: number
-          batch_id: string | null
-          created_at: string | null
-          firm_name: string | null
-          generated_payslip_id: string | null
           id: string
-          net_payable: number
-          normalized_staff_name: string | null
-          note: string | null
           payslip_row_id: string | null
+          generated_payslip_id: string | null
+          batch_id: string | null
+          store_id: string | null
+          staff_name: string
+          normalized_staff_name: string | null
+          firm_name: string | null
+          store_name: string | null
+          salary_month: string
+          net_payable: number
           receivable_amount: number
           received_amount: number | null
+          balance_amount: number
+          status: string | null
           received_at: string | null
           received_by: string | null
-          salary_month: string
-          staff_name: string
-          status: string | null
-          store_id: string | null
-          store_name: string | null
+          note: string | null
+          created_at: string | null
           updated_at: string | null
+          payroll_version_id: string | null
+          is_current: boolean
         }
         Insert: {
-          balance_amount: number
-          batch_id?: string | null
-          created_at?: string | null
-          firm_name?: string | null
-          generated_payslip_id?: string | null
           id?: string
-          net_payable: number
-          normalized_staff_name?: string | null
-          note?: string | null
           payslip_row_id?: string | null
+          generated_payslip_id?: string | null
+          batch_id?: string | null
+          store_id?: string | null
+          staff_name: string
+          normalized_staff_name?: string | null
+          firm_name?: string | null
+          store_name?: string | null
+          salary_month: string
+          net_payable: number
           receivable_amount: number
           received_amount?: number | null
+          balance_amount: number
+          status?: string | null
           received_at?: string | null
           received_by?: string | null
-          salary_month: string
-          staff_name: string
-          status?: string | null
-          store_id?: string | null
-          store_name?: string | null
+          note?: string | null
+          created_at?: string | null
           updated_at?: string | null
+          payroll_version_id?: string | null
+          is_current?: boolean
         }
         Update: {
-          balance_amount?: number
-          batch_id?: string | null
-          created_at?: string | null
-          firm_name?: string | null
-          generated_payslip_id?: string | null
           id?: string
-          net_payable?: number
-          normalized_staff_name?: string | null
-          note?: string | null
           payslip_row_id?: string | null
+          generated_payslip_id?: string | null
+          batch_id?: string | null
+          store_id?: string | null
+          staff_name?: string
+          normalized_staff_name?: string | null
+          firm_name?: string | null
+          store_name?: string | null
+          salary_month?: string
+          net_payable?: number
           receivable_amount?: number
           received_amount?: number | null
+          balance_amount?: number
+          status?: string | null
           received_at?: string | null
           received_by?: string | null
-          salary_month?: string
-          staff_name?: string
-          status?: string | null
-          store_id?: string | null
-          store_name?: string | null
+          note?: string | null
+          created_at?: string | null
           updated_at?: string | null
+          payroll_version_id?: string | null
+          is_current?: boolean
         }
         Relationships: [
           {
-            foreignKeyName: "salary_receivables_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "payslip_batches"
-            referencedColumns: ["id"]
+            "foreignKeyName": "salary_receivables_batch_id_fkey",
+            "columns": [
+              "batch_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payslip_batches",
+            "referencedColumns": [
+              "id"
+            ]
           },
           {
-            foreignKeyName: "salary_receivables_generated_payslip_id_fkey"
-            columns: ["generated_payslip_id"]
-            isOneToOne: false
-            referencedRelation: "generated_payslips"
-            referencedColumns: ["id"]
+            "foreignKeyName": "salary_receivables_generated_payslip_id_fkey",
+            "columns": [
+              "generated_payslip_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "generated_payslips",
+            "referencedColumns": [
+              "id"
+            ]
           },
           {
-            foreignKeyName: "salary_receivables_payslip_row_id_fkey"
-            columns: ["payslip_row_id"]
-            isOneToOne: true
-            referencedRelation: "payslip_rows"
-            referencedColumns: ["id"]
+            "foreignKeyName": "salary_receivables_payroll_version_id_fkey",
+            "columns": [
+              "payroll_version_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payroll_run_versions",
+            "referencedColumns": [
+              "id"
+            ]
           },
           {
-            foreignKeyName: "salary_receivables_received_by_fkey"
-            columns: ["received_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            "foreignKeyName": "salary_receivables_payslip_row_id_fkey",
+            "columns": [
+              "payslip_row_id"
+            ],
+            "isOneToOne": true,
+            "referencedRelation": "payslip_rows",
+            "referencedColumns": [
+              "id"
+            ]
           },
           {
-            foreignKeyName: "salary_receivables_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
+            "foreignKeyName": "salary_receivables_received_by_fkey",
+            "columns": [
+              "received_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
           },
+          {
+            "foreignKeyName": "salary_receivables_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
         ]
       }
       sales_rows: {
@@ -1673,6 +2080,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      record_payroll_receivable: { Args: { p_id: string; p_action: string; p_amount?: number; p_note?: string }; Returns: Json }
+      payroll_comparison: { Args: { p_month: string; p_label: string; p_scope: string[] }; Returns: Json }
+      sync_payroll_receivables: { Args: { p_batch?: string }; Returns: Json }
+      commit_payroll_import: { Args: { p_import: string; p_confirm?: boolean; p_token?: string }; Returns: Json }
+      prepare_payroll_import: { Args: { p_month: string; p_label: string; p_fingerprint: string; p_file_name: string; p_rows: Json }; Returns: Json }
+      record_payslip_delivery: { Args: { p_generated: string; p_kind: string; p_method: string; p_note?: string }; Returns: undefined }
+      finish_payslip_pdf: { Args: { p_job: string; p_file_name: string }; Returns: Json }
+      begin_payslip_pdf: { Args: { p_row: string }; Returns: Json }
       analytics_data: {
         Args: {
           p_store_ids: string[]

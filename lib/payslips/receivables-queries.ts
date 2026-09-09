@@ -1,3 +1,5 @@
+import "server-only";
+import { completeQuery } from "@/lib/supabase/complete-query";
 import { createClient } from "@/lib/supabase/server";
 
 export type ReceivableRow = {
@@ -37,16 +39,16 @@ export async function getAvailableReceivableMonths() {
   const supabase = await createClient();
 
   // Get months from salary_receivables
-  const { data: receivableMonths } = await supabase
+  const { data: receivableMonths } = await completeQuery(supabase
     .from("salary_receivables")
-    .select("salary_month")
-    .order("salary_month", { ascending: false });
+    .select("salary_month", { count: "exact" })
+    .order("salary_month", { ascending: false }));
 
   // Get months from payslip_batches as fallback
-  const { data: batchMonths } = await supabase
+  const { data: batchMonths } = await completeQuery(supabase
     .from("payslip_batches")
-    .select("salary_month")
-    .order("salary_month", { ascending: false });
+    .select("salary_month", { count: "exact" })
+    .order("salary_month", { ascending: false }));
 
   const monthSet = new Set<string>();
   for (const row of receivableMonths ?? []) {
@@ -69,7 +71,7 @@ export async function getReceivables(filters: {
 
   let query = supabase
     .from("salary_receivables")
-    .select("*")
+    .select("*", { count: "exact" }).eq("is_current", true)
     .eq("salary_month", filters.salaryMonth)
     .order("store_name")
     .order("staff_name");
@@ -86,7 +88,7 @@ export async function getReceivables(filters: {
     query = query.ilike("staff_name", `%${filters.search}%`);
   }
 
-  const { data } = await query;
+  const { data } = await completeQuery(query);
   return (data ?? []) as ReceivableRow[];
 }
 
@@ -139,10 +141,10 @@ export function computeReceivableSummary(rows: ReceivableRow[]): ReceivableSumma
 
 export async function getReceivableSummaryForMonth(salaryMonth: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await completeQuery(supabase
     .from("salary_receivables")
-    .select("receivable_amount,received_amount,balance_amount,status,staff_name,store_id,store_name")
-    .eq("salary_month", salaryMonth);
+    .select("receivable_amount,received_amount,balance_amount,status,staff_name,store_id,store_name", { count: "exact" }).eq("is_current", true)
+    .eq("salary_month", salaryMonth));
 
   const rows = (data ?? []) as Pick<
     ReceivableRow,
