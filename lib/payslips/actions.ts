@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getAccessibleStores, requireOwner } from "@/lib/auth/session";
-import { propagateEmployeePhone } from "@/lib/employees/actions";
-import { appendWarning, normalizePhone, staffNameKey } from "@/lib/employees/utils";
+import { propagateContactPhone, requirePhoneActor, requirePhoneStore, validatedEmployeePhone } from "@/lib/employees/phone-propagation";
+import { appendWarning, staffNameKey } from "@/lib/employees/utils";
 import { parsePayslipWorkbook } from "@/lib/payslips/parser";
 import { renderPayslipPdf } from "@/lib/payslips/pdf";
 import { autoSyncReceivablesForBatch } from "@/lib/payslips/receivables";
@@ -392,7 +392,7 @@ export async function uploadPayslipSalarySheet(formData: FormData) {
     .single();
 
   if (batchError || !batch) {
-    await supabase.storage.from("payslips").remove([storagePath]);
+    // Uploaded source workbooks are immutable recovery evidence, even on failure.
     redirect(`/app/payslips/upload?error=${encodeURIComponent(batchError?.message ?? "Batch failed")}`);
   }
 
@@ -579,20 +579,21 @@ export async function updatePayslipRowPhone(
   _previous: PayslipActionState,
   formData: FormData,
 ): Promise<PayslipActionState> {
-  const session = await requireOwner();
-  if (!session?.profile) {
+  const session = await requirePhoneActor();
+  if (session.profile.role !== "owner") {
     return { ok: false, message: "Only the owner can edit payslip phone numbers." };
   }
 
   const rowId = readString(formData, "rowId");
   const phoneInput = readString(formData, "phone");
-  const phone = normalizePhone(phoneInput);
 
   if (!rowId) {
     return { ok: false, message: "Payslip row is required." };
   }
 
-  if (phoneInput && !phone.isValid) {
+  try {
+    validatedEmployeePhone(phoneInput);
+  } catch {
     return { ok: false, message: "Enter a valid Indian mobile number." };
   }
 
@@ -611,31 +612,24 @@ export async function updatePayslipRowPhone(
     return { ok: false, message: "Store and staff name are required to save phone permanently." };
   }
 
+  await requirePhoneStore(row.store_id, session);
   const normalizedStaffName = staffNameKey(row.staff_name);
-  const { error: contactError } = await supabase.from("employee_contacts").upsert(
+  const { data: contact, error: contactError } = await supabase.from("employee_contacts").upsert(
     {
       created_by: session.profile.id,
       is_active: true,
-      normalized_phone: phone.employeePhone || null,
       normalized_staff_name: normalizedStaffName,
-      phone: phone.employeePhone || null,
       staff_name: row.staff_name,
       store_id: row.store_id,
-      whatsapp_phone: phone.whatsappPhone || null,
     },
     { onConflict: "store_id,normalized_staff_name" },
-  );
+  ).select("id").single();
 
-  if (contactError) {
-    return { ok: false, message: contactError.message };
+  if (contactError || !contact) {
+    return { ok: false, message: contactError?.message ?? "Unable to save employee contact." };
   }
 
-  await propagateEmployeePhone({
-    employeePhone: phone.employeePhone || null,
-    normalizedStaffName,
-    storeId: row.store_id,
-    whatsappPhone: phone.whatsappPhone || null,
-  });
+  await propagateContactPhone(contact.id, phoneInput);
   await refreshPayslipPaths(row.batch_id, rowId);
   revalidatePath("/app/employees");
   return { ok: true, message: "Phone saved." };

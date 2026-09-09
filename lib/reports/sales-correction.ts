@@ -1,7 +1,9 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
+import { correctedSummary, recoverySources } from "@/lib/reports/recovery-evidence";
 import { requireOwner } from "@/lib/auth/session";
 import { staffNameKey } from "@/lib/employees/utils";
 import {
@@ -214,7 +216,7 @@ async function auditLog({
 }) {
   const owner = await requireOwner();
 
-  if (!owner) {
+  if (!owner || owner.profile.is_active !== true) {
     return { error: new Error("Only owner can write audit logs.") };
   }
 
@@ -238,7 +240,7 @@ async function getOwnerOrState(): Promise<
 > {
   const owner = await requireOwner();
 
-  if (!owner) {
+  if (!owner || owner.profile.is_active !== true) {
     return { ok: false, state: { ok: false, message: "Only owner can use sales correction tools." } };
   }
 
@@ -369,20 +371,17 @@ function salesRowsForInsert({
   })) satisfies TablesInsert<"sales_rows">[];
 }
 
-async function deleteStorageFile(filePath: string | null) {
-  if (!filePath) {
-    return { deleted: false, warning: "No storage file path was recorded." };
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.storage.from("reports").remove([filePath]);
-
-  return error
-    ? { deleted: false, warning: error.message }
-    : { deleted: true, warning: null };
-}
-
 async function deleteReportRowsAndRecord(reportId: string) {
+  // Fail closed before removing the last database pointer to recovery evidence.
+  // The log records intent, not success: row deletion can still fail afterwards.
+  const report = await getSalesReport(reportId);
+  if (!report || report.report_type !== "sales") return new Error("Sales report not found.");
+  const preserved = await auditLog({
+    action: "preserve_sales_source_before_delete", entityId: report.id, entityType: "report",
+    storeId: report.store_id, reportDate: report.report_date,
+    metadata: { recovery_sources: recoverySources(report), summary: report.summary, source_retained: true },
+  });
+  if (preserved.error) return preserved.error;
   const supabase = await createClient();
   const rowsDelete = await supabase.from("sales_rows").delete().eq("report_id", reportId);
   if (rowsDelete.error) {
@@ -552,16 +551,16 @@ export async function deleteSalesReport(
     return { ok: false, message: deleteError.message };
   }
 
-  const storage = await deleteStorageFile(report.file_path);
   const audit = await auditLog({
     action: "delete_sales_report",
     entityId: report.id,
     entityType: "report",
     metadata: {
       file_name: report.file_name,
+      recovery_sources: recoverySources(report),
       row_count: report.row_count,
-      storage_deleted: storage.deleted,
-      storage_warning: storage.warning,
+      storage_deleted: false,
+      source_retained: true,
       summary: report.summary,
     } satisfies Json,
     reportDate: report.report_date,
@@ -576,7 +575,7 @@ export async function deleteSalesReport(
   return {
     ok: true,
     message: "Sales report deleted. This store/date can now be uploaded again.",
-    warning: storage.warning ?? undefined,
+    warning: "Original source files are retained permanently for recovery.",
   };
 }
 
@@ -638,7 +637,13 @@ export async function replaceSalesReport(
     };
   }
 
-  const storagePath = ["sales", store.code.toLowerCase(), oldReport.report_date, `${Date.now()}-${slugFileName(file.name)}`].join("/");
+  const storagePath = ["sales", store.code.toLowerCase(), oldReport.report_date, `${randomUUID()}-${slugFileName(file.name)}`].join("/");
+  const intent = await auditLog({
+    action: "sales_replacement_requested", entityId: oldReport.id, entityType: "report",
+    storeId: store.id, reportDate: oldReport.report_date,
+    metadata: { new_file_path: storagePath, recovery_sources: recoverySources(oldReport) },
+  });
+  if (intent.error) return { ok: false, message: "Unable to record replacement source history." };
   const supabase = await createClient();
   const upload = await supabase.storage.from("reports").upload(storagePath, file, {
     contentType: file.type || "application/octet-stream",
@@ -656,34 +661,36 @@ export async function replaceSalesReport(
     reportDate: oldReport.report_date,
     rows: parsed.reportRows,
     storeId: store.id,
-    summaryJson: parsed.summaryJson,
+    summaryJson: correctedSummary(parsed.summaryJson, oldReport),
   });
 
   if (created.error || !created.report) {
-    await supabase.storage.from("reports").remove([storagePath]);
+    // Retain uploaded evidence even if report creation or rollback fails.
     return { ok: false, message: created.error?.message ?? "Unable to insert corrected report." };
   }
 
   const deleteOldError = await deleteReportRowsAndRecord(oldReport.id);
   if (deleteOldError) {
     await supabase.from("reports").delete().eq("id", created.report.id);
-    await supabase.storage.from("reports").remove([storagePath]);
+
+    // Retain uploaded evidence even if report creation or rollback fails.
     return { ok: false, message: `Corrected report was rolled back because old report deletion failed: ${deleteOldError.message}` };
   }
 
-  const storage = await deleteStorageFile(oldReport.file_path);
   const audit = await auditLog({
     action: "replace_sales_report",
     entityId: created.report.id,
     entityType: "report",
     metadata: {
       new_file_name: file.name,
+      new_file_path: storagePath,
+      recovery_sources: recoverySources(oldReport),
       new_summary: parsed.summaryJson,
       old_file_name: oldReport.file_name,
       old_report_id: oldReport.id,
       old_summary: oldReport.summary,
-      storage_deleted: storage.deleted,
-      storage_warning: storage.warning,
+      storage_deleted: false,
+      source_retained: true,
     } satisfies Json,
     reportDate: oldReport.report_date,
     storeId: store.id,
@@ -697,7 +704,7 @@ export async function replaceSalesReport(
   return {
     ok: true,
     message: "Sales report replaced with corrected file.",
-    warning: storage.warning ?? undefined,
+    warning: "Original source files are retained permanently for recovery.",
   };
 }
 
@@ -801,7 +808,7 @@ export async function bulkHistoricalSalesUpload(
   const supabase = await createClient();
   const { data: existingReports } = await supabase
     .from("reports")
-    .select("id,report_date,file_name,file_path,row_count,summary,store_id")
+    .select("id,report_date,file_name,file_path,row_count,summary,store_id,sales_upload_batch_id")
     .eq("report_type", "sales")
     .eq("store_id", store.id)
     .gte("report_date", range.startDate)
@@ -882,7 +889,16 @@ export async function bulkHistoricalSalesUpload(
     };
   }
 
-  const bulkStoragePath = ["sales-bulk", store.code.toLowerCase(), `${Date.now()}-${slugFileName(file.name)}`].join("/");
+  const bulkStoragePath = ["sales-bulk", store.code.toLowerCase(), `${randomUUID()}-${slugFileName(file.name)}`].join("/");
+  const intent = await auditLog({
+    action: "bulk_sales_upload_requested", entityId: null, entityType: "sales_upload_batch",
+    storeId: store.id,
+    metadata: { new_file_path: bulkStoragePath, duplicate_behavior: duplicateBehavior,
+      recovery_sources: duplicateBehavior === "replace"
+        ? (existingReports ?? []).filter(report => report.report_date && dates.includes(report.report_date)).flatMap(recoverySources)
+        : [] },
+  });
+  if (intent.error) return { ok: false, message: "Unable to record bulk upload source history." };
   const upload = await supabase.storage.from("reports").upload(bulkStoragePath, file, {
     contentType: file.type || "application/octet-stream",
     upsert: false,
@@ -906,7 +922,7 @@ export async function bulkHistoricalSalesUpload(
     .single();
 
   if (batchError || !batch) {
-    await supabase.storage.from("reports").remove([bulkStoragePath]);
+    // Retain uploaded evidence even if report creation or rollback fails.
     return { ok: false, message: batchError?.message ?? "Unable to create upload batch." };
   }
 
@@ -953,7 +969,7 @@ export async function bulkHistoricalSalesUpload(
       reportDate: date,
       rows: dateRows,
       storeId: store.id,
-      summaryJson,
+      summaryJson: existing ? correctedSummary(summaryJson, existing) : summaryJson,
     });
 
     if (created.error || !created.report) {
@@ -969,25 +985,29 @@ export async function bulkHistoricalSalesUpload(
         continue;
       }
 
-      const storage = await deleteStorageFile(existing.file_path);
-      await auditLog({
+      const replacementAudit = await auditLog({
         action: "replace_sales_report",
         entityId: created.report.id,
         entityType: "report",
         metadata: {
           bulk_batch_id: batch.id,
           new_file_name: file.name,
+          new_file_path: bulkStoragePath,
+          recovery_sources: recoverySources(existing),
           new_summary: summaryJson,
           old_file_name: existing.file_name,
           old_report_id: existing.id,
           old_summary: existing.summary,
-          storage_deleted: storage.deleted,
-          storage_warning: storage.warning,
+          storage_deleted: false,
+          source_retained: true,
         } satisfies Json,
         reportDate: date,
         storeId: store.id,
       });
       replacedDates.push(date);
+      if (replacementAudit.error) {
+        failedDates.push({ date, error: "Report replaced, but completion audit failed. Source history was retained." });
+      }
     } else {
       importedDates.push(date);
     }

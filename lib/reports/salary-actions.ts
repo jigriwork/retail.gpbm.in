@@ -144,7 +144,7 @@ export async function uploadSalaryAttendanceReport(
   });
 
   if (reportError) {
-    await supabase.storage.from("reports").remove([storagePath]);
+    // Uploaded originals are immutable recovery evidence, including failed imports.
     return { ok: false, message: reportError.message };
   }
 

@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getAccessibleStores, requireOwner, requireProfile, type Profile } from "@/lib/auth/session";
+import { propagateContactPhone, requirePhoneActor, validatedEmployeePhone } from "@/lib/employees/phone-propagation";
 import { normalizePhone, normalizeStaffName, staffNameKey } from "@/lib/employees/utils";
-import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 export type EmployeeSyncState = {
   ok: boolean;
@@ -49,7 +50,7 @@ type ContactSession = Awaited<ReturnType<typeof requireProfile>> & {
 };
 
 async function requireContactUserOrRedirect(): Promise<ContactSession> {
-  const session = await requireProfile();
+  const session = await requirePhoneActor();
   if (!session.profile || !["owner", "manager"].includes(session.profile.role)) {
     redirect("/app/employees");
   }
@@ -68,65 +69,6 @@ async function canWriteEmployeeStore(storeId: string, profile: Profile) {
   return stores.some((store) => store.id === storeId);
 }
 
-export async function propagateEmployeePhone({
-  employeePhone,
-  normalizedStaffName,
-  storeId,
-  whatsappPhone,
-}: {
-  employeePhone: string | null;
-  normalizedStaffName: string;
-  storeId: string;
-  whatsappPhone: string | null;
-}) {
-  const supabase = createAdminClient() ?? (await createClient());
-  const { data: rows } = await supabase
-    .from("payslip_rows")
-    .select("id,batch_id,staff_name")
-    .eq("store_id", storeId);
-  const matchingRows = (rows ?? []).filter(
-    (row) => staffNameKey(row.staff_name) === normalizedStaffName,
-  );
-  const rowIds = matchingRows.map((row) => row.id);
-
-  if (rowIds.length) {
-    await supabase
-      .from("payslip_rows")
-      .update({
-        employee_phone: employeePhone,
-        whatsapp_phone: whatsappPhone,
-      })
-      .in("id", rowIds);
-
-    await supabase
-      .from("generated_payslips")
-      .update({
-        employee_phone: employeePhone,
-        whatsapp_phone: whatsappPhone,
-      })
-      .in("payslip_row_id", rowIds);
-  }
-
-  revalidatePath("/app/payslips");
-  for (const row of matchingRows) {
-    if (row.batch_id) {
-      revalidatePath(`/app/payslips/${row.batch_id}`);
-      revalidatePath(`/app/payslips/${row.batch_id}/rows/${row.id}`);
-    }
-  }
-}
-
-async function propagateContactPhone(storeId: string, staffName: string, phoneInput: string) {
-  const phone = normalizePhone(phoneInput);
-
-  await propagateEmployeePhone({
-    employeePhone: phone.employeePhone || null,
-    normalizedStaffName: staffNameKey(staffName),
-    storeId,
-    whatsappPhone: phone.whatsappPhone || null,
-  });
-}
-
 export async function createEmployeeContact(formData: FormData) {
   const session = await requireContactUserOrRedirect();
   const supabase = await createClient();
@@ -140,7 +82,7 @@ export async function createEmployeeContact(formData: FormData) {
   if (!staffName || !storeId) {
     redirect("/app/employees/new?error=missing");
   }
-  if (phoneInput && !phone.isValid) {
+  if (!phone.isValid || !/^\+?[\d\s()-]+$/.test(phoneInput)) {
     redirect("/app/employees/new?error=phone");
   }
 
@@ -153,13 +95,10 @@ export async function createEmployeeContact(formData: FormData) {
     .insert({
       created_by: session.profile.id,
       is_active: readBoolean(formData, "isActive"),
-      normalized_phone: phone.employeePhone || null,
       normalized_staff_name: staffNameKey(staffName),
       notes: notes || null,
-      phone: phone.employeePhone || phoneInput || null,
       staff_name: staffName,
       store_id: storeId,
-      whatsapp_phone: phone.whatsappPhone || null,
     })
     .select("id")
     .single();
@@ -168,7 +107,7 @@ export async function createEmployeeContact(formData: FormData) {
     redirect(`/app/employees/new?error=${encodeURIComponent(error?.message ?? "Save failed")}`);
   }
 
-  await propagateContactPhone(storeId, staffName, phone.employeePhone);
+  await propagateContactPhone(data.id, phoneInput);
   revalidatePath("/app/employees");
   redirect(withSavedFlag(returnTo));
 }
@@ -187,7 +126,7 @@ export async function updateEmployeeContact(formData: FormData) {
   if (!employeeId || !staffName || !storeId) {
     redirect(`/app/employees/${employeeId || ""}?error=missing`);
   }
-  if (phoneInput && !phone.isValid) {
+  if (!phone.isValid || !/^\+?[\d\s()-]+$/.test(phoneInput)) {
     redirect(`/app/employees/${employeeId}?error=phone`);
   }
 
@@ -209,13 +148,10 @@ export async function updateEmployeeContact(formData: FormData) {
     .from("employee_contacts")
     .update({
       is_active: readBoolean(formData, "isActive"),
-      normalized_phone: phone.employeePhone || null,
       normalized_staff_name: staffNameKey(staffName),
       notes: notes || null,
-      phone: phone.employeePhone || phoneInput || null,
       staff_name: staffName,
       store_id: storeId,
-      whatsapp_phone: phone.whatsappPhone || null,
     })
     .eq("id", employeeId);
 
@@ -223,7 +159,7 @@ export async function updateEmployeeContact(formData: FormData) {
     redirect(`/app/employees/${employeeId}?error=${encodeURIComponent(error.message)}`);
   }
 
-  await propagateContactPhone(storeId, staffName, phone.employeePhone);
+  await propagateContactPhone(employeeId, phoneInput);
   revalidatePath("/app/employees");
   revalidatePath(`/app/employees/${employeeId}`);
   redirect(withSavedFlag(returnTo));
@@ -284,7 +220,6 @@ export async function bulkUpdateEmployeePhones(
   const contactsById = new Map((contacts ?? []).map((contact) => [contact.id, contact]));
   let saved = 0;
   let skippedBlank = 0;
-  let skippedUnchanged = 0;
   let invalid = 0;
   let denied = 0;
 
@@ -307,40 +242,22 @@ export async function bulkUpdateEmployeePhones(
       continue;
     }
 
-    const phone = normalizePhone(phoneInput);
-    if (!phone.isValid) {
+    let phone;
+    try {
+      phone = validatedEmployeePhone(phoneInput);
+    } catch {
       invalid += 1;
       continue;
     }
 
-    if (
-      contact.normalized_phone === phone.employeePhone &&
-      (contact.whatsapp_phone ?? contact.normalized_phone) === phone.whatsappPhone
-    ) {
-      skippedUnchanged += 1;
-      continue;
-    }
-
-    const { error: updateError } = await supabase
-      .from("employee_contacts")
-      .update({
-        normalized_phone: phone.employeePhone,
-        phone: phone.employeePhone,
-        whatsapp_phone: phone.whatsappPhone,
-      })
-      .eq("id", contact.id);
-
-    if (updateError) {
+    try {
+      // Reapply even if the contact already has this number: a previous attempt
+      // may have failed after updating the contact but before related payslips.
+      await propagateContactPhone(contact.id, phone.employeePhone);
+    } catch {
       invalid += 1;
       continue;
     }
-
-    await propagateEmployeePhone({
-      employeePhone: phone.employeePhone,
-      normalizedStaffName: staffNameKey(contact.staff_name),
-      storeId: contact.store_id,
-      whatsappPhone: phone.whatsappPhone,
-    });
     saved += 1;
   }
 
@@ -349,7 +266,6 @@ export async function bulkUpdateEmployeePhones(
   const details = [
     `Saved ${saved}`,
     skippedBlank ? `blank skipped ${skippedBlank}` : "",
-    skippedUnchanged ? `unchanged ${skippedUnchanged}` : "",
     invalid ? `invalid ${invalid}` : "",
     denied ? `not allowed ${denied}` : "",
   ].filter(Boolean);

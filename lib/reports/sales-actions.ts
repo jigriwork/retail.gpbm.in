@@ -422,7 +422,7 @@ export async function uploadSalesReport(
     .single();
 
   if (reportError || !report) {
-    await supabase.storage.from("reports").remove([storagePath]);
+    // Uploaded originals are immutable recovery evidence, including failed imports.
     return { ok: false, message: reportError?.message ?? "Unable to create report record." };
   }
 
