@@ -1,3 +1,4 @@
+import { ImportStatus } from "@/components/reports/import-status";
 import Link from "next/link";
 import {
   BarChart3,
@@ -47,6 +48,7 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-5">
+      <ImportStatus />
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <p className="text-sm font-medium text-muted">Reports</p>
         <h1 className="mt-2 text-3xl font-semibold">Business uploads</h1>

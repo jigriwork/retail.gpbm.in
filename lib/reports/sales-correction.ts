@@ -1,9 +1,9 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
+import { completeQuery } from "@/lib/supabase/complete-query";
 import { revalidatePath } from "next/cache";
 
-import { correctedSummary, recoverySources } from "@/lib/reports/recovery-evidence";
+import { importReportFile, type ImportDay, type ImportRow } from "@/lib/reports/import-lifecycle";
 import { requireOwner } from "@/lib/auth/session";
 import { staffNameKey } from "@/lib/employees/utils";
 import {
@@ -45,7 +45,6 @@ export type CorrectionAuditLog = Tables<"audit_logs"> & {
 };
 
 const allowedExtensions = [".xlsx", ".xls", ".csv"];
-const salesRowInsertBatchSize = 1000;
 const historicalImportPhrase = "IMPORT HISTORICAL SALES";
 
 function readString(formData: FormData, key: string) {
@@ -63,15 +62,6 @@ function fileExtension(fileName: string) {
   return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : "";
 }
 
-function slugFileName(fileName: string) {
-  return (
-    fileName
-      .toLowerCase()
-      .replace(/[^a-z0-9.]+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "") || "sales-report"
-  );
-}
 
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
@@ -124,9 +114,6 @@ function uniqueStaffNames(rows: ParsedSalesRow[]) {
   return [...new Set(rows.map((row) => row.staffName?.trim()).filter((name): name is string => Boolean(name)))].sort();
 }
 
-function uniqueBillKey(row: { storeId: string; saleDate: string; billNo: string | null }) {
-  return row.billNo ? `${row.storeId}:${row.saleDate}:${row.billNo.trim()}` : null;
-}
 
 function safeSummaryJson(
   summary: ReturnType<typeof summarizeSalesRows>,
@@ -169,22 +156,6 @@ async function getUnmatchedSalesStaffNames(storeId: string, staffNames: string[]
   return staffNames.filter((name) => !known.has(`${storeId}:${staffNameKey(name)}`));
 }
 
-async function insertSalesRowsInBatches(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  rows: TablesInsert<"sales_rows">[],
-) {
-  for (let index = 0; index < rows.length; index += salesRowInsertBatchSize) {
-    const batch = rows.slice(index, index + salesRowInsertBatchSize);
-    const { error } = await supabase.from("sales_rows").insert(batch);
-
-    if (error) {
-      return error;
-    }
-  }
-
-  return null;
-}
-
 function revalidateSalesCorrectionPaths(storeId?: string | null) {
   revalidatePath("/app/reports");
   revalidatePath("/app/reports/sales");
@@ -195,43 +166,6 @@ function revalidateSalesCorrectionPaths(storeId?: string | null) {
   if (storeId) {
     revalidatePath(`/app/stores/${storeId}`);
   }
-}
-
-async function auditLog({
-  action,
-  entityId,
-  entityType,
-  metadata,
-  periodMonth = null,
-  reportDate = null,
-  storeId = null,
-}: {
-  action: string;
-  entityType: string;
-  entityId: string | null;
-  storeId?: string | null;
-  reportDate?: string | null;
-  periodMonth?: string | null;
-  metadata: Json;
-}) {
-  const owner = await requireOwner();
-
-  if (!owner || owner.profile.is_active !== true) {
-    return { error: new Error("Only owner can write audit logs.") };
-  }
-
-  const supabase = await createClient();
-  return supabase.from("audit_logs").insert({
-    action,
-    actor_id: owner.profile.id,
-    actor_role: owner.profile.role,
-    entity_id: entityId,
-    entity_type: entityType,
-    metadata,
-    period_month: periodMonth,
-    report_date: reportDate,
-    store_id: storeId,
-  });
 }
 
 async function getOwnerOrState(): Promise<
@@ -251,7 +185,7 @@ async function getActiveStore(storeId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("stores")
-    .select("id,name,code,is_active")
+    .select("id,name,code,is_active", { count: "exact" })
     .eq("id", storeId)
     .eq("is_active", true)
     .maybeSingle();
@@ -263,7 +197,7 @@ async function getSalesReport(reportId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("reports")
-    .select("*, stores(id,name,code), profiles(full_name,email), sales_upload_batches(id,original_file_name,status)")
+    .select("*, stores(id,name,code), profiles(full_name,email), sales_upload_batches(id,original_file_name,status)", { count: "exact" })
     .eq("id", reportId)
     .maybeSingle();
 
@@ -340,16 +274,13 @@ async function parseDailyReplacementFile(file: File, store: { id: string; name: 
 }
 
 function salesRowsForInsert({
-  reportId,
   rows,
   storeId,
 }: {
-  reportId: string;
   rows: ParsedSalesRow[];
   storeId: string;
 }) {
   return rows.map((row) => ({
-    report_id: reportId,
     store_id: storeId,
     sale_date: row.saleDate,
     bill_no: row.billNo,
@@ -369,81 +300,6 @@ function salesRowsForInsert({
     customer_phone: row.customerPhone,
     raw_data: row.rawData as Json,
   })) satisfies TablesInsert<"sales_rows">[];
-}
-
-async function deleteReportRowsAndRecord(reportId: string) {
-  // Fail closed before removing the last database pointer to recovery evidence.
-  // The log records intent, not success: row deletion can still fail afterwards.
-  const report = await getSalesReport(reportId);
-  if (!report || report.report_type !== "sales") return new Error("Sales report not found.");
-  const preserved = await auditLog({
-    action: "preserve_sales_source_before_delete", entityId: report.id, entityType: "report",
-    storeId: report.store_id, reportDate: report.report_date,
-    metadata: { recovery_sources: recoverySources(report), summary: report.summary, source_retained: true },
-  });
-  if (preserved.error) return preserved.error;
-  const supabase = await createClient();
-  const rowsDelete = await supabase.from("sales_rows").delete().eq("report_id", reportId);
-  if (rowsDelete.error) {
-    return rowsDelete.error;
-  }
-
-  const reportDelete = await supabase.from("reports").delete().eq("id", reportId).eq("report_type", "sales");
-  return reportDelete.error;
-}
-
-async function createSalesReportFromRows({
-  batchId = null,
-  fileName,
-  filePath,
-  profileId,
-  reportDate,
-  rows,
-  storeId,
-  summaryJson,
-}: {
-  batchId?: string | null;
-  fileName: string;
-  filePath: string | null;
-  profileId: string;
-  reportDate: string;
-  rows: ParsedSalesRow[];
-  storeId: string;
-  summaryJson: Json;
-}) {
-  const supabase = await createClient();
-  const { data: report, error: reportError } = await supabase
-    .from("reports")
-    .insert({
-      file_name: fileName,
-      file_path: filePath,
-      report_date: reportDate,
-      report_type: "sales",
-      row_count: rows.length,
-      sales_upload_batch_id: batchId,
-      status: "processed",
-      store_id: storeId,
-      summary: summaryJson,
-      uploaded_by: profileId,
-    })
-    .select("id")
-    .single();
-
-  if (reportError || !report) {
-    return { report: null, error: reportError ?? new Error("Unable to create report record.") };
-  }
-
-  const rowsError = await insertSalesRowsInBatches(
-    supabase,
-    salesRowsForInsert({ reportId: report.id, rows, storeId }),
-  );
-
-  if (rowsError) {
-    await supabase.from("reports").delete().eq("id", report.id);
-    return { report: null, error: rowsError };
-  }
-
-  return { report, error: null };
 }
 
 export async function getCorrectionSalesReports({
@@ -472,7 +328,7 @@ export async function getCorrectionSalesReports({
     .select("*, stores(id,name,code), profiles(full_name,email), sales_upload_batches(id,original_file_name,status)", {
       count: "exact",
     })
-    .eq("report_type", "sales")
+    .eq("report_type", "sales").eq("is_current", true)
     .order("report_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range(from, to);
@@ -493,7 +349,8 @@ export async function getCorrectionSalesReports({
     query = query.ilike("file_name", `%${search}%`);
   }
 
-  const { count, data } = await query;
+  const { count, data, error } = await query;
+  if (error) throw new Error("Report history could not be loaded. Please retry.");
   return {
     count: count ?? 0,
     pageSize,
@@ -508,7 +365,7 @@ export async function getRecentCorrectionAuditLogs(limit = 25) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("audit_logs")
-    .select("*, profiles(full_name,email), stores(id,name,code)")
+    .select("*, profiles(full_name,email), stores(id,name,code)", { count: "exact" })
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -546,37 +403,11 @@ export async function deleteSalesReport(
     };
   }
 
-  const deleteError = await deleteReportRowsAndRecord(report.id);
-  if (deleteError) {
-    return { ok: false, message: deleteError.message };
-  }
-
-  const audit = await auditLog({
-    action: "delete_sales_report",
-    entityId: report.id,
-    entityType: "report",
-    metadata: {
-      file_name: report.file_name,
-      recovery_sources: recoverySources(report),
-      row_count: report.row_count,
-      storage_deleted: false,
-      source_retained: true,
-      summary: report.summary,
-    } satisfies Json,
-    reportDate: report.report_date,
-    storeId: report.store_id,
-  });
-
-  if (audit.error) {
-    return { ok: false, message: `Report deleted, but audit log failed: ${audit.error.message}` };
-  }
-
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("archive_sales_report", { p_report: report.id });
+  if (error || !data) return { ok: false, message: "Report could not be archived; existing data remains intact." };
   revalidateSalesCorrectionPaths(report.store_id);
-  return {
-    ok: true,
-    message: "Sales report deleted. This store/date can now be uploaded again.",
-    warning: "Original source files are retained permanently for recovery.",
-  };
+  return data as unknown as CorrectionActionState;
 }
 
 export async function replaceSalesReport(
@@ -637,75 +468,13 @@ export async function replaceSalesReport(
     };
   }
 
-  const storagePath = ["sales", store.code.toLowerCase(), oldReport.report_date, `${randomUUID()}-${slugFileName(file.name)}`].join("/");
-  const intent = await auditLog({
-    action: "sales_replacement_requested", entityId: oldReport.id, entityType: "report",
-    storeId: store.id, reportDate: oldReport.report_date,
-    metadata: { new_file_path: storagePath, recovery_sources: recoverySources(oldReport) },
+  const rows = salesRowsForInsert({ rows: parsed.reportRows, storeId: store.id });
+  const result = await importReportFile({ file, storeId: store.id, type: "sales", mode: "replace",
+    manifest: [{ date: oldReport.report_date, target_id: oldReport.id, row_count: rows.length, summary: parsed.summaryJson }],
+    rows: rows.map(row => ({ ...row, logical_date: oldReport.report_date! })),
   });
-  if (intent.error) return { ok: false, message: "Unable to record replacement source history." };
-  const supabase = await createClient();
-  const upload = await supabase.storage.from("reports").upload(storagePath, file, {
-    contentType: file.type || "application/octet-stream",
-    upsert: false,
-  });
-
-  if (upload.error) {
-    return { ok: false, message: upload.error.message };
-  }
-
-  const created = await createSalesReportFromRows({
-    fileName: file.name,
-    filePath: storagePath,
-    profileId: ownerResult.owner.profile.id,
-    reportDate: oldReport.report_date,
-    rows: parsed.reportRows,
-    storeId: store.id,
-    summaryJson: correctedSummary(parsed.summaryJson, oldReport),
-  });
-
-  if (created.error || !created.report) {
-    // Retain uploaded evidence even if report creation or rollback fails.
-    return { ok: false, message: created.error?.message ?? "Unable to insert corrected report." };
-  }
-
-  const deleteOldError = await deleteReportRowsAndRecord(oldReport.id);
-  if (deleteOldError) {
-    await supabase.from("reports").delete().eq("id", created.report.id);
-
-    // Retain uploaded evidence even if report creation or rollback fails.
-    return { ok: false, message: `Corrected report was rolled back because old report deletion failed: ${deleteOldError.message}` };
-  }
-
-  const audit = await auditLog({
-    action: "replace_sales_report",
-    entityId: created.report.id,
-    entityType: "report",
-    metadata: {
-      new_file_name: file.name,
-      new_file_path: storagePath,
-      recovery_sources: recoverySources(oldReport),
-      new_summary: parsed.summaryJson,
-      old_file_name: oldReport.file_name,
-      old_report_id: oldReport.id,
-      old_summary: oldReport.summary,
-      storage_deleted: false,
-      source_retained: true,
-    } satisfies Json,
-    reportDate: oldReport.report_date,
-    storeId: store.id,
-  });
-
-  if (audit.error) {
-    return { ok: false, message: `Report replaced, but audit log failed: ${audit.error.message}` };
-  }
-
   revalidateSalesCorrectionPaths(store.id);
-  return {
-    ok: true,
-    message: "Sales report replaced with corrected file.",
-    warning: "Original source files are retained permanently for recovery.",
-  };
+  return result;
 }
 
 export async function bulkHistoricalSalesUpload(
@@ -806,13 +575,13 @@ export async function bulkHistoricalSalesUpload(
   }
 
   const supabase = await createClient();
-  const { data: existingReports } = await supabase
+  const { data: existingReports } = await completeQuery(supabase
     .from("reports")
-    .select("id,report_date,file_name,file_path,row_count,summary,store_id,sales_upload_batch_id")
-    .eq("report_type", "sales")
+    .select("id,report_date,file_name,file_path,row_count,summary,store_id,sales_upload_batch_id", { count: "exact" })
+    .eq("report_type", "sales").eq("is_current", true)
     .eq("store_id", store.id)
     .gte("report_date", range.startDate)
-    .lte("report_date", range.endDate);
+    .lte("report_date", range.endDate));
   const existingByDate = new Map<string, NonNullable<typeof existingReports>[number]>();
   for (const report of existingReports ?? []) {
     if (report.report_date && !existingByDate.has(report.report_date)) {
@@ -881,242 +650,25 @@ export async function bulkHistoricalSalesUpload(
     };
   }
 
-  if (duplicateDates.length && duplicateBehavior === "stop") {
-    return {
-      ok: false,
-      message: `Existing sales reports found for ${duplicateDates.length} date(s). Choose skip or replace to continue.`,
-      summary: { duplicateDates, expectedPhrase: historicalImportPhrase },
-    };
-  }
-
-  const bulkStoragePath = ["sales-bulk", store.code.toLowerCase(), `${randomUUID()}-${slugFileName(file.name)}`].join("/");
-  const intent = await auditLog({
-    action: "bulk_sales_upload_requested", entityId: null, entityType: "sales_upload_batch",
-    storeId: store.id,
-    metadata: { new_file_path: bulkStoragePath, duplicate_behavior: duplicateBehavior,
-      recovery_sources: duplicateBehavior === "replace"
-        ? (existingReports ?? []).filter(report => report.report_date && dates.includes(report.report_date)).flatMap(recoverySources)
-        : [] },
-  });
-  if (intent.error) return { ok: false, message: "Unable to record bulk upload source history." };
-  const upload = await supabase.storage.from("reports").upload(bulkStoragePath, file, {
-    contentType: file.type || "application/octet-stream",
-    upsert: false,
-  });
-
-  if (upload.error) {
-    return { ok: false, message: upload.error.message };
-  }
-
-  const { data: batch, error: batchError } = await supabase
-    .from("sales_upload_batches")
-    .insert({
-      file_path: bulkStoragePath,
-      original_file_name: file.name,
-      status: "uploaded",
-      store_id: store.id,
-      upload_mode: "bulk",
-      uploaded_by: ownerResult.owner.profile.id,
-    })
-    .select("id")
-    .single();
-
-  if (batchError || !batch) {
-    // Retain uploaded evidence even if report creation or rollback fails.
-    return { ok: false, message: batchError?.message ?? "Unable to create upload batch." };
-  }
-
-  const importedDates: string[] = [];
-  const skippedDates: string[] = [];
-  const replacedDates: string[] = [];
-  const failedDates: Array<{ date: string; error: string }> = [];
-  const unmatchedStaff = new Set<string>();
-  const allBills = new Set<string>();
-  let totalRows = 0;
-  let totalNetSale = 0;
-  let totalQuantity = 0;
-  let returnRows = 0;
-
+  const manifest: ImportDay[] = [];
+  const importRows: ImportRow[] = [];
   for (const date of dates) {
-    const existing = existingByDate.get(date);
     const dateRows = grouped.get(date) ?? [];
-
-    if (existing && duplicateBehavior === "skip") {
-      skippedDates.push(date);
-      continue;
-    }
-
     const summary = summarizeSalesRows(dateRows);
     const dateUnmatched = await getUnmatchedSalesStaffNames(store.id, uniqueStaffNames(dateRows));
     const hasStaffColumn = rowsHaveStaffColumn(dateRows);
-    dateUnmatched.forEach((name) => unmatchedStaff.add(name));
-    const dateReturns = dateRows.filter((row) => Number(row.quantity ?? 0) < 0 || Number(row.netSale ?? 0) < 0).length;
-    const summaryJson = safeSummaryJson(summary, {
-      detectedDate: date,
-      returnsCount: dateReturns,
-      skippedRows: parseResult.skippedTotalRows,
-      hasStaffColumn,
+    manifest.push({ date, row_count: dateRows.length, summary: safeSummaryJson(summary, {
+      detectedDate: date, returnsCount: dateRows.filter(row => Number(row.quantity ?? 0) < 0 || Number(row.netSale ?? 0) < 0).length,
+      skippedRows: parseResult.skippedTotalRows, hasStaffColumn,
       staffColumnWarning: hasStaffColumn ? null : missingStaffColumnWarning,
-      unmatchedStaffCount: dateUnmatched.length,
-      unmatchedStaffNames: dateUnmatched,
-    });
-
-    const created = await createSalesReportFromRows({
-      batchId: batch.id,
-      fileName: file.name,
-      filePath: bulkStoragePath,
-      profileId: ownerResult.owner.profile.id,
-      reportDate: date,
-      rows: dateRows,
-      storeId: store.id,
-      summaryJson: existing ? correctedSummary(summaryJson, existing) : summaryJson,
-    });
-
-    if (created.error || !created.report) {
-      failedDates.push({ date, error: created.error?.message ?? "Insert failed." });
-      continue;
-    }
-
-    if (existing && duplicateBehavior === "replace") {
-      const deleteOldError = await deleteReportRowsAndRecord(existing.id);
-      if (deleteOldError) {
-        await supabase.from("reports").delete().eq("id", created.report.id);
-        failedDates.push({ date, error: `Old report deletion failed: ${deleteOldError.message}` });
-        continue;
-      }
-
-      const replacementAudit = await auditLog({
-        action: "replace_sales_report",
-        entityId: created.report.id,
-        entityType: "report",
-        metadata: {
-          bulk_batch_id: batch.id,
-          new_file_name: file.name,
-          new_file_path: bulkStoragePath,
-          recovery_sources: recoverySources(existing),
-          new_summary: summaryJson,
-          old_file_name: existing.file_name,
-          old_report_id: existing.id,
-          old_summary: existing.summary,
-          storage_deleted: false,
-          source_retained: true,
-        } satisfies Json,
-        reportDate: date,
-        storeId: store.id,
-      });
-      replacedDates.push(date);
-      if (replacementAudit.error) {
-        failedDates.push({ date, error: "Report replaced, but completion audit failed. Source history was retained." });
-      }
-    } else {
-      importedDates.push(date);
-    }
-
-    totalRows += dateRows.length;
-    totalNetSale += summary.totalNetSale;
-    totalQuantity += dateRows.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
-    returnRows += dateReturns;
-    for (const row of dateRows) {
-      const key = uniqueBillKey({ billNo: row.billNo, saleDate: date, storeId: store.id });
-      if (key) allBills.add(key);
-    }
+      unmatchedStaffCount: dateUnmatched.length, unmatchedStaffNames: dateUnmatched,
+    }) });
+    importRows.push(...salesRowsForInsert({ rows: dateRows, storeId: store.id })
+      .map(row => ({ ...row, logical_date: date })));
   }
-
-  const status = failedDates.length
-    ? importedDates.length || replacedDates.length || skippedDates.length
-      ? "partial"
-      : "failed"
-    : "processed";
-  const batchSummary = {
-    duplicateBehavior,
-    duplicateDates,
-    failedDates,
-    importedDates,
-    replacedDates,
-    returnRows,
-    skippedDates,
-    unmatchedStaffNames: [...unmatchedStaff].sort(),
-  } satisfies Json;
-
-  const update = await supabase
-    .from("sales_upload_batches")
-    .update({
-      detected_end_date: dates[dates.length - 1],
-      detected_start_date: dates[0],
-      failed_dates: failedDates.length,
-      imported_dates: importedDates.length,
-      replaced_dates: replacedDates.length,
-      skipped_dates: skippedDates.length,
-      status,
-      summary: batchSummary,
-      total_bills: allBills.size,
-      total_dates: dates.length,
-      total_net_sale: roundMoney(totalNetSale),
-      total_quantity: totalQuantity,
-      total_rows: totalRows,
-      unmatched_staff_count: unmatchedStaff.size,
-    })
-    .eq("id", batch.id);
-
-  if (update.error) {
-    return { ok: false, message: `Bulk upload completed, but batch summary update failed: ${update.error.message}` };
-  }
-
-  const audit = await auditLog({
-    action: "bulk_sales_upload",
-    entityId: batch.id,
-    entityType: "sales_upload_batch",
-    metadata: {
-      detected_end_date: dates[dates.length - 1],
-      detected_start_date: dates[0],
-      duplicate_behavior: duplicateBehavior,
-      failed_dates: failedDates,
-      imported_dates: importedDates,
-      missing_dates: missingDates,
-      no_staff_column_dates: datesWithoutStaffColumn,
-      preset,
-      replaced_dates: replacedDates,
-      skipped_dates: skippedDates,
-      suspicious_dates: suspiciousDates,
-      selected_end_date: range.endDate,
-      selected_start_date: range.startDate,
-      total_net_sale: roundMoney(totalNetSale),
-      total_rows: totalRows,
-    } satisfies Json,
-    storeId: store.id,
+  const result = await importReportFile({ file, storeId: store.id, type: "sales", mode: duplicateBehavior, bulk: true,
+    manifest, rows: importRows,
   });
-
-  if (audit.error) {
-    return { ok: false, message: `Bulk upload completed, but audit log failed: ${audit.error.message}` };
-  }
-
   revalidateSalesCorrectionPaths(store.id);
-  return {
-    ok: status !== "failed",
-    message:
-      status === "processed"
-        ? "Bulk historical sales upload processed."
-        : "Bulk historical sales upload completed with warnings.",
-    summary: {
-      dateRange: `${dates[0]} to ${dates[dates.length - 1]}`,
-      duplicateDates,
-      failedDates,
-      importedDates,
-      missingDates: missingDates.slice(0, 60),
-      noStaffColumnDates: datesWithoutStaffColumn,
-      preset,
-      replacedDates,
-      returnRows,
-      skippedDates,
-      store: store.name,
-      suspiciousDates,
-      totalBills: allBills.size,
-      totalDates: dates.length,
-      totalNetSale: roundMoney(totalNetSale),
-      totalQuantity,
-      totalRowsImported: totalRows,
-      unmatchedStaffCount: unmatchedStaff.size,
-      unmatchedStaffNames: [...unmatchedStaff].sort(),
-    },
-  };
+  return { ...result, summary: preview };
 }

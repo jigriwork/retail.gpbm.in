@@ -1,3 +1,6 @@
+import "server-only";
+import { analyticsData } from "@/lib/analytics/data";
+import { completeQuery } from "@/lib/supabase/complete-query";
 import { revalidatePath } from "next/cache";
 
 import { canAccessStore, getAccessibleStores, requireProfile, type Profile } from "@/lib/auth/session";
@@ -107,16 +110,13 @@ function sameStringArray(left: string[], right: string[]) {
 
 async function refreshSalesReportUnmatchedStaffSummaries(storeId: string) {
   const supabase = createAdminClient() ?? (await createClient());
-  const { data: reports, error: reportsError } = await supabase
+  const { data: reports } = await completeQuery(supabase
     .from("reports")
-    .select("id,summary")
+    .select("id,summary", { count: "exact" })
     .eq("report_type", "sales")
     .eq("store_id", storeId)
-    .eq("status", "processed");
+    .eq("status", "processed").eq("is_current", true));
 
-  if (reportsError) {
-    return { error: reportsError, updatedCount: 0 };
-  }
 
   const reportSummaries = (reports ?? []).map((report) => ({
     id: report.id,
@@ -156,7 +156,7 @@ async function refreshSalesReportUnmatchedStaffSummaries(storeId: string) {
           unmatchedStaffNames,
         } satisfies Json,
       })
-      .eq("id", report.id);
+      .eq("id", report.id).eq("is_current", true);
 
     if (updateError) {
       return { error: updateError, updatedCount };
@@ -226,24 +226,13 @@ export async function getStaffAliasPageData({
   }
 
   const supabase = await createClient();
-  const [aliasesResult, contactsResult, salesResult] = await Promise.all([
-    supabase
-      .from("staff_name_aliases")
-      .select("*, stores(id,name,code), employee_contacts(id,staff_name)")
-      .in("store_id", selectedStoreIds)
-      .eq("source_type", sourceType)
-      .order("source_name"),
-    supabase
-      .from("employee_contacts")
-      .select("id,staff_name,store_id,is_active")
-      .in("store_id", selectedStoreIds)
-      .order("staff_name"),
-    supabase
-      .from("sales_rows")
-      .select("store_id,staff_name,net_sale")
-      .in("store_id", selectedStoreIds)
-      .not("staff_name", "is", null)
-      .limit(5000),
+  const [aliasesResult, contactsResult, salesData] = await Promise.all([
+    completeQuery(supabase.from("staff_name_aliases")
+      .select("*, stores(id,name,code), employee_contacts(id,staff_name)", { count: "exact" })
+      .in("store_id", selectedStoreIds).eq("source_type", sourceType).order("source_name")),
+    completeQuery(supabase.from("employee_contacts").select("id,staff_name,store_id,is_active", { count: "exact" })
+      .in("store_id", selectedStoreIds).order("staff_name")),
+    analyticsData(selectedStoreIds, "0001-01-01", "9999-12-31"),
   ]);
 
   const normalizedSearch = search.trim().toLowerCase();
@@ -264,7 +253,7 @@ export async function getStaffAliasPageData({
   ]);
   const unmatchedMap = new Map<string, UnmatchedStaffName>();
 
-  for (const row of salesResult.data ?? []) {
+  for (const row of salesData.sales) {
     if (!row.store_id || !row.staff_name?.trim()) {
       continue;
     }
@@ -286,7 +275,7 @@ export async function getStaffAliasPageData({
         rowCount: 0,
         totalSale: 0,
       };
-    current.rowCount += 1;
+    current.rowCount += row.source_row_count ?? 1;
     current.totalSale += Number(row.net_sale ?? 0);
     unmatchedMap.set(key, current);
   }

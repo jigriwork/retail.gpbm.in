@@ -1,3 +1,5 @@
+import "server-only";
+import { completeQuery, checkedQuery } from "@/lib/supabase/complete-query";
 import { getIndiaDayOfMonth, getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
 import { createClient } from "@/lib/supabase/server";
 
@@ -74,27 +76,27 @@ function asStockReport(report: unknown) {
 
 export async function getRecentStockReports(limit = 8) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("reports")
-    .select(stockReportSelect)
-    .eq("report_type", "stock")
+    .select(stockReportSelect, { count: "exact" })
+    .eq("report_type", "stock").eq("is_current", true).eq("status", "processed")
     .order("period_month", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(limit));
 
   return (data ?? []).map(asStockReport);
 }
 
 export async function getStockReportsForStore(storeId: string, limit = 5) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("reports")
-    .select(stockReportSelect)
-    .eq("report_type", "stock")
+    .select(stockReportSelect, { count: "exact" })
+    .eq("report_type", "stock").eq("is_current", true).eq("status", "processed")
     .eq("store_id", storeId)
     .order("period_month", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(limit));
 
   return (data ?? []).map(asStockReport);
 }
@@ -104,13 +106,13 @@ export async function getStockReportForStoreMonth(
   periodMonth = getIndiaMonthStart(),
 ) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("reports")
-    .select(stockReportSelect)
-    .eq("report_type", "stock")
+    .select(stockReportSelect, { count: "exact" })
+    .eq("report_type", "stock").eq("is_current", true).eq("status", "processed")
     .eq("store_id", storeId)
     .eq("period_month", periodMonth)
-    .maybeSingle();
+    .maybeSingle());
 
   return data ? asStockReport(data) : null;
 }
@@ -126,13 +128,13 @@ export async function getStoreStockStatuses(
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await completeQuery(supabase
     .from("reports")
-    .select(stockReportSelect)
-    .eq("report_type", "stock")
+    .select(stockReportSelect, { count: "exact" })
+    .eq("report_type", "stock").eq("is_current", true).eq("status", "processed")
     .in("store_id", storeIds)
     .order("period_month", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }));
   const reports = (data ?? []).map(asStockReport);
 
   return stores.map((store) => {

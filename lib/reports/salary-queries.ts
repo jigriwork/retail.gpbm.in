@@ -1,3 +1,5 @@
+import "server-only";
+import { completeQuery, checkedQuery } from "@/lib/supabase/complete-query";
 import { getIndiaDayOfMonth, getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
 import { createClient } from "@/lib/supabase/server";
 
@@ -66,27 +68,27 @@ function asSalaryAttendanceReport(report: unknown) {
 
 export async function getRecentSalaryAttendanceReports(limit = 8) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("reports")
-    .select(salaryReportSelect)
-    .eq("report_type", "salary_attendance")
+    .select(salaryReportSelect, { count: "exact" })
+    .eq("report_type", "salary_attendance").eq("is_current", true).eq("status", "processed")
     .order("period_month", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(limit));
 
   return (data ?? []).map(asSalaryAttendanceReport);
 }
 
 export async function getSalaryAttendanceReportsForStore(storeId: string, limit = 5) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("reports")
-    .select(salaryReportSelect)
-    .eq("report_type", "salary_attendance")
+    .select(salaryReportSelect, { count: "exact" })
+    .eq("report_type", "salary_attendance").eq("is_current", true).eq("status", "processed")
     .eq("store_id", storeId)
     .order("period_month", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(limit));
 
   return (data ?? []).map(asSalaryAttendanceReport);
 }
@@ -96,13 +98,13 @@ export async function getSalaryAttendanceReportForStoreMonth(
   periodMonth = getIndiaMonthStart(),
 ) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("reports")
-    .select(salaryReportSelect)
-    .eq("report_type", "salary_attendance")
+    .select(salaryReportSelect, { count: "exact" })
+    .eq("report_type", "salary_attendance").eq("is_current", true).eq("status", "processed")
     .eq("store_id", storeId)
     .eq("period_month", periodMonth)
-    .maybeSingle();
+    .maybeSingle());
 
   return data ? asSalaryAttendanceReport(data) : null;
 }
@@ -118,13 +120,13 @@ export async function getStoreSalaryAttendanceStatuses(
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await completeQuery(supabase
     .from("reports")
-    .select(salaryReportSelect)
-    .eq("report_type", "salary_attendance")
+    .select(salaryReportSelect, { count: "exact" })
+    .eq("report_type", "salary_attendance").eq("is_current", true).eq("status", "processed")
     .in("store_id", storeIds)
     .order("period_month", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }));
   const reports = (data ?? []).map(asSalaryAttendanceReport);
 
   return stores.map((store) => {

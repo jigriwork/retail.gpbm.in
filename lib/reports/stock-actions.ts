@@ -1,5 +1,6 @@
 "use server";
 
+import { importReportFile } from "@/lib/reports/import-lifecycle";
 import { revalidatePath } from "next/cache";
 
 import { canAccessStore, getAccessibleStores, requireProfile } from "@/lib/auth/session";
@@ -8,10 +9,9 @@ import {
   summarizeStockRows,
   type ParsedStockRow,
 } from "@/lib/reports/stock-parser";
-import { createClient } from "@/lib/supabase/server";
 import type { Json, TablesInsert } from "@/lib/supabase/database.types";
 import { completeMatchingTasksAroundDate } from "@/lib/tasks/auto-complete";
-import { getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
+import { getIndiaMonthStart } from "@/lib/tasks/dates";
 
 export type StockUploadState = {
   ok: boolean;
@@ -31,7 +31,6 @@ export type StockUploadState = {
 };
 
 const allowedExtensions = [".xlsx", ".xls", ".csv"];
-const stockRowInsertBatchSize = 1000;
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -43,15 +42,6 @@ function fileExtension(fileName: string) {
   return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : "";
 }
 
-function slugFileName(fileName: string) {
-  const clean = fileName
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return clean || "stock-report";
-}
 
 function monthInputToPeriodMonth(monthInput: string) {
   if (!/^\d{4}-\d{2}$/.test(monthInput)) {
@@ -117,21 +107,6 @@ function rowHasStockIdentity(row: ParsedStockRow) {
   return Boolean(row.itemName || row.sku || row.barcode || row.brand || row.category);
 }
 
-async function insertStockRowsInBatches(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  rows: TablesInsert<"stock_rows">[],
-) {
-  for (let index = 0; index < rows.length; index += stockRowInsertBatchSize) {
-    const batch = rows.slice(index, index + stockRowInsertBatchSize);
-    const { error } = await supabase.from("stock_rows").insert(batch);
-
-    if (error) {
-      return error;
-    }
-  }
-
-  return null;
-}
 
 export async function uploadStockReport(
   _previous: StockUploadState,
@@ -175,21 +150,7 @@ export async function uploadStockReport(
     return { ok: false, message: "Choose an active Go Planet or Brand Mark store." };
   }
 
-  const supabase = await createClient();
-  const { data: existing } = await supabase
-    .from("reports")
-    .select("id")
-    .eq("report_type", "stock")
-    .eq("store_id", storeId)
-    .eq("period_month", periodMonth)
-    .maybeSingle();
 
-  if (existing) {
-    return {
-      ok: false,
-      message: "Stock report for this store and month already exists.",
-    };
-  }
 
   const parseResult = await parseStockFileDetailed(file);
   const parsedRows = parseResult.rows.filter(rowHasStockIdentity);
@@ -230,47 +191,7 @@ export async function uploadStockReport(
     return { ok: false, message: "At least one stock row is required." };
   }
 
-  const today = getIndiaToday();
-  const storagePath = [
-    "stock",
-    store.code.toLowerCase(),
-    periodMonth.slice(0, 7),
-    `${Date.now()}-${slugFileName(file.name)}`,
-  ].join("/");
-
-  const { error: uploadError } = await supabase.storage.from("reports").upload(storagePath, file, {
-    contentType: file.type || "application/octet-stream",
-    upsert: false,
-  });
-
-  if (uploadError) {
-    return { ok: false, message: uploadError.message };
-  }
-
-  const { data: report, error: reportError } = await supabase
-    .from("reports")
-    .insert({
-      report_type: "stock",
-      store_id: storeId,
-      uploaded_by: profile.id,
-      period_month: periodMonth,
-      report_date: today,
-      file_name: file.name,
-      file_path: storagePath,
-      status: "processed",
-      row_count: summary.rowCount,
-      summary: safeSummaryJson(summary, periodMonth, file, extension),
-    })
-    .select("id")
-    .single();
-
-  if (reportError || !report) {
-    // Uploaded originals are immutable recovery evidence, including failed imports.
-    return { ok: false, message: reportError?.message ?? "Unable to create report record." };
-  }
-
   const stockRows: TablesInsert<"stock_rows">[] = parsedRows.map((row) => ({
-    report_id: report.id,
     store_id: storeId,
     stock_month: periodMonth,
     item_name: row.itemName,
@@ -289,15 +210,11 @@ export async function uploadStockReport(
     raw_data: row.rawData as Json,
   }));
 
-  const rowsError = await insertStockRowsInBatches(supabase, stockRows);
-
-  if (rowsError) {
-    return {
-      ok: false,
-      message:
-        "Report file was saved, but stock rows could not be inserted. Ask owner/admin to review this report.",
-    };
-  }
+  const committed = await importReportFile({ file, storeId, type: "stock",
+    manifest: [{ date: periodMonth, row_count: stockRows.length, summary: safeSummaryJson(summary, periodMonth, file, extension) }],
+    rows: stockRows.map(row => ({ ...row, logical_date: periodMonth })),
+  });
+  if (!committed.ok) return committed;
 
   await completeMatchingTasksAroundDate(storeId, getIndiaMonthStart(periodMonth), [
     "stock report",

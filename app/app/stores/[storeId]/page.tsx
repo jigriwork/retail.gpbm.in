@@ -534,20 +534,20 @@ export default async function StoreDetailPage({
           <div className="rounded-2xl border border-border p-3">
             <p className="text-xs font-medium text-muted">Slow/dead</p>
             <p className="mt-1 font-semibold">
-              {(stockAnalytics?.slowStockCandidates.length ?? 0) +
-                (stockAnalytics?.deadStockCandidates.length ?? 0)}
+              {(stockAnalytics?.candidateCounts.slow ?? 0) +
+                (stockAnalytics?.candidateCounts.dead ?? 0)}
             </p>
           </div>
           <div className="rounded-2xl border border-border p-3">
             <p className="text-xs font-medium text-muted">Fast low stock</p>
             <p className="mt-1 font-semibold">
-              {stockAnalytics?.fastMovingLowStockCandidates.length ?? 0}
+              {stockAnalytics?.candidateCounts.fastLow ?? 0}
             </p>
           </div>
           <div className="rounded-2xl border border-border p-3">
             <p className="text-xs font-medium text-muted">High stock low sale</p>
             <p className="mt-1 font-semibold">
-              {stockAnalytics?.highStockLowSaleCandidates.length ?? 0}
+              {stockAnalytics?.candidateCounts.highLow ?? 0}
             </p>
           </div>
         </div>

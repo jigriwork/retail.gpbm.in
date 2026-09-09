@@ -1,3 +1,5 @@
+import "server-only";
+import { completeQuery } from "@/lib/supabase/complete-query";
 import { getAccessibleStores, type Profile, type Store } from "@/lib/auth/session";
 import { getSalesReportForStoreDate } from "@/lib/reports/sales-queries";
 import { getSalaryAttendanceReportForStoreMonth } from "@/lib/reports/salary-queries";
@@ -40,11 +42,11 @@ function isActiveStatus(status: string | null) {
 
 async function getPendingStoreTaskCount(storeId: string, today: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await completeQuery(supabase
     .from("tasks")
-    .select("id,status")
+    .select("id,status", { count: "exact" })
     .eq("store_id", storeId)
-    .or(`due_date.is.null,due_date.lte.${today}`);
+    .or(`due_date.is.null,due_date.lte.${today}`));
 
   return (data ?? []).filter((task) => isActiveStatus(task.status)).length;
 }

@@ -1,3 +1,5 @@
+import "server-only";
+import { completeQuery, checkedQuery } from "@/lib/supabase/complete-query";
 import { addDays, getIndiaToday } from "@/lib/tasks/dates";
 import { createClient } from "@/lib/supabase/server";
 
@@ -43,7 +45,7 @@ export async function getManagerUpdates(filters: UpdateFilters = {}) {
   const supabase = await createClient();
   let query = supabase
     .from("manager_updates")
-    .select(updateSelect)
+    .select(updateSelect, { count: "exact" })
     .order("created_at", { ascending: false });
 
   const storeId = normalizeFilter(filters.storeId);
@@ -78,23 +80,24 @@ export async function getManagerUpdates(filters: UpdateFilters = {}) {
     query = query.limit(filters.limit);
   }
 
-  const { data } = await query;
+  const { data, error } = filters.limit ? await query : await completeQuery(query);
+  if (error) throw new Error("Updates could not be loaded; totals are unavailable.");
   return (data ?? []) as ManagerUpdate[];
 }
 
 export async function getManagerUpdate(updateId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("manager_updates")
-    .select(updateSelect)
+    .select(updateSelect, { count: "exact" })
     .eq("id", updateId)
-    .maybeSingle();
+    .maybeSingle());
 
   return data as ManagerUpdate | null;
 }
 
 export async function getStoreUpdateSummary(storeId: string) {
-  const updates = await getManagerUpdates({ storeId, limit: 20 });
+  const updates = await getManagerUpdates({ storeId });
   const openUpdates = updates.filter((update) => {
     const status = update.status ?? "open";
     return status !== "resolved" && status !== "cancelled";
@@ -110,7 +113,7 @@ export async function getStoreUpdateSummary(storeId: string) {
 export async function getTodayUpdateSummary(
   stores: Array<{ id: string; name: string; code: string }>,
 ) {
-  const updates = await getManagerUpdates({ status: "open", limit: 50 });
+  const updates = await getManagerUpdates();
   const openUpdates = updates.filter((update) => update.status === "open" || !update.status);
   const urgentOpen = openUpdates.filter((update) => update.urgency === "urgent");
   const storeCounts = stores.map((store) => ({

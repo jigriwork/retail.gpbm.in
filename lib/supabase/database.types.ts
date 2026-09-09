@@ -7,36 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ai_chats: {
@@ -821,13 +791,108 @@ export type Database = {
           },
         ]
       }
+      report_import_chunks: {
+        Row: {
+          chunk_no: number
+          import_id: string
+          rows: Json
+        }
+        Insert: {
+          chunk_no: number
+          import_id: string
+          rows: Json
+        }
+        Update: {
+          chunk_no?: number
+          import_id?: string
+          rows?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_import_chunks_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "report_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_imports: {
+        Row: {
+          actor_id: string
+          created_at: string
+          failure_message: string | null
+          file_name: string
+          file_path: string
+          fingerprint: string
+          id: string
+          is_bulk: boolean
+          manifest: Json
+          mode: string
+          report_type: string
+          result: Json | null
+          status: string
+          store_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          failure_message?: string | null
+          file_name: string
+          file_path: string
+          fingerprint: string
+          id?: string
+          is_bulk?: boolean
+          manifest: Json
+          mode: string
+          report_type: string
+          result?: Json | null
+          status?: string
+          store_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          failure_message?: string | null
+          file_name?: string
+          file_path?: string
+          fingerprint?: string
+          id?: string
+          is_bulk?: boolean
+          manifest?: Json
+          mode?: string
+          report_type?: string
+          result?: Json | null
+          status?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_imports_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_imports_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
           created_at: string | null
           file_name: string | null
           file_path: string | null
           id: string
+          import_id: string | null
+          is_current: boolean
           period_month: string | null
+          replaces_report_id: string | null
           report_date: string | null
           report_type: string
           row_count: number | null
@@ -842,7 +907,10 @@ export type Database = {
           file_name?: string | null
           file_path?: string | null
           id?: string
+          import_id?: string | null
+          is_current?: boolean
           period_month?: string | null
+          replaces_report_id?: string | null
           report_date?: string | null
           report_type: string
           row_count?: number | null
@@ -857,7 +925,10 @@ export type Database = {
           file_name?: string | null
           file_path?: string | null
           id?: string
+          import_id?: string | null
+          is_current?: boolean
           period_month?: string | null
+          replaces_report_id?: string | null
           report_date?: string | null
           report_type?: string
           row_count?: number | null
@@ -868,6 +939,20 @@ export type Database = {
           uploaded_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "reports_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "report_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_replaces_report_id_fkey"
+            columns: ["replaces_report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reports_sales_upload_batch_id_fkey"
             columns: ["sales_upload_batch_id"]
@@ -1169,6 +1254,51 @@ export type Database = {
             columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      source_files: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          created_by: string
+          file_path: string
+          id: string
+          original_file_name: string
+          store_id: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          created_by: string
+          file_path: string
+          id?: string
+          original_file_name: string
+          store_id: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          created_by?: string
+          file_path?: string
+          id?: string
+          original_file_name?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_files_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "source_files_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -1543,8 +1673,84 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_owner: { Args: never; Returns: boolean }
-      user_store_ids: { Args: never; Returns: string[] }
+      analytics_data: {
+        Args: {
+          p_store_ids: string[]
+          p_start?: string
+          p_end?: string
+          p_months?: string[]
+        }
+        Returns: Json
+      }
+      archive_sales_report: {
+        Args: { p_report: string }
+        Returns: Json
+      }
+      begin_report_import: {
+        Args: {
+          p_store: string
+          p_type: string
+          p_fingerprint: string
+          p_file_name: string
+          p_manifest: Json
+          p_mode: string
+          p_bulk: boolean
+        }
+        Returns: Json
+      }
+      can_access_store: {
+        Args: { p_store_id: string }
+        Returns: boolean
+      }
+      can_read_source: {
+        Args: { p_bucket: string; p_path: string }
+        Returns: boolean
+      }
+      can_upload_source: {
+        Args: { p_bucket: string; p_path: string }
+        Returns: boolean
+      }
+      commit_report_import: {
+        Args: { p_import: string }
+        Returns: Json
+      }
+      fail_report_import: {
+        Args: { p_import: string }
+        Returns: undefined
+      }
+      is_active_user: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_owner: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      repair_sales_report: {
+        Args: { p_report: string; p_footer_ids: string[]; p_summary: Json }
+        Returns: Json
+      }
+      reserve_source_file: {
+        Args: {
+          p_store_id: string
+          p_bucket: string
+          p_kind: string
+          p_file_name: string
+        }
+        Returns: string
+      }
+      restore_report_version: {
+        Args: { p_report: string }
+        Returns: Json
+      }
+      stage_report_chunk: {
+        Args: { p_import: string; p_chunk: number; p_rows: Json }
+        Returns: undefined
+      }
+      user_store_ids: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1555,25 +1761,21 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = Database[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
+    | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof Database
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -1591,16 +1793,14 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof Database
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -1616,16 +1816,14 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof Database
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -1641,16 +1839,14 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+    | { schema: keyof Database },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof Database
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -1658,24 +1854,19 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+    | { schema: keyof Database },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof Database
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

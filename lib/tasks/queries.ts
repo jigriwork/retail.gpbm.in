@@ -1,3 +1,5 @@
+import "server-only";
+import { completeQuery } from "@/lib/supabase/complete-query";
 import { getAccessibleStores, type Profile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { getIndiaToday, getIndiaTomorrow } from "@/lib/tasks/dates";
@@ -32,12 +34,12 @@ const taskSelect = `
 
 export async function getTasksForProfile() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await completeQuery(supabase
     .from("tasks")
-    .select(taskSelect)
+    .select(taskSelect, { count: "exact" })
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("due_time", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }));
 
   return (data ?? []) as TaskWithRelations[];
 }

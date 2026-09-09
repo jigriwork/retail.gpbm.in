@@ -1,12 +1,12 @@
 "use server";
 
+import { importReportFile } from "@/lib/reports/import-lifecycle";
 import { revalidatePath } from "next/cache";
 
 import { canAccessStore, getAccessibleStores, requireProfile } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { completeMatchingTasksAroundDate } from "@/lib/tasks/auto-complete";
-import { getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
+import { getIndiaMonthStart } from "@/lib/tasks/dates";
 
 export type SalaryAttendanceUploadState = {
   ok: boolean;
@@ -30,15 +30,6 @@ function fileExtension(fileName: string) {
   return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : "";
 }
 
-function slugFileName(fileName: string) {
-  const clean = fileName
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return clean || "salary-attendance-report";
-}
 
 function monthInputToPeriodMonth(monthInput: string) {
   if (!/^\d{4}-\d{2}$/.test(monthInput)) {
@@ -90,39 +81,6 @@ export async function uploadSalaryAttendanceReport(
     return { ok: false, message: "Choose an active Go Planet or Brand Mark store." };
   }
 
-  const supabase = await createClient();
-  const { data: existing } = await supabase
-    .from("reports")
-    .select("id")
-    .eq("report_type", "salary_attendance")
-    .eq("store_id", storeId)
-    .eq("period_month", periodMonth)
-    .maybeSingle();
-
-  if (existing) {
-    return {
-      ok: false,
-      message: "Salary attendance report for this store and month already exists.",
-    };
-  }
-
-  const today = getIndiaToday();
-  const storagePath = [
-    "salary-attendance",
-    store.code.toLowerCase(),
-    periodMonth.slice(0, 7),
-    `${Date.now()}-${slugFileName(file.name)}`,
-  ].join("/");
-
-  const { error: uploadError } = await supabase.storage.from("reports").upload(storagePath, file, {
-    contentType: file.type || "application/octet-stream",
-    upsert: false,
-  });
-
-  if (uploadError) {
-    return { ok: false, message: uploadError.message };
-  }
-
   const summary = {
     uploadedForMonth: periodMonth,
     uploadedAt: new Date().toISOString(),
@@ -130,23 +88,10 @@ export async function uploadSalaryAttendanceReport(
     fileType: extension.replace(".", ""),
   } satisfies Json;
 
-  const { error: reportError } = await supabase.from("reports").insert({
-    report_type: "salary_attendance",
-    store_id: storeId,
-    uploaded_by: profile.id,
-    period_month: periodMonth,
-    report_date: today,
-    file_name: file.name,
-    file_path: storagePath,
-    status: "processed",
-    row_count: 0,
-    summary,
+  const committed = await importReportFile({ file, storeId, type: "salary_attendance",
+    manifest: [{ date: periodMonth, row_count: 0, summary }], rows: [],
   });
-
-  if (reportError) {
-    // Uploaded originals are immutable recovery evidence, including failed imports.
-    return { ok: false, message: reportError.message };
-  }
+  if (!committed.ok) return committed;
 
   await completeMatchingTasksAroundDate(storeId, getIndiaMonthStart(periodMonth), [
     "salary attendance",

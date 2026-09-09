@@ -1,3 +1,4 @@
+import { checkedQuery } from "@/lib/supabase/complete-query";
 import { getAccessibleStores, type Profile } from "@/lib/auth/session";
 import { getAccessibleChecklists } from "@/lib/checklist/queries";
 import { getSalaryAttendanceOverview } from "@/lib/reports/salary-queries";
@@ -46,14 +47,14 @@ function shouldIncludeWeeklyAudit(prompt: string) {
 
 export async function getActiveAiMemories(userId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("ai_memories")
     .select("id,title,content,memory_type,importance,created_at")
     .eq("user_id", userId)
     .eq("is_active", true)
     .order("importance", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
-    .limit(maxMemories);
+    .limit(maxMemories));
 
   return data ?? [];
 }
@@ -106,19 +107,19 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
   const weeklyAudits = shouldIncludeWeeklyAudit(prompt)
     ? await getWeeklyAuditSummaries(stores, weeklyRange)
     : [];
-  const { data: urgentUpdates } = await supabase
+  const { data: urgentUpdates } = await checkedQuery(supabase
     .from("manager_updates")
     .select("title,details,urgency,status,created_at,stores(name,code)")
     .in("store_id", storeIds)
     .or("status.is.null,status.eq.open")
     .order("created_at", { ascending: false })
-    .limit(maxImportantUpdates);
-  const { data: recentSalesBatches } = await supabase
+    .limit(maxImportantUpdates));
+  const { data: recentSalesBatches } = await checkedQuery(supabase
     .from("sales_upload_batches")
     .select("original_file_name,status,upload_mode,detected_start_date,detected_end_date,total_dates,imported_dates,skipped_dates,replaced_dates,failed_dates,total_net_sale,stores(name,code)")
     .in("store_id", storeIds)
     .order("created_at", { ascending: false })
-    .limit(3);
+    .limit(3));
 
   return [
     `Current India time: ${nowInIndia()}.`,
@@ -172,7 +173,7 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
     "",
     "Stock pulse:",
     latestStockMonth && stockPulse
-      ? `- Latest stock month ${latestStockMonth}; slow ${stockPulse.slowStockCandidates.length}, dead ${stockPulse.deadStockCandidates.length}, fast low stock ${stockPulse.fastMovingLowStockCandidates.length}; top categories ${stockPulse.topCategories
+      ? `- Latest stock month ${latestStockMonth}; slow ${stockPulse.candidateCounts.slow}, dead ${stockPulse.candidateCounts.dead}, fast low stock ${stockPulse.candidateCounts.fastLow}; top categories ${stockPulse.topCategories
           .slice(0, 3)
           .map((item) => item.name)
           .join(", ") || "none"}.`

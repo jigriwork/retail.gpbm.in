@@ -1,3 +1,6 @@
+import { checkedQuery } from "@/lib/supabase/complete-query";
+import "server-only";
+import { analyticsData } from "@/lib/analytics/data";
 import { addDays, getIndiaToday } from "@/lib/tasks/dates";
 import { createClient } from "@/lib/supabase/server";
 import type { Store } from "@/lib/auth/session";
@@ -78,13 +81,10 @@ export type StockSummary = {
   deadStockCandidates: StockItemSummary[];
   fastMovingLowStockCandidates: StockItemSummary[];
   highStockLowSaleCandidates: StockItemSummary[];
+  candidateCounts: { slow: number; dead: number; fastLow: number; highLow: number };
   dataQualityNote: boolean;
 };
 
-const stockSelect =
-  "store_id,stock_month,item_name,sku,barcode,brand,category,size,color,quantity,mrp";
-const salesSelect =
-  "store_id,sale_date,item_name,sku,barcode,brand,category,size,color,quantity,net_sale";
 
 function normalize(value: string | null | undefined) {
   return String(value ?? "")
@@ -155,30 +155,13 @@ function primaryStockKey(row: StockRowForAnalytics) {
 async function getStockRows(filters: StockAnalyticsFilters) {
   if (!filters.storeIds.length) return [];
 
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("stock_rows")
-    .select(stockSelect)
-    .in("store_id", filters.storeIds)
-    .eq("stock_month", filters.stockMonth);
-
-  return (data ?? []) as StockRowForAnalytics[];
+  return (await analyticsData(filters.storeIds, null, null, [filters.stockMonth])).stock;
 }
 
 async function getSalesRows(filters: StockAnalyticsFilters, lookbackDays: number = filters.lookbackDays) {
   if (!filters.storeIds.length) return [];
-
   const today = getIndiaToday();
-  const startDate = addDays(today, -(lookbackDays - 1));
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("sales_rows")
-    .select(salesSelect)
-    .in("store_id", filters.storeIds)
-    .gte("sale_date", startDate)
-    .lte("sale_date", today);
-
-  return (data ?? []) as SalesRowForMovement[];
+  return (await analyticsData(filters.storeIds, addDays(today, -(lookbackDays - 1)), today)).sales;
 }
 
 export async function getLatestStockMonth(storeId?: string) {
@@ -186,7 +169,7 @@ export async function getLatestStockMonth(storeId?: string) {
   let query = supabase
     .from("reports")
     .select("period_month")
-    .eq("report_type", "stock")
+    .eq("report_type", "stock").eq("is_current", true).eq("status", "processed")
     .not("period_month", "is", null)
     .order("period_month", { ascending: false })
     .limit(1);
@@ -195,7 +178,8 @@ export async function getLatestStockMonth(storeId?: string) {
     query = query.eq("store_id", storeId);
   }
 
-  const { data } = await query.maybeSingle();
+  const { data, error } = await checkedQuery(query.maybeSingle());
+  if (error) throw new Error("Stock month could not be loaded.");
   return data?.period_month ?? null;
 }
 
@@ -363,7 +347,12 @@ export async function getHighStockLowSaleCandidates(filters: StockAnalyticsFilte
 }
 
 export async function getStockSummary(filters: StockAnalyticsFilters): Promise<StockSummary> {
-  const items = await getStockItemSummary(filters);
+  const maxSlowDays = Math.max(...filters.stores.map(store => storeThresholds(store).slowDays), 30);
+  const maxDeadDays = Math.max(...filters.stores.map(store => storeThresholds(store).deadDays), 60);
+  const maxDays = Math.max(filters.lookbackDays, maxSlowDays, maxDeadDays);
+  const { stock: stockRows, sales: salesRows } = await analyticsData(filters.storeIds, addDays(getIndiaToday(), -(maxDays - 1)), getIndiaToday(), [filters.stockMonth]);
+  const rowsWithin = (days: number) => salesRows.filter(row => row.sale_date && row.sale_date >= addDays(getIndiaToday(), -(days - 1)));
+  const items = summarizeItems(stockRows, rowsWithin(filters.lookbackDays), filters.stores);
   const brands = new Map<string, StockRank>();
   const categories = new Map<string, StockRank>();
   let totalStockQuantity = 0;
@@ -387,12 +376,17 @@ export async function getStockSummary(filters: StockAnalyticsFilters): Promise<S
     addRank(categories, item.category, item.stockQuantity, item.stockMrpValue);
   }
 
-  const [slow, dead, fastLow, highLow] = await Promise.all([
-    getSlowStockCandidates(filters),
-    getDeadStockCandidates(filters),
-    getFastMovingLowStockCandidates(filters),
-    getHighStockLowSaleCandidates(filters),
-  ]);
+  const slow = summarizeItems(stockRows, rowsWithin(maxSlowDays), filters.stores)
+    .filter(item => item.stockQuantity > 0 && item.salesQuantity <= Math.max(item.stockQuantity * 0.05, 1))
+    .sort((a, b) => b.stockQuantity - a.stockQuantity)
+    .map(item => items.find(current => current.key === item.key) ?? item);
+  const dead = summarizeItems(stockRows, rowsWithin(maxDeadDays), filters.stores)
+    .filter(item => item.stockQuantity > 0 && item.salesQuantity === 0)
+    .sort((a, b) => b.stockQuantity - a.stockQuantity);
+  const fastLow = items.filter(item => item.salesQuantity >= 3 && item.stockQuantity <= Math.max(item.salesQuantity * 0.5, 2))
+    .sort((a, b) => b.salesQuantity - a.salesQuantity);
+  const highLow = items.filter(item => item.stockQuantity >= 10 && item.salesQuantity <= Math.max(item.stockQuantity * 0.05, 1))
+    .sort((a, b) => b.stockQuantity - a.stockQuantity);
 
   return {
     stockMonth: filters.stockMonth,
@@ -405,10 +399,11 @@ export async function getStockSummary(filters: StockAnalyticsFilters): Promise<S
     topBrands: topRanks(brands),
     topCategories: topRanks(categories),
     topItems: [...items].sort((a, b) => b.stockQuantity - a.stockQuantity).slice(0, 10),
-    slowStockCandidates: slow,
-    deadStockCandidates: dead,
-    fastMovingLowStockCandidates: fastLow,
-    highStockLowSaleCandidates: highLow,
+    slowStockCandidates: slow.slice(0, 10),
+    deadStockCandidates: dead.slice(0, 10),
+    fastMovingLowStockCandidates: fastLow.slice(0, 10),
+    highStockLowSaleCandidates: highLow.slice(0, 10),
+    candidateCounts: { slow: slow.length, dead: dead.length, fastLow: fastLow.length, highLow: highLow.length },
     dataQualityNote,
   };
 }

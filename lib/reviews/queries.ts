@@ -1,3 +1,4 @@
+import { checkedQuery } from "@/lib/supabase/complete-query";
 import { getIndiaToday } from "@/lib/tasks/dates";
 import { createClient } from "@/lib/supabase/server";
 
@@ -69,50 +70,50 @@ const cleaningSelect = `
 
 export async function getRackReview(storeId: string, reviewDate = getIndiaToday()) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("rack_reviews")
     .select(rackSelect)
     .eq("store_id", storeId)
     .eq("review_date", reviewDate)
-    .maybeSingle();
+    .maybeSingle());
 
   return data as RackReview | null;
 }
 
 export async function getCleaningReview(storeId: string, reviewDate = getIndiaToday()) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("cleaning_reviews")
     .select(cleaningSelect)
     .eq("store_id", storeId)
     .eq("review_date", reviewDate)
-    .maybeSingle();
+    .maybeSingle());
 
   return data as CleaningReview | null;
 }
 
 export async function getRecentRackReviews(storeId: string, limit = 5) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("rack_reviews")
     .select(rackSelect)
     .eq("store_id", storeId)
     .order("review_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(limit));
 
   return (data ?? []) as RackReview[];
 }
 
 export async function getRecentCleaningReviews(storeId: string, limit = 5) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("cleaning_reviews")
     .select(cleaningSelect)
     .eq("store_id", storeId)
     .order("review_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(limit));
 
   return (data ?? []) as CleaningReview[];
 }

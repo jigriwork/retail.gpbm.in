@@ -1,3 +1,4 @@
+import { checkedQuery } from "@/lib/supabase/complete-query";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -307,14 +308,14 @@ async function getHistoricalImportSummary(stores: Array<{ id: string }>): Promis
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checkedQuery(supabase
     .from("sales_upload_batches")
     .select(
       "original_file_name,status,detected_start_date,detected_end_date,total_dates,imported_dates,skipped_dates,replaced_dates,failed_dates,stores(name,code)",
     )
     .in("store_id", storeIds)
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(5));
   const batches = (data ?? []) as HistoricalImportSummary["latest"][];
   const warningCount = batches.filter((batch) => {
     if (!batch) return false;
@@ -595,9 +596,9 @@ async function StockPulseSection({ stores }: { stores: TodayStore[] }) {
             </div>
             {stockPulse ? (
               <div className="grid gap-2 sm:grid-cols-3">
-                <MetricCard icon={TriangleAlert} label="Slow stock" value={String(stockPulse.slowStockCandidates.length)} />
-                <MetricCard icon={AlertTriangle} label="No-sale stock" value={String(stockPulse.deadStockCandidates.length)} />
-                <MetricCard icon={ShoppingBag} label="Fast low stock" value={String(stockPulse.fastMovingLowStockCandidates.length)} />
+                <MetricCard icon={TriangleAlert} label="Slow stock" value={String(stockPulse.candidateCounts.slow)} />
+                <MetricCard icon={AlertTriangle} label="No-sale stock" value={String(stockPulse.candidateCounts.dead)} />
+                <MetricCard icon={ShoppingBag} label="Fast low stock" value={String(stockPulse.candidateCounts.fastLow)} />
               </div>
             ) : (
               <p className="text-sm leading-6 text-muted">Upload stock for this store to see movement signals.</p>

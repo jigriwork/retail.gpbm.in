@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
+import { completeQuery } from "@/lib/supabase/complete-query";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -50,32 +51,33 @@ export const requireProfile = cache(async function requireProfile() {
     .eq("id", user.id)
     .maybeSingle();
 
+  if (!profile || profile.is_active !== true) redirect("/login?error=inactive");
   return { user, profile };
 });
 
 export async function getAccessibleStores(profile?: Profile | null) {
   const currentProfile = profile ?? (await getCurrentProfile());
 
-  if (!currentProfile || currentProfile.is_active === false) {
+  if (!currentProfile || currentProfile.is_active !== true) {
     return [];
   }
 
   const supabase = await createClient();
 
   if (currentProfile.role === "owner") {
-    const { data } = await supabase
+    const { data } = await completeQuery(supabase
       .from("stores")
-      .select("*")
+      .select("*", { count: "exact" })
       .eq("is_active", true)
-      .order("name");
+      .order("name"));
 
     return data ?? [];
   }
 
-  const { data } = await supabase
+  const { data } = await completeQuery(supabase
     .from("store_users")
-    .select("stores(*)")
-    .eq("user_id", currentProfile.id);
+    .select("stores(*)", { count: "exact" })
+    .eq("user_id", currentProfile.id));
 
   return ((data ?? []) as StoreAssignment[])
     .map((assignment) => assignment.stores)
@@ -86,7 +88,7 @@ export async function getAccessibleStores(profile?: Profile | null) {
 export async function requireOwner() {
   const { user, profile } = await requireProfile();
 
-  if (!profile || profile.role !== "owner" || profile.is_active === false) {
+  if (!profile || profile.role !== "owner" || profile.is_active !== true) {
     return null;
   }
 
@@ -96,7 +98,7 @@ export async function requireOwner() {
 export async function canAccessStore(storeId: string, profile?: Profile | null) {
   const currentProfile = profile ?? (await getCurrentProfile());
 
-  if (!currentProfile || currentProfile.is_active === false) {
+  if (!currentProfile || currentProfile.is_active !== true) {
     return false;
   }
 

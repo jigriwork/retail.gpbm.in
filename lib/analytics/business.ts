@@ -1,3 +1,6 @@
+import "server-only";
+import { analyticsData } from "@/lib/analytics/data";
+import { completeQuery } from "@/lib/supabase/complete-query";
 import { staffNameKey } from "@/lib/employees/utils";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
@@ -18,6 +21,7 @@ export type BusinessFilters = {
 };
 
 type SalesRow = {
+  source_row_count?: number;
   store_id: string | null;
   sale_date: string | null;
   bill_no: string | null;
@@ -186,9 +190,6 @@ export const businessSignalThresholds = {
   watchStockQuantity: 5,
 } as const;
 
-const salesSelect =
-  "store_id,sale_date,bill_no,item_name,sku,barcode,brand,category,size,color,quantity,net_sale,staff_name";
-const stockSelect = "store_id,stock_month,item_name,sku,barcode,brand,category,size,color,quantity,mrp";
 
 function parseIndiaDate(dateText: string) {
   return new Date(`${dateText}T00:00:00+05:30`);
@@ -382,16 +383,16 @@ async function getLatestStockMonths(stores: Array<Pick<Store, "id" | "name">>) {
   if (!stores.length) return new Map<string, string | null>();
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await completeQuery(supabase
     .from("reports")
-    .select("store_id,period_month")
-    .eq("report_type", "stock")
+    .select("store_id,period_month", { count: "exact" })
+    .eq("report_type", "stock").eq("is_current", true).eq("status", "processed")
     .in(
       "store_id",
       stores.map((store) => store.id),
     )
     .not("period_month", "is", null)
-    .order("period_month", { ascending: false });
+    .order("period_month", { ascending: false }));
 
   const latest = new Map<string, string | null>(stores.map((store) => [store.id, null]));
   for (const row of data ?? []) {
@@ -403,59 +404,9 @@ async function getLatestStockMonths(stores: Array<Pick<Store, "id" | "name">>) {
   return latest;
 }
 
-async function getAliasMap(storeIds: string[]) {
-  if (!storeIds.length) return new Map<string, string>();
-
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("staff_name_aliases")
-    .select("store_id,normalized_source_name,canonical_staff_name")
-    .in("store_id", storeIds)
-    .eq("source_type", "sales_report")
-    .eq("is_active", true);
-
-  return new Map((data ?? []).map((alias) => [`${alias.store_id}:${alias.normalized_source_name}`, alias.canonical_staff_name]));
-}
-
 function mappedStaff(row: SalesRow, aliases: Map<string, string>) {
   if (!row.store_id || !row.staff_name?.trim()) return clean(row.staff_name);
   return aliases.get(`${row.store_id}:${staffNameKey(row.staff_name)}`) ?? clean(row.staff_name);
-}
-
-async function getSalesRows(filters: BusinessFilters) {
-  if (!filters.storeIds.length) return [];
-
-  const supabase = await createClient();
-  let query = supabase
-    .from("sales_rows")
-    .select(salesSelect)
-    .in("store_id", filters.storeIds)
-    .gte("sale_date", filters.startDate)
-    .lte("sale_date", filters.endDate);
-
-  if (filters.brand) query = query.eq("brand", filters.brand);
-  if (filters.category) query = query.eq("category", filters.category);
-  if (filters.size) query = query.eq("size", filters.size);
-
-  const { data } = await query;
-  return ((data ?? []) as SalesRow[]).filter((row) => matchesSearch(row, filters.itemSearch));
-}
-
-async function getStockRows(filters: BusinessFilters, latestMonths: Map<string, string | null>) {
-  const months = [...new Set([...latestMonths.values()].filter((month): month is string => Boolean(month)))];
-  if (!filters.storeIds.length || !months.length) return [];
-
-  const supabase = await createClient();
-  let query = supabase.from("stock_rows").select(stockSelect).in("store_id", filters.storeIds).in("stock_month", months);
-
-  if (filters.brand) query = query.eq("brand", filters.brand);
-  if (filters.category) query = query.eq("category", filters.category);
-  if (filters.size) query = query.eq("size", filters.size);
-
-  const { data } = await query;
-  return ((data ?? []) as StockRow[])
-    .filter((row) => row.store_id && row.stock_month === latestMonths.get(row.store_id))
-    .filter((row) => matchesSearch(row, filters.itemSearch));
 }
 
 function movementStatus(soldQuantity: number, stockQuantity: number) {
@@ -492,11 +443,14 @@ export async function getBusinessReport(
 ): Promise<BusinessReport> {
   const latestStockMap = await getLatestStockMonths(stores);
   const storeById = new Map(stores.map((store) => [store.id, store.name]));
-  const [salesRows, stockRows, aliases] = await Promise.all([
-    getSalesRows(filters),
-    getStockRows(filters, latestStockMap),
-    getAliasMap(filters.storeIds),
-  ]);
+  const data = await analyticsData(filters.storeIds, filters.startDate, filters.endDate,
+    [...latestStockMap.values()].filter((month): month is string => Boolean(month)));
+  const matches = (row: SalesRow | StockRow) => (!filters.brand || row.brand === filters.brand)
+    && (!filters.category || row.category === filters.category) && (!filters.size || row.size === filters.size)
+    && matchesSearch(row, filters.itemSearch);
+  const salesRows = data.sales.filter(matches);
+  const stockRows = data.stock.filter(row => row.store_id && row.stock_month === latestStockMap.get(row.store_id)).filter(matches);
+  const aliases = new Map(data.aliases.map(alias => [`${alias.store_id}:${alias.normalized_source_name}`, alias.canonical_staff_name]));
 
   const brandMap = new Map<string, BusinessRank>();
   const categoryMap = new Map<string, BusinessRank>();
@@ -641,11 +595,11 @@ export async function getBusinessReport(
 
     netSales += sale;
     soldQuantity += quantity;
-    if (sale < 0 || quantity < 0) returnRows += 1;
+    if (sale < 0 || quantity < 0) returnRows += row.source_row_count ?? 1;
     returnAmount += absReturnAmount;
     returnQuantity += absReturnQuantity;
     if (billKey) bills.add(billKey);
-    if (!row.size?.trim()) salesSizeMissingRows += 1;
+    if (!row.size?.trim()) salesSizeMissingRows += row.source_row_count ?? 1;
 
     brandOptions.add(brand);
     categoryOptions.add(category);

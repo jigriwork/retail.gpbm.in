@@ -1,3 +1,5 @@
+import "server-only";
+import { completeQuery } from "@/lib/supabase/complete-query";
 import { staffNameKey } from "@/lib/employees/utils";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,17 +19,17 @@ export async function getKnownSalesStaffNameKeys({
 
   const supabase = await createClient();
   const [aliasesResult, contactsResult] = await Promise.all([
-    supabase
+    completeQuery(supabase
       .from("staff_name_aliases")
-      .select("store_id,normalized_source_name")
+      .select("store_id,normalized_source_name", { count: "exact" })
       .in("store_id", uniqueStoreIds)
       .eq("source_type", "sales_report")
-      .in("normalized_source_name", normalizedNames),
-    supabase
+      .in("normalized_source_name", normalizedNames)),
+    completeQuery(supabase
       .from("employee_contacts")
-      .select("store_id,normalized_staff_name")
+      .select("store_id,normalized_staff_name", { count: "exact" })
       .in("store_id", uniqueStoreIds)
-      .in("normalized_staff_name", normalizedNames),
+      .in("normalized_staff_name", normalizedNames)),
   ]);
 
   const known = new Set<string>();

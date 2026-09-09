@@ -1,3 +1,5 @@
+import "server-only";
+import { completeQuery } from "@/lib/supabase/complete-query";
 import type { Store } from "@/lib/auth/session";
 import {
   getDateRangeForPeriod,
@@ -132,18 +134,18 @@ export async function getWeeklyStaffAudit(store: Store, weekRange: DateRange) {
 export async function getWeeklyReviewAudit(storeId: string, weekRange: DateRange) {
   const supabase = await createClient();
   const [rackResult, cleaningResult] = await Promise.all([
-    supabase
+    completeQuery(supabase
       .from("rack_reviews")
-      .select("review_date")
+      .select("review_date", { count: "exact" })
       .eq("store_id", storeId)
       .gte("review_date", weekRange.startDate)
-      .lte("review_date", weekRange.endDate),
-    supabase
+      .lte("review_date", weekRange.endDate)),
+    completeQuery(supabase
       .from("cleaning_reviews")
-      .select("review_date")
+      .select("review_date", { count: "exact" })
       .eq("store_id", storeId)
       .gte("review_date", weekRange.startDate)
-      .lte("review_date", weekRange.endDate),
+      .lte("review_date", weekRange.endDate)),
   ]);
   const rackDates = [...new Set((rackResult.data ?? []).map((row) => row.review_date).filter(Boolean))] as string[];
   const cleaningDates = [
@@ -165,19 +167,19 @@ export async function getWeeklyChecklistAudit(
 ) {
   const supabase = await createClient();
   const [reportsResult, updatesResult] = await Promise.all([
-    supabase
+    completeQuery(supabase
       .from("reports")
-      .select("report_date")
-      .eq("report_type", "sales")
+      .select("report_date", { count: "exact" })
+      .eq("report_type", "sales").eq("is_current", true).eq("status", "processed")
       .eq("store_id", store.id)
       .gte("report_date", weekRange.startDate)
-      .lte("report_date", weekRange.endDate),
-    supabase
+      .lte("report_date", weekRange.endDate)),
+    completeQuery(supabase
       .from("manager_updates")
-      .select("created_at")
+      .select("created_at", { count: "exact" })
       .eq("store_id", store.id)
       .gte("created_at", `${weekRange.startDate}T00:00:00+05:30`)
-      .lte("created_at", `${weekRange.endDate}T23:59:59+05:30`),
+      .lte("created_at", `${weekRange.endDate}T23:59:59+05:30`)),
   ]);
   const salesReportDays = new Set((reportsResult.data ?? []).map((row) => row.report_date).filter(Boolean)).size;
   const managerUpdateDays = new Set(
@@ -201,21 +203,21 @@ export async function getWeeklyChecklistAudit(
 export async function getWeeklyUpdateAudit(storeId: string, weekRange: DateRange) {
   const supabase = await createClient();
   const [weekResult, openUrgentResult] = await Promise.all([
-    supabase
+    completeQuery(supabase
       .from("manager_updates")
       .select(
-        "*,stores(id,name,code),created_profile:profiles!manager_updates_created_by_fkey(id,full_name,email),created_task:tasks!manager_updates_created_task_id_fkey(id,title,status,due_date)",
+        "*,stores(id,name,code),created_profile:profiles!manager_updates_created_by_fkey(id,full_name,email),created_task:tasks!manager_updates_created_task_id_fkey(id,title,status,due_date)", { count: "exact" },
       )
       .eq("store_id", storeId)
       .gte("created_at", `${weekRange.startDate}T00:00:00+05:30`)
       .lte("created_at", `${weekRange.endDate}T23:59:59+05:30`)
-      .order("created_at", { ascending: false }),
-    supabase
+      .order("created_at", { ascending: false })),
+    completeQuery(supabase
       .from("manager_updates")
-      .select("id")
+      .select("id", { count: "exact" })
       .eq("store_id", storeId)
       .eq("urgency", "urgent")
-      .or("status.is.null,status.eq.open"),
+      .or("status.is.null,status.eq.open")),
   ]);
   const updates = (weekResult.data ?? []) as ManagerUpdate[];
 
@@ -231,13 +233,13 @@ export async function getWeeklyUpdateAudit(storeId: string, weekRange: DateRange
 
 export async function getWeeklyTaskAudit(storeId: string, weekRange: DateRange) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await completeQuery(supabase
     .from("tasks")
-    .select("id,status,due_date,created_at,completed_at")
+    .select("id,status,due_date,created_at,completed_at", { count: "exact" })
     .eq("store_id", storeId)
     .or(
       `created_at.gte.${weekRange.startDate}T00:00:00+05:30,completed_at.gte.${weekRange.startDate}T00:00:00+05:30,due_date.lte.${weekRange.endDate}`,
-    );
+    ));
   const tasks = data ?? [];
 
   return {
@@ -279,10 +281,10 @@ export async function getWeeklyStockSignalAudit(store: Store) {
 
   return {
     stockMonth,
-    slowStockCount: summary.slowStockCandidates.length,
-    deadStockCount: summary.deadStockCandidates.length,
-    fastMovingLowStockCount: summary.fastMovingLowStockCandidates.length,
-    highStockLowSaleCount: summary.highStockLowSaleCandidates.length,
+    slowStockCount: summary.candidateCounts.slow,
+    deadStockCount: summary.candidateCounts.dead,
+    fastMovingLowStockCount: summary.candidateCounts.fastLow,
+    highStockLowSaleCount: summary.candidateCounts.highLow,
     summary,
   } satisfies WeeklyStockSignalAudit;
 }

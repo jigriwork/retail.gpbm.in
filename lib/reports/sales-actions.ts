@@ -1,5 +1,7 @@
 "use server";
 
+import { completeQuery } from "@/lib/supabase/complete-query";
+import { importReportFile } from "@/lib/reports/import-lifecycle";
 import { revalidatePath } from "next/cache";
 
 import { canAccessStore, getAccessibleStores, requireProfile } from "@/lib/auth/session";
@@ -61,7 +63,6 @@ export type SalesRepairState = {
 };
 
 const allowedExtensions = [".xlsx", ".xls", ".csv"];
-const salesRowInsertBatchSize = 1000;
 const totalRowPattern = /\b(grand\s+totals?|godown\s+wise\s+totals?|godown\s+totals?|sub\s*totals?|totals?)\b/i;
 
 function readString(formData: FormData, key: string) {
@@ -74,15 +75,6 @@ function fileExtension(fileName: string) {
   return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : "";
 }
 
-function slugFileName(fileName: string) {
-  const clean = fileName
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return clean || "sales-report";
-}
 
 function safeSummaryJson(
   summary: ReturnType<typeof summarizeSalesRows>,
@@ -246,21 +238,6 @@ async function getUnmatchedSalesStaffNames(storeId: string, staffNames: string[]
   return staffNames.filter((name) => !known.has(`${storeId}:${staffNameKey(name)}`));
 }
 
-async function insertSalesRowsInBatches(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  rows: TablesInsert<"sales_rows">[],
-) {
-  for (let index = 0; index < rows.length; index += salesRowInsertBatchSize) {
-    const batch = rows.slice(index, index + salesRowInsertBatchSize);
-    const { error } = await supabase.from("sales_rows").insert(batch);
-
-    if (error) {
-      return error;
-    }
-  }
-
-  return null;
-}
 
 export async function uploadSalesReport(
   _previous: SalesUploadState,
@@ -333,21 +310,7 @@ export async function uploadSalesReport(
   }
 
   const finalReportDate = detectedDates[0] ?? reportDate;
-  const supabase = await createClient();
-  const { data: existing } = await supabase
-    .from("reports")
-    .select("id")
-    .eq("report_type", "sales")
-    .eq("store_id", storeId)
-    .eq("report_date", finalReportDate)
-    .maybeSingle();
 
-  if (existing) {
-    return {
-      ok: false,
-      message: "Sales report for this store and date already exists.",
-    };
-  }
 
   const rowsWithStoreColumn = parsedRows.filter((row) => row.storeName);
   const invalidStoreRows = rowsWithStoreColumn.filter((row) => !matchesStoreName(row.storeName, store));
@@ -389,45 +352,7 @@ export async function uploadSalesReport(
     unmatchedStaffCount: unmatchedStaffNames.length,
     unmatchedStaffNames,
   };
-  const storagePath = [
-    "sales",
-    store.code.toLowerCase(),
-    finalReportDate,
-    `${Date.now()}-${slugFileName(file.name)}`,
-  ].join("/");
-
-  const { error: uploadError } = await supabase.storage.from("reports").upload(storagePath, file, {
-    contentType: file.type || "application/octet-stream",
-    upsert: false,
-  });
-
-  if (uploadError) {
-    return { ok: false, message: uploadError.message };
-  }
-
-  const { data: report, error: reportError } = await supabase
-    .from("reports")
-    .insert({
-      report_type: "sales",
-      store_id: storeId,
-      uploaded_by: profile.id,
-      report_date: finalReportDate,
-      file_name: file.name,
-      file_path: storagePath,
-      row_count: summary.rowCount,
-      summary: safeSummaryJson(summary, uploadMetadata),
-      status: "processed",
-    })
-    .select("id")
-    .single();
-
-  if (reportError || !report) {
-    // Uploaded originals are immutable recovery evidence, including failed imports.
-    return { ok: false, message: reportError?.message ?? "Unable to create report record." };
-  }
-
   const salesRows: TablesInsert<"sales_rows">[] = reportRows.map((row) => ({
-    report_id: report.id,
     store_id: storeId,
     sale_date: row.saleDate,
     bill_no: row.billNo,
@@ -448,15 +373,11 @@ export async function uploadSalesReport(
     raw_data: row.rawData as Json,
   }));
 
-  const rowsError = await insertSalesRowsInBatches(supabase, salesRows);
-
-  if (rowsError) {
-    return {
-      ok: false,
-      message:
-        "Report file was saved, but sales rows could not be inserted. Ask owner/admin to review this report.",
-    };
-  }
+  const committed = await importReportFile({ file, storeId, type: "sales",
+    manifest: [{ date: finalReportDate, row_count: salesRows.length, summary: safeSummaryJson(summary, uploadMetadata) }],
+    rows: salesRows.map(row => ({ ...row, logical_date: finalReportDate })),
+  });
+  if (!committed.ok) return committed;
 
   await completeMatchingTasks(storeId, finalReportDate, ["sales report", "daily_sales"]);
   revalidatePath("/app/reports");
@@ -501,7 +422,7 @@ export async function repairSalesReportTotals(
   const supabase = await createClient();
   const { data: report, error: reportError } = await supabase
     .from("reports")
-    .select("id,report_type,store_id,report_date,summary")
+    .select("id,report_type,store_id,report_date,summary", { count: "exact" })
     .eq("id", reportId)
     .maybeSingle();
 
@@ -513,14 +434,11 @@ export async function repairSalesReportTotals(
     return { ok: false, message: "This repair can run only on daily sales reports." };
   }
 
-  const { data: rows, error: rowsError } = await supabase
+  const { data: rows } = await completeQuery(supabase
     .from("sales_rows")
-    .select("id,store_id,sale_date,bill_no,item_name,brand,category,staff_name,quantity,net_sale")
-    .eq("report_id", reportId);
+    .select("id,store_id,sale_date,bill_no,item_name,brand,category,staff_name,quantity,net_sale", { count: "exact" })
+    .eq("report_id", reportId));
 
-  if (rowsError) {
-    return { ok: false, message: rowsError.message };
-  }
 
   const salesRows = rows ?? [];
   const footerRows = salesRows.filter(isFooterSalesRow);
@@ -530,29 +448,13 @@ export async function repairSalesReportTotals(
   }
 
   const footerIds = footerRows.map((row) => row.id);
-  const { error: deleteError } = await supabase.from("sales_rows").delete().in("id", footerIds);
-
-  if (deleteError) {
-    return { ok: false, message: deleteError.message };
-  }
-
-  const remainingRows = salesRows.filter((row) => !footerIds.includes(row.id));
+  const remainingRows = salesRows.filter(row => !footerIds.includes(row.id));
   const summary = summarizePersistedSalesRows(remainingRows, footerRows.length);
-  const { error: updateError } = await supabase
-    .from("reports")
-    .update({
-      row_count: remainingRows.length,
-      summary: {
-        ...((report.summary && typeof report.summary === "object" && !Array.isArray(report.summary)
-          ? report.summary
-          : {}) as Record<string, unknown>),
-        ...summary,
-      } satisfies Json,
-    })
-    .eq("id", reportId);
-
-  if (updateError) {
-    return { ok: false, message: updateError.message };
+  const { data: repaired, error: repairError } = await supabase.rpc("repair_sales_report", {
+    p_report: reportId, p_footer_ids: footerIds, p_summary: summary as Json,
+  });
+  if (repairError || !repaired || !(repaired as { ok?: boolean }).ok) {
+    return { ok: false, message: "Repair failed. The previous complete report remains available." };
   }
 
   revalidatePath("/app/today");

@@ -1,3 +1,6 @@
+import "server-only";
+import { analyticsData } from "@/lib/analytics/data";
+import { completeQuery } from "@/lib/supabase/complete-query";
 import { addDays, getIndiaDayOfMonth, getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
 import { staffNameKey } from "@/lib/employees/utils";
 import { createClient } from "@/lib/supabase/server";
@@ -16,6 +19,7 @@ export type SalesAnalyticsFilters = {
 };
 
 export type SalesRowForAnalytics = {
+  source_row_count?: number;
   store_id: string | null;
   sale_date: string | null;
   net_sale: number | null;
@@ -244,36 +248,12 @@ async function getSalesRows(filters: SalesAnalyticsFilters) {
     return [];
   }
 
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("sales_rows")
-    .select("store_id,sale_date,net_sale,quantity,bill_no,staff_name,brand,category,item_name")
-    .in("store_id", filters.storeIds)
-    .gte("sale_date", filters.dateRange.startDate)
-    .lte("sale_date", filters.dateRange.endDate);
-
-  return (data ?? []) as SalesRowForAnalytics[];
+  return (await analyticsData(filters.storeIds, filters.dateRange.startDate, filters.dateRange.endDate)).sales;
 }
 
-async function getSalesStaffAliasMap(storeIds: string[]) {
-  if (!storeIds.length) {
-    return new Map<string, string>();
-  }
-
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("staff_name_aliases")
-    .select("store_id,normalized_source_name,canonical_staff_name")
-    .in("store_id", storeIds)
-    .eq("source_type", "sales_report")
-    .eq("is_active", true);
-  const aliases = new Map<string, string>();
-
-  for (const alias of data ?? []) {
-    aliases.set(`${alias.store_id}:${alias.normalized_source_name}`, alias.canonical_staff_name);
-  }
-
-  return aliases;
+async function getSalesStaffAliasMap(filters: SalesAnalyticsFilters) {
+  const { aliases } = await analyticsData(filters.storeIds, filters.dateRange.startDate, filters.dateRange.endDate);
+  return new Map(aliases.map(alias => [`${alias.store_id}:${alias.normalized_source_name}`, alias.canonical_staff_name]));
 }
 
 function mappedStaffName(row: SalesRowForAnalytics, aliases: Map<string, string>) {
@@ -287,7 +267,7 @@ export async function getSalesSummary(
 ): Promise<SalesSummary> {
   const [rows, aliases] = await Promise.all([
     getSalesRows(filters),
-    getSalesStaffAliasMap(filters.storeIds),
+    getSalesStaffAliasMap(filters),
   ]);
   const bills = new Set<string>();
   const staff = new Set<string>();
@@ -352,7 +332,7 @@ export async function getSalesSummary(
       if (storeSummary) {
         storeSummary.totalNetSale += sale;
         storeSummary.totalQuantity += quantity;
-        storeSummary.rowCount += 1;
+        storeSummary.rowCount += row.source_row_count ?? 1;
       }
     }
   }
@@ -372,7 +352,7 @@ export async function getSalesSummary(
     staffCount: staff.size,
     brandCount: brands.size,
     categoryCount: categories.size,
-    rowCount: rows.length,
+    rowCount: rows.reduce((count, row) => count + (row.source_row_count ?? 1), 0),
     topStaff: topRanked(staffSales),
     topBrands: topRanked(brandSales),
     topCategories: topRanked(categorySales),
@@ -393,7 +373,7 @@ export async function getStoreSalesSummary(
 export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
   const [rows, aliases] = await Promise.all([
     getSalesRows(filters),
-    getSalesStaffAliasMap(filters.storeIds),
+    getSalesStaffAliasMap(filters),
   ]);
   const staff = new Map<
     string,
@@ -491,16 +471,16 @@ export async function getMissingSalesReportDates(
   const endDate = dateRange.endDate > today ? today : dateRange.endDate;
   const expectedDates = dateList(dateRange.startDate, endDate);
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await completeQuery(supabase
     .from("reports")
-    .select("store_id,report_date")
-    .eq("report_type", "sales")
+    .select("store_id,report_date", { count: "exact" })
+    .eq("report_type", "sales").eq("is_current", true).eq("status", "processed")
     .in(
       "store_id",
       stores.map((store) => store.id),
     )
     .gte("report_date", dateRange.startDate)
-    .lte("report_date", endDate);
+    .lte("report_date", endDate));
 
   const uploaded = new Set(
     (data ?? []).map((report) => `${report.store_id ?? ""}:${report.report_date ?? ""}`),

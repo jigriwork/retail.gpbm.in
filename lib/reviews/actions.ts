@@ -1,5 +1,6 @@
 "use server";
 
+import { reserveSourceFile } from "@/lib/reports/source-files";
 import { revalidatePath } from "next/cache";
 
 import { canAccessStore, getAccessibleStores, requireProfile } from "@/lib/auth/session";
@@ -27,15 +28,6 @@ function readBoolean(formData: FormData, key: string) {
   return readString(formData, key) === "on";
 }
 
-function slugFileName(fileName: string) {
-  const clean = fileName
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return clean || "review-photo";
-}
 
 async function validateReviewAccess(storeId: string) {
   const { profile } = await requireProfile();
@@ -74,7 +66,7 @@ async function validateReviewAccess(storeId: string) {
 
 async function uploadReviewPhoto(
   bucketFolder: "rack" | "cleaning",
-  storeCode: string,
+  storeId: string,
   reviewDate: string,
   file: FormDataEntryValue | null,
 ) {
@@ -83,12 +75,7 @@ async function uploadReviewPhoto(
   }
 
   const supabase = await createClient();
-  const path = [
-    bucketFolder,
-    storeCode.toLowerCase(),
-    reviewDate,
-    `${Date.now()}-${slugFileName(file.name)}`,
-  ].join("/");
+  const path = await reserveSourceFile(storeId, "review-photos", bucketFolder, file.name);
   const { error } = await supabase.storage.from("review-photos").upload(path, file, {
     contentType: file.type || "application/octet-stream",
     upsert: false,
@@ -111,7 +98,7 @@ export async function saveRackReview(
 
   const { path, error: photoError } = await uploadReviewPhoto(
     "rack",
-    access.store.code,
+    access.store.id,
     reviewDate,
     formData.get("photo"),
   );
@@ -173,7 +160,7 @@ export async function saveCleaningReview(
 
   const { path, error: photoError } = await uploadReviewPhoto(
     "cleaning",
-    access.store.code,
+    access.store.id,
     reviewDate,
     formData.get("photo"),
   );

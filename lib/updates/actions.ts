@@ -1,5 +1,6 @@
 "use server";
 
+import { reserveSourceFile } from "@/lib/reports/source-files";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -32,15 +33,6 @@ function safeUrgency(value: string) {
   return updateUrgencies.some((urgency) => urgency === value) ? value : "normal";
 }
 
-function slugFileName(fileName: string) {
-  const clean = fileName
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return clean || "manager-update-photo";
-}
 
 async function validateStoreAccess(storeId: string) {
   const { profile } = await requireProfile();
@@ -103,18 +95,13 @@ async function canAccessUpdate(updateId: string) {
   return { allowed, profile, update };
 }
 
-async function uploadUpdatePhoto(storeCode: string, file: FormDataEntryValue | null) {
+async function uploadUpdatePhoto(storeId: string, file: FormDataEntryValue | null) {
   if (!(file instanceof File) || file.size === 0) {
     return { path: null, error: null };
   }
 
   const supabase = await createClient();
-  const path = [
-    "manager-updates",
-    storeCode.toLowerCase(),
-    getIndiaToday(),
-    `${Date.now()}-${slugFileName(file.name)}`,
-  ].join("/");
+  const path = await reserveSourceFile(storeId, "review-photos", "manager-updates", file.name);
   const { error } = await supabase.storage.from("review-photos").upload(path, file, {
     contentType: file.type || "application/octet-stream",
     upsert: false,
@@ -163,7 +150,7 @@ export async function createManagerUpdate(
   }
 
   const { path, error: photoError } = await uploadUpdatePhoto(
-    access.store.code,
+    access.store.id,
     formData.get("photo"),
   );
 
@@ -253,7 +240,7 @@ export async function updateManagerUpdate(
   const store = stores.find((item) => item.id === storeId);
 
   if (store) {
-    const { path, error: photoError } = await uploadUpdatePhoto(store.code, formData.get("photo"));
+    const { path, error: photoError } = await uploadUpdatePhoto(store.id, formData.get("photo"));
 
     if (photoError) {
       return { ok: false, message: photoError.message };
