@@ -26,3 +26,12 @@ reset role;update report_import_chunks set rows=jsonb_set(rows,'{953,quantity}',
 select commit_report_import(:'id')->>'ok';select count(*) from stock_rows where report_id in(select id from reports where import_id=:'id');rollback;`);
 assert.deepEqual(r.split('\n'),['false','0','0','failed','true','24954']);
 });
+
+test('Complete stock analytics uses active versions without serializing large recovery summaries per row',()=>{
+const r=sql(`${setup(24954)}select commit_report_import(:'id')->>'ok';
+reset role;update reports set summary=jsonb_build_object('recovery_evidence',repeat('retained source metadata ',10000)) where import_id=:'id';set local role authenticated;
+select analytics_data(array[(select id from stores where code='GP')],null,null,array['2099-11-01'::date])->>'stock_row_count';
+reset role;update reports set is_current=false where import_id=:'id';set local role authenticated;
+select analytics_data(array[(select id from stores where code='GP')],null,null,array['2099-11-01'::date])->>'stock_row_count';rollback;`);
+assert.deepEqual(r.split('\n'),['true','24954','0']);
+});
