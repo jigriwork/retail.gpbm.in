@@ -29,3 +29,11 @@ test('H03/H01 cross-store and anonymous HTTP RPC requests are denied',async()=>{
  assert.equal((await api('rpc/analytics_data',1,options)).status,400);
  const anonymous=await api('rpc/analytics_data',null,options);assert.ok([401,403].includes(anonymous.status));
 });
+
+test('Native JSON analytics response preserves all 1001 unique groups through real PostgREST',async()=>{
+ try{
+  sql(`insert into sales_rows(report_id,store_id,sale_date,item_name,quantity,net_sale) select '${ids[0]}','${gp}','2026-05-01','Item '||i,1,2.5 from generate_series(1,1001)i;`);
+  const result=await api('rpc/analytics_data',0,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({p_store_ids:[gp],p_start:'2026-05-01',p_end:'2026-05-01',p_months:[]})});
+  assert.equal(result.status,200);assert.equal(typeof result.data,'object');assert.equal(result.data.sales.length,1001);assert.equal(result.data.sales_row_count,1001);assert.equal(result.data.net_sale,2502.5);
+ }finally{sql(`delete from sales_rows where report_id='${ids[0]}'`);}
+});
