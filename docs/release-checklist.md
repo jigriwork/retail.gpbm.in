@@ -44,3 +44,15 @@ The eighth migration adds upload intents, strict scoped upload authorization and
 Stop at the first failed gate and keep writes fenced. New migration DDL is transactional; deliberate failure leaves no partial objects in the rehearsal. Do not drop new tables, delete files or roll back historical data to remove a failed attempt. After a successful schema application, prefer a forward correction. If reverting application code is necessary, keep it behind maintenance because old readers/writers are not compatible with all versioning and privilege changes. Restore only reviewed temporary containment grants; do not reinstate broad pre-security permissions. Backup restoration is a separate approved recovery action, not an automatic rollback command.
 
 No production database, Storage, Auth, GitHub or Vercel changes were performed in this task. The next action is review of the local candidate and remaining operational gates, not automatic release.
+
+## Stock finalization correction (after the permission-probe correction)
+
+The approved narrow stock correction adds **migration 10**, after all nine entries already deployed:
+
+`20260910130000_bounded_report_finalization.sql`
+
+It replaces only `commit_report_import(uuid)`. It preserves the signature, grants, authorization, import/store locks, duplicate checks, source existence checks, row/date validation, audit writes and atomic version publication. It bounds temporary JSON to the existing 1,000-row chunks instead of aggregating an entire workbook. It does not alter tables, historical rows, Storage, upload sizes or role/platform timeouts.
+
+Required before deployment: full regression suite; both genuine stock workbooks and forced-last-chunk failure/retry on a fresh verified-backup restore; all 82 spreadsheet replays; typecheck/lint/build/audit/credential scans; compare pre/post-migration fingerprints. Apply this migration transactionally and record its version only after success. Stop on error. Push and deploy the reviewed application commit with elapsed processing feedback and sanitized RPC timing diagnostics, then repeat GP/BM hosted uploads, exact totals, analytics, downloads and duplicates. Clean up only exact test identities and compare historical fingerprints and all 305 original file hashes.
+
+Rollback: no data rollback or Storage deletion is needed. If a correction is required, use another reviewed forward migration. Restoring the previous function would reintroduce the stock timeout and is not a safe operational remedy. Existing published reports and original files must remain intact.

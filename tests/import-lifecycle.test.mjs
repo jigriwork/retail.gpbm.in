@@ -46,3 +46,15 @@ test('H02 retry refuses a different object at the reserved original path',async(
  assert.equal((await action(input())).ok,false);
  assert.equal(f.db.reports.length,0);
 });
+
+test('Stock RPC diagnostics identify timeout phase without exposing database details or uploaded values',async()=>{
+ const events=[];
+ const f=fixture({role:'owner',globals:{console:{info:(...args)=>events.push(args),error:(...args)=>events.push(args)}}});
+ const rpc=f.client.rpc;
+ f.client.rpc=async(name,args)=>name==='commit_report_import'?{data:null,error:{code:'57014',message:'private workbook value',details:'sensitive credential'}}:rpc(name,args);
+ const result=await f.load('@/lib/reports/import-lifecycle').importReportFile(input());
+ assert.equal(result.ok,false);
+ assert.equal(events[0][0],'report_import_failed');assert.equal(events[0][1].phase,'commit');assert.equal(events[0][1].code,'57014');
+ assert.equal(JSON.stringify(events).includes('private workbook'),false);assert.equal(JSON.stringify(events).includes('sensitive credential'),false);
+ assert.equal(f.db.reports.length,0);
+});

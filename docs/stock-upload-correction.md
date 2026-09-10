@@ -1,0 +1,13 @@
+# Stock upload finalization correction
+
+The genuine 24,954-row GP workbook reached private Storage and staged all 25 chunks. Supabase logged `57014: canceling statement due to statement timeout` in `commit_report_import(uuid)`; its REST endpoint returned HTTP 500. The authenticated database role has an eight-second statement timeout. The Vercel action handled the failure without publishing partial rows. This was a database finalization failure, not an upload-body limit or parser rejection.
+
+A read-only production EXPLAIN ANALYZE measured the old ordered JSON aggregation at 4.464 seconds, with an external merge sort using 25,768 KiB of disk and 6,450 temporary blocks written. The lifecycle then repeatedly processed that workbook-sized JSON. The new function validates chunks directly and inserts at most 1,000 rows at a time inside the same transaction. It avoids the large aggregation while preserving complete rollback and atomic report/version publication. No statement timeout or supported workbook limit is increased.
+
+A fresh restore of the verified production archive preserved all 54 historical table fingerprints through the ten migrations. Genuine GP and BM fixtures produced 24,954 and 13,175 rows respectively, with quantities 58,020 and 19,623 and MRP stock values 86,235,759.81 and 36,082,343. Duplicate commits returned the existing result. Database regression tests enforce the unchanged eight-second limit and force an invalid final chunk to prove no partial report or rows survive before safe retry.
+
+The upload form shows indeterminate processing progress and elapsed seconds after transfer, and prevents input changes while processing. Server-only diagnostics record the import ID, phase, SQLSTATE, row count, duration and sampled RSS; arbitrary database messages and uploaded values are excluded. Sampled RSS is not a per-request peak-memory measurement.
+
+Production acceptance and exact-ID cleanup evidence are kept in the private operator release directory outside Git. See the release checklist for migration order and safety checks. Do not claim hosted acceptance from local timings alone.
+
+Pre-deployment validation: 242 tests passed (all existing 238 plus three database regressions and one diagnostics regression). All 82 genuine spreadsheets replayed with zero unexplained differences: 81 exact results and one previously documented CRLF-only normalization. Typecheck, lint, production build, npm audit (zero vulnerabilities), browser credential scan and isolated worker artifact check passed. Both genuine workbooks also passed forced-final-chunk failure and retry in the fresh backup restore, with no partial report or stock rows surviving the failed call.

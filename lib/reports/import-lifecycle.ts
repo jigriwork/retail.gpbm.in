@@ -29,16 +29,31 @@ export async function importReportFile(input: {
   if (error || !data) return { ok: false, message: "Import could not start. Check access and retry." };
   const run = data as unknown as { id: string; file_path: string; status: string; result: ImportResult };
   if (run.status === "processed") return run.result;
+  let phase = "bind";
+  const started = Date.now();
+  let phaseStarted = started;
+  let stagedMs = 0;
+  let failureCode = "unknown";
   try {
     await bindUpload(input.file, run.id);
+    phase = "stage"; phaseStarted = Date.now();
     for (let offset = 0; offset < input.rows.length; offset += 1000) {
       const staged = await client.rpc("stage_report_chunk", { p_import: run.id, p_chunk: offset / 1000, p_rows: input.rows.slice(offset, offset + 1000) as Json });
-      if (staged.error) throw new Error("Staging failed");
+      if (staged.error) { failureCode = staged.error.code; throw new Error("Staging failed"); }
     }
+    stagedMs = Date.now() - phaseStarted;
+    phase = "commit"; phaseStarted = Date.now();
     const committed = await client.rpc("commit_report_import", { p_import: run.id });
-    if (committed.error || !committed.data) throw new Error("Commit response unavailable");
+    if (committed.error || !committed.data) { failureCode = committed.error?.code ?? "no_response"; throw new Error("Commit response unavailable"); }
+    console.info("report_import_completed", { importId: run.id, type: input.type, rows: input.rows.length,
+      ok: (committed.data as unknown as ImportResult).ok, stagedMs: Math.round(stagedMs), commitMs: Math.round(Date.now() - phaseStarted),
+      elapsedMs: Math.round(Date.now() - started), rssMiB: Math.round(process.memoryUsage().rss / 1048576) });
     return committed.data as unknown as ImportResult;
   } catch {
+    // Codes and timings only: database messages/details can contain uploaded data.
+    console.error("report_import_failed", { importId: run.id, type: input.type, phase,
+      code: /^[A-Za-z0-9_]{1,24}$/.test(failureCode) ? failureCode : "unknown",
+      rows: input.rows.length, phaseMs: Math.round(Date.now() - phaseStarted), elapsedMs: Math.round(Date.now() - started) });
     // Never mark a successful commit failed after losing its HTTP response.
     // The RPC only marks non-processed imports failed. Replaying returns result.
     await client.rpc("fail_report_import", { p_import: run.id });
