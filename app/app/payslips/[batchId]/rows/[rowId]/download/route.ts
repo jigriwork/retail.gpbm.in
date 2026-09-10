@@ -42,15 +42,7 @@ export async function GET(
     return new Response("Payslip PDF not found", { status: 404 });
   }
 
-  const { data, error } = await supabase.storage.from("payslips").download(generated.pdf_file_path);
-  if (error || !data) {
-    return new Response(error?.message ?? "Payslip PDF not found", { status: 404 });
-  }
-
-  return new Response(data, {
-    headers: {
-      "Content-Disposition": `attachment; filename="${generated.pdf_file_name ?? "payslip.pdf"}"`,
-      "Content-Type": "application/pdf",
-    },
-  });
+  const { data, error } = await supabase.storage.from("payslips").createSignedUrl(generated.pdf_file_path, 60, { download: generated.pdf_file_name ?? "payslip.pdf" });
+  if (error || !data) return new Response("Payslip download unavailable", { status: 404 });
+  return Response.redirect(data.signedUrl, 303);
 }

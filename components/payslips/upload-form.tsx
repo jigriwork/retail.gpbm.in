@@ -1,4 +1,5 @@
 "use client";
+import { DirectUploadForm } from "@/components/uploads/direct-upload-form";
 
 import Link from "next/link";
 import { useActionState } from "react";
@@ -20,7 +21,7 @@ export function PayslipUploadForm({
 }) {
   const [state, submit, pending] = useActionState(action, { ok: false, message: "" });
   return (
-    <form action={submit} className="space-y-4">
+    <DirectUploadForm result={state} processing={pending} kind={"payroll"} action={submit} className="space-y-4">
       {state.importId ? <section className="space-y-3">
         <input type="hidden" name="importId" value={state.importId} />
         <input type="hidden" name="token" value={state.token ?? ""} />
@@ -93,6 +94,6 @@ export function PayslipUploadForm({
         <UploadCloud className="size-4" />
         {pending ? "Processing…" : state.importId ? "Confirm payroll version" : "Upload and review"}
       </Button>
-    </form>
+    </DirectUploadForm>
   );
 }

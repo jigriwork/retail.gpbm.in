@@ -1,3 +1,4 @@
+export const maxDuration = 300;
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/app/access-denied";

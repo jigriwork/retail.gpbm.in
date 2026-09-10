@@ -1,4 +1,5 @@
 import "server-only";
+import { bindUpload } from "@/lib/uploads/server";
 import { createHash } from "node:crypto";
 import { requireProfile, canAccessStore } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -29,16 +30,7 @@ export async function importReportFile(input: {
   const run = data as unknown as { id: string; file_path: string; status: string; result: ImportResult };
   if (run.status === "processed") return run.result;
   try {
-    const upload = await client.storage.from("reports").upload(run.file_path, input.file, { upsert: false, contentType: input.file.type || "application/octet-stream" });
-    // The fingerprint maps retries to the same reserved immutable path. A
-    // duplicate object is expected after an interrupted upload/commit response.
-    if (upload.error) {
-      if (!["400", "409"].includes(String(upload.error.statusCode))) throw new Error("Upload failed");
-      const original = await client.storage.from("reports").download(run.file_path);
-      if (original.error || !original.data) throw new Error("Original upload unavailable");
-      const hash = (bytes: ArrayBuffer) => createHash("sha256").update(new Uint8Array(bytes)).digest("hex");
-      if (hash(await original.data.arrayBuffer()) !== hash(await input.file.arrayBuffer())) throw new Error("Original upload differs");
-    }
+    await bindUpload(input.file, run.id);
     for (let offset = 0; offset < input.rows.length; offset += 1000) {
       const staged = await client.rpc("stage_report_chunk", { p_import: run.id, p_chunk: offset / 1000, p_rows: input.rows.slice(offset, offset + 1000) as Json });
       if (staged.error) throw new Error("Staging failed");

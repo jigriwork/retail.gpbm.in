@@ -1,4 +1,5 @@
 "use client";
+import { DirectUploadForm } from "@/components/uploads/direct-upload-form";
 
 import { useActionState } from "react";
 import { Camera, Loader2, Send } from "lucide-react";
@@ -35,7 +36,7 @@ export function ManagerUpdateForm({
   const creating = mode === "create";
 
   return (
-    <form action={formAction} className="space-y-5">
+    <DirectUploadForm result={state} processing={pending} kind={"manager-updates"} action={formAction} className="space-y-5">
       {update ? <input name="updateId" type="hidden" value={update.id} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -181,7 +182,7 @@ export function ManagerUpdateForm({
           Optional photo
         </span>
         <input
-          accept="image/*"
+          accept=".jpg,.jpeg,.png,.webp"
           className="block w-full text-sm text-muted file:mr-4 file:h-10 file:rounded-xl file:border-0 file:bg-foreground file:px-4 file:text-sm file:font-semibold file:text-background"
           name="photo"
           type="file"
@@ -203,6 +204,6 @@ export function ManagerUpdateForm({
         {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
         {creating ? "Add store update" : "Save update"}
       </Button>
-    </form>
+    </DirectUploadForm>
   );
 }

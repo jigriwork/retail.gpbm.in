@@ -9,6 +9,123 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      upload_intents: {
+        Row: {
+          id: string
+          actor_id: string
+          store_id: string
+          kind: string
+          bucket: string
+          file_path: string
+          file_name: string
+          mime_type: string
+          byte_size: number
+          fingerprint: string
+          status: string
+          expires_at: string
+          created_at: string
+          lease_id: string | null
+          lease_until: string | null
+          verified_at: string | null
+          request_hash: string | null
+          report_import_id: string | null
+          payroll_import_id: string | null
+          result: Json | null
+          failure_message: string | null
+        }
+        Insert: {
+          id?: string
+          actor_id: string
+          store_id: string
+          kind: string
+          bucket: string
+          file_path: string
+          file_name: string
+          mime_type: string
+          byte_size: number
+          fingerprint: string
+          status?: string
+          expires_at?: string
+          created_at?: string
+          lease_id?: string | null
+          lease_until?: string | null
+          verified_at?: string | null
+          request_hash?: string | null
+          report_import_id?: string | null
+          payroll_import_id?: string | null
+          result?: Json | null
+          failure_message?: string | null
+        }
+        Update: {
+          id?: string
+          actor_id?: string
+          store_id?: string
+          kind?: string
+          bucket?: string
+          file_path?: string
+          file_name?: string
+          mime_type?: string
+          byte_size?: number
+          fingerprint?: string
+          status?: string
+          expires_at?: string
+          created_at?: string
+          lease_id?: string | null
+          lease_until?: string | null
+          verified_at?: string | null
+          request_hash?: string | null
+          report_import_id?: string | null
+          payroll_import_id?: string | null
+          result?: Json | null
+          failure_message?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "upload_intents_actor_id_fkey",
+            "columns": [
+              "actor_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "upload_intents_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "upload_intents_report_import_id_fkey",
+            "columns": [
+              "report_import_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "report_imports",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "upload_intents_payroll_import_id_fkey",
+            "columns": [
+              "payroll_import_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "payroll_imports",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
       payslip_delivery_events: {
         Row: {
           id: string
@@ -2080,6 +2197,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finish_upload_intent: { Args: { p_id: string; p_lease: string; p_ok: boolean; p_result: Json }; Returns: Json }
+      bind_upload_import: { Args: { p_id: string; p_lease: string; p_run: string; p_payroll: boolean }; Returns: Json }
+      verify_upload_intent: { Args: { p_id: string; p_lease: string; p_hash: string }; Returns: Json }
+      claim_upload_intent: { Args: { p_id: string; p_actor: string; p_kind: string; p_request_hash: string }; Returns: Json }
+      start_upload_intent: { Args: { p_id: string }; Returns: Json }
+      create_upload_intent: { Args: { p_store: string; p_kind: string; p_name: string; p_mime: string; p_size: number; p_hash: string }; Returns: Json }
       record_payroll_receivable: { Args: { p_id: string; p_action: string; p_amount?: number; p_note?: string }; Returns: Json }
       payroll_comparison: { Args: { p_month: string; p_label: string; p_scope: string[] }; Returns: Json }
       sync_payroll_receivables: { Args: { p_batch?: string }; Returns: Json }

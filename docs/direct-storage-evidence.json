@@ -1,0 +1,147 @@
+{
+  "baselineCommit": "87aa688db1e75d41160bd6817bf5ce2db372619d",
+  "environment": "isolated loopback Supabase and local production Next build; no hosted mutation",
+  "tests": {
+    "original": 194,
+    "new": 42,
+    "totalPassed": 236
+  },
+  "browser": {
+    "requests": [
+      {
+        "path": "/app/reports/sales",
+        "bytes": 581,
+        "action": true
+      },
+      {
+        "path": "/app/reports/sales",
+        "bytes": 548,
+        "action": true
+      }
+    ],
+    "errors": [],
+    "largestRequestBytes": 581,
+    "completed": true,
+    "oneAuthorizationHeaderPerStorageRequest": true,
+    "elapsedSeconds": 3.271
+  },
+  "processing": [
+    {
+      "bytes": 1000000,
+      "rows": 219,
+      "parseSeconds": 0.518,
+      "peakProcessTreeMiB": 277.9
+    },
+    {
+      "bytes": 4500000,
+      "rows": 999,
+      "parseSeconds": 0.585,
+      "peakProcessTreeMiB": 328.9
+    },
+    {
+      "bytes": 6000000,
+      "rows": 1332,
+      "parseSeconds": 0.565,
+      "peakProcessTreeMiB": 349.9
+    },
+    {
+      "bytes": 15728640,
+      "rows": 3493,
+      "parseSeconds": 0.882,
+      "peakProcessTreeMiB": 484.9
+    }
+  ],
+  "realStorage": [
+    {
+      "bytes": 1000000,
+      "payloadBytes": 394,
+      "uploadSeconds": 0.089,
+      "processingSeconds": 0.56,
+      "interruptedAndResumed": false
+    },
+    {
+      "bytes": 4500000,
+      "payloadBytes": 411,
+      "uploadSeconds": 0.13,
+      "processingSeconds": 0.984,
+      "interruptedAndResumed": false
+    },
+    {
+      "bytes": 6000000,
+      "payloadBytes": 411,
+      "uploadSeconds": 0.123,
+      "processingSeconds": 1.113,
+      "interruptedAndResumed": false
+    },
+    {
+      "bytes": 15728640,
+      "payloadBytes": 411,
+      "uploadSeconds": 0.411,
+      "processingSeconds": 2.234,
+      "interruptedAndResumed": true
+    }
+  ],
+  "audit": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "reconciliation": {
+    "files": 82,
+    "exact": 81,
+    "explainedCRLFOnly": 1,
+    "unexplained": 0,
+    "salesRows": 23209,
+    "stockRows": 38129,
+    "payrollRows": 283
+  },
+  "migrationRehearsal": {
+    "source": "actual production archive",
+    "postgres": "17",
+    "historicalTablesCompared": 54,
+    "historicalDataUnchanged": true,
+    "migrations": [
+      {
+        "migration": "20260611203000_add_business_reporting_indexes.sql",
+        "seconds": 0.488
+      },
+      {
+        "migration": "20260909100000_active_membership_storage_scope.sql",
+        "seconds": 0.126
+      },
+      {
+        "migration": "20260909101000_complete_analytics.sql",
+        "seconds": 0.064
+      },
+      {
+        "migration": "20260909102000_atomic_report_versions.sql",
+        "seconds": 0.066
+      },
+      {
+        "migration": "20260909103000_transactional_report_repair.sql",
+        "seconds": 0.051
+      },
+      {
+        "migration": "20260909110000_immutable_payslip_versions.sql",
+        "seconds": 0.072
+      },
+      {
+        "migration": "20260909111000_atomic_payroll_imports.sql",
+        "seconds": 0.047
+      },
+      {
+        "migration": "20260910100000_direct_upload_intents.sql",
+        "seconds": 0.046
+      }
+    ],
+    "failedTransactionRolledBack": true,
+    "containmentRollbackPassed": true
+  },
+  "backup": {
+    "artifactsVerified": 391,
+    "manifestSHA256": "da318a7f630c456bc454a6ba8a78aa6fb61fbc8b33f92230ce5fc639e09843ed"
+  }
+}

@@ -1,6 +1,5 @@
 "use server";
-
-import { reserveSourceFile } from "@/lib/reports/source-files";
+import { withDirectUpload, verifiedSource } from "@/lib/uploads/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -32,7 +31,6 @@ function safeStatus(value: string) {
 function safeUrgency(value: string) {
   return updateUrgencies.some((urgency) => urgency === value) ? value : "normal";
 }
-
 
 async function validateStoreAccess(storeId: string) {
   const { profile } = await requireProfile();
@@ -100,14 +98,10 @@ async function uploadUpdatePhoto(storeId: string, file: FormDataEntryValue | nul
     return { path: null, error: null };
   }
 
-  const supabase = await createClient();
-  const path = await reserveSourceFile(storeId, "review-photos", "manager-updates", file.name);
-  const { error } = await supabase.storage.from("review-photos").upload(path, file, {
-    contentType: file.type || "application/octet-stream",
-    upsert: false,
-  });
+  const source = verifiedSource(file);
+  if (source.store_id !== storeId || source.bucket !== "review-photos") throw new Error("Photo store mismatch.");
+  return { path: source.file_path, error: null };
 
-  return { path, error };
 }
 
 function dueDateFromForm(value: string) {
@@ -130,6 +124,7 @@ export async function createManagerUpdate(
   _previous: UpdateActionState,
   formData: FormData,
 ): Promise<UpdateActionState> {
+  return withDirectUpload(formData, "manager-updates", async (formData) => {
   const title = readString(formData, "title");
   const storeId = readString(formData, "storeId");
   const category = readString(formData, "category");
@@ -155,7 +150,7 @@ export async function createManagerUpdate(
   );
 
   if (photoError) {
-    return { ok: false, message: photoError.message };
+    return { ok: false, message: "Photo could not be verified." };
   }
 
   const supabase = await createClient();
@@ -214,12 +209,14 @@ export async function createManagerUpdate(
   revalidatePath("/app/today");
   revalidatePath(`/app/stores/${storeId}`);
   redirect(`/app/updates/${update.id}`);
+  });
 }
 
 export async function updateManagerUpdate(
   _previous: UpdateActionState,
   formData: FormData,
 ): Promise<UpdateActionState> {
+ return withDirectUpload(formData,"manager-updates",async(formData)=>{
   const updateId = readString(formData, "updateId");
   const access = await canAccessUpdate(updateId);
 
@@ -243,7 +240,7 @@ export async function updateManagerUpdate(
     const { path, error: photoError } = await uploadUpdatePhoto(store.id, formData.get("photo"));
 
     if (photoError) {
-      return { ok: false, message: photoError.message };
+      return { ok: false, message: "Photo could not be verified." };
     }
 
     if (path) {
@@ -268,6 +265,7 @@ export async function updateManagerUpdate(
   }
   revalidatePath("/app/today");
   return { ok: true, message: "Update saved." };
+  });
 }
 
 export async function setManagerUpdateStatus(

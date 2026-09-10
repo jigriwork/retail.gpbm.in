@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
+export const maxDuration = 300;
 import { buildPayslipZip } from "@/lib/payslips/zip";
 import { completeQuery } from "@/lib/supabase/complete-query";
 
-import { formatMonth, salaryMonthFilePart } from "@/lib/payslips/utils";
+import { salaryMonthFilePart } from "@/lib/payslips/utils";
 import { createClient } from "@/lib/supabase/server";
 
 async function isOwner() {
@@ -48,15 +50,11 @@ export async function GET(
 
   const result = await buildPayslipZip(generated, (path, signal) => supabase.storage.from("payslips").download(path, {}, { signal }));
   if (!result.ok) return Response.json({ message: "ZIP not created: some PDFs failed to download. No files were silently omitted.", failedPdfIds: result.failures }, { status: 502 });
-  const bytes = result.bytes;
-  const body = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   const fileName = `Payslips_${salaryMonthFilePart(batch.salary_month)}.zip`;
-
-  return new Response(body, {
-    headers: {
-      "Content-Disposition": `attachment; filename="${fileName}"`,
-      "Content-Type": "application/zip",
-      "X-Payslip-Month": formatMonth(batch.salary_month),
-    },
-  });
+  const objectPath = `exports/${batchId}/${randomUUID()}.zip`;
+  const upload = await supabase.storage.from("payslips").upload(objectPath, result.bytes, { upsert: false, contentType: "application/zip" });
+  if (upload.error) return Response.json({ message: "ZIP could not be saved. Retry; PDFs remain intact." }, { status: 502 });
+  const signed = await supabase.storage.from("payslips").createSignedUrl(objectPath, 60, { download: fileName });
+  if (signed.error || !signed.data) return Response.json({ message: "ZIP saved but download authorization failed. Retry." }, { status: 502 });
+  return Response.redirect(signed.data.signedUrl, 303);
 }

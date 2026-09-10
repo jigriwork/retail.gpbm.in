@@ -1,4 +1,5 @@
 "use client";
+import { DirectUploadForm } from "@/components/uploads/direct-upload-form";
 
 import { useActionState } from "react";
 import { AlertTriangle, Loader2, RefreshCw, Trash2, UploadCloud } from "lucide-react";
@@ -101,7 +102,7 @@ export function ReplaceSalesReportForm({
   const phrase = `REPLACE SALES ${report.report_date ?? "NO-DATE"}`;
 
   return (
-    <form action={formAction} className="space-y-2 rounded-2xl border border-border p-3">
+    <DirectUploadForm result={state} processing={pending} kind={"sales-replacement"} action={formAction} className="space-y-2 rounded-2xl border border-border p-3">
       <input name="reportId" type="hidden" value={report.id} />
       <p className="flex items-center gap-2 text-sm font-semibold">
         <RefreshCw className="size-4" />
@@ -127,7 +128,7 @@ export function ReplaceSalesReportForm({
         Replace Report
       </Button>
       <ActionResult state={state} />
-    </form>
+    </DirectUploadForm>
   );
 }
 
@@ -151,7 +152,7 @@ export function BulkSalesUploadForm({
   ];
 
   return (
-    <form action={formAction} className="space-y-4">
+    <DirectUploadForm result={state} processing={pending} kind={"sales-bulk"} action={formAction} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Store</span>
@@ -257,6 +258,6 @@ export function BulkSalesUploadForm({
         Preview / Import Historical Sales
       </Button>
       <ActionResult state={state} />
-    </form>
+    </DirectUploadForm>
   );
 }

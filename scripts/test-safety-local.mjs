@@ -29,7 +29,8 @@ try{
  if(!ready)throw new Error('Local PostgREST did not start.');
  run(process.execPath,['--test','tests/postgrest-safety.test.mjs']);
  run(process.execPath,['--test','tests/payroll-database.test.mjs']);
- run(process.execPath,['--test','tests/security-recovery.test.mjs','tests/analytics-safety.test.mjs','tests/import-lifecycle.test.mjs','tests/spreadsheet-security.test.mjs','tests/payroll-workflows.test.mjs']);
+ run(process.execPath,['--test','tests/direct-upload-database.test.mjs']);
+ run(process.execPath,['--test','tests/security-recovery.test.mjs','tests/analytics-safety.test.mjs','tests/import-lifecycle.test.mjs','tests/spreadsheet-security.test.mjs','tests/payroll-workflows.test.mjs','tests/direct-upload.test.mjs']);
 }finally{
  if(rest && rest.exitCode===null){rest.kill('SIGTERM');await new Promise(resolve=>rest.once('exit',resolve));}
  if(started)run('pg_ctl',['-D',data,'-m','fast','-w','stop']);

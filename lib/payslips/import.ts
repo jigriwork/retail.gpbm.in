@@ -1,3 +1,4 @@
+import { withDirectUpload, bindUpload } from "@/lib/uploads/server";
 import "server-only";
 import { createHash } from "node:crypto";
 import { getAccessibleStores, requireOwner } from "@/lib/auth/session";
@@ -12,6 +13,7 @@ type Run = { id: string; status: string; batch_id?: string; file_path: string; c
 const hash = (bytes: ArrayBuffer) => createHash("sha256").update(new Uint8Array(bytes)).digest("hex");
 
 export async function processPayrollUpload(form: FormData): Promise<PayrollUploadState> {
+  return withDirectUpload(form, "payroll", async (form) => {
   if (!(await requireOwner())) return { ok: false, message: "Only the owner can import payroll." };
   const client = await createClient();
   const id = String(form.get("importId") ?? "");
@@ -53,11 +55,7 @@ export async function processPayrollUpload(form: FormData): Promise<PayrollUploa
     if (error || !data) throw new Error("Preparation unavailable");
     const run = data as unknown as Run;
     if (run.status === "processed") return { ok: true, message: "Identical workbook already imported.", batchId: run.batch_id };
-    const uploaded = await client.storage.from("payslips").upload(run.file_path, file, { upsert: false, contentType: file.type || "application/octet-stream" });
-    if (uploaded.error) {
-      const existing = await client.storage.from("payslips").download(run.file_path);
-      if (existing.error || !existing.data || hash(await existing.data.arrayBuffer()) !== hash(buffer)) throw new Error("Source upload failed");
-    }
+    await bindUpload(file, run.id, true);
     if (run.comparison.length) return { ok: false, message: "Review existing payroll and confirm a new version. Legacy batches will remain separate.",
       importId: run.id, token: run.comparison_token, comparison: run.comparison, proposedRows: run.proposed_rows, proposedTotal: run.proposed_total };
     const finalized = await client.rpc("commit_payroll_import", { p_import: run.id });
@@ -67,4 +65,5 @@ export async function processPayrollUpload(form: FormData): Promise<PayrollUploa
   } catch {
     return { ok: false, message: "Payroll import could not complete. Check file format, limits and store mapping, then retry the same workbook. No partial batch is published." };
   }
+  });
 }

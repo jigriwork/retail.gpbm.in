@@ -1,3 +1,4 @@
+export const maxDuration = 300;
 import Link from "next/link";
 
 import { ManagerUpdateForm } from "@/components/updates/update-form";

@@ -4,9 +4,9 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["xlsx", "jszip"],
   outputFileTracingIncludes: { "/*": ["./lib/spreadsheets/worker.cjs", "./node_modules/xlsx/**/*", "./node_modules/jszip/**/*"] },
   experimental: {
-    proxyClientMaxBodySize: "16mb",
+    proxyClientMaxBodySize: "128kb",
     serverActions: {
-      bodySizeLimit: "16mb",
+      bodySizeLimit: "128kb",
     },
   },
 };

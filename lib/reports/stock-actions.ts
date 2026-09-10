@@ -1,4 +1,5 @@
 "use server";
+import { withDirectUpload } from "@/lib/uploads/server";
 
 import { importReportFile } from "@/lib/reports/import-lifecycle";
 import { revalidatePath } from "next/cache";
@@ -41,7 +42,6 @@ function fileExtension(fileName: string) {
   const dotIndex = fileName.lastIndexOf(".");
   return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : "";
 }
-
 
 function monthInputToPeriodMonth(monthInput: string) {
   if (!/^\d{4}-\d{2}$/.test(monthInput)) {
@@ -107,11 +107,11 @@ function rowHasStockIdentity(row: ParsedStockRow) {
   return Boolean(row.itemName || row.sku || row.barcode || row.brand || row.category);
 }
 
-
 export async function uploadStockReport(
   _previous: StockUploadState,
   formData: FormData,
 ): Promise<StockUploadState> {
+  return withDirectUpload(formData, "stock", async (formData) => {
   const { profile } = await requireProfile();
 
   if (!profile || profile.is_active === false) {
@@ -149,7 +149,6 @@ export async function uploadStockReport(
   if (!store || store.is_active === false) {
     return { ok: false, message: "Choose an active Go Planet or Brand Mark store." };
   }
-
 
 
   const parseResult = await parseStockFileDetailed(file);
@@ -243,4 +242,5 @@ export async function uploadStockReport(
       topCategories: summary.topCategories,
     },
   };
+  });
 }

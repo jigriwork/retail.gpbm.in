@@ -1,4 +1,5 @@
 "use client";
+import { DirectUploadForm } from "@/components/uploads/direct-upload-form";
 
 import { useActionState } from "react";
 import { Camera, CheckCircle2, Loader2 } from "lucide-react";
@@ -79,7 +80,7 @@ export function ReviewForm({
   const brandMark = stores.find((store) => store.id === defaultStoreId)?.code === "BM";
 
   return (
-    <form action={formAction} className="space-y-5">
+    <DirectUploadForm result={state} processing={pending} kind={kind} action={formAction} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Store</span>
@@ -165,7 +166,7 @@ export function ReviewForm({
           Optional photo
         </span>
         <input
-          accept="image/*"
+          accept=".jpg,.jpeg,.png,.webp"
           className="block w-full text-sm text-muted file:mr-4 file:h-10 file:rounded-xl file:border-0 file:bg-foreground file:px-4 file:text-sm file:font-semibold file:text-background"
           name="photo"
           type="file"
@@ -187,6 +188,6 @@ export function ReviewForm({
         {pending ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
         {existingReview ? `Update ${title.toLowerCase()}` : `Submit ${title.toLowerCase()}`}
       </Button>
-    </form>
+    </DirectUploadForm>
   );
 }

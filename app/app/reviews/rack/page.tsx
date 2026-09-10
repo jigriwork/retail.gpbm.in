@@ -1,3 +1,4 @@
+export const maxDuration = 300;
 import Link from "next/link";
 
 import { ReviewForm } from "@/components/reviews/review-form";

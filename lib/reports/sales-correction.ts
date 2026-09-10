@@ -1,4 +1,5 @@
 "use server";
+import { withDirectUpload } from "@/lib/uploads/server";
 
 import { completeQuery } from "@/lib/supabase/complete-query";
 import { revalidatePath } from "next/cache";
@@ -62,7 +63,6 @@ function fileExtension(fileName: string) {
   return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : "";
 }
 
-
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
@@ -113,7 +113,6 @@ function uniqueDates(rows: ParsedSalesRow[]) {
 function uniqueStaffNames(rows: ParsedSalesRow[]) {
   return [...new Set(rows.map((row) => row.staffName?.trim()).filter((name): name is string => Boolean(name)))].sort();
 }
-
 
 function safeSummaryJson(
   summary: ReturnType<typeof summarizeSalesRows>,
@@ -414,6 +413,7 @@ export async function replaceSalesReport(
   _previous: CorrectionActionState,
   formData: FormData,
 ): Promise<CorrectionActionState> {
+  return withDirectUpload(formData, "sales-replacement", async (formData) => {
   const ownerResult = await getOwnerOrState();
   if (!ownerResult.ok) return ownerResult.state;
 
@@ -475,12 +475,14 @@ export async function replaceSalesReport(
   });
   revalidateSalesCorrectionPaths(store.id);
   return result;
+  });
 }
 
 export async function bulkHistoricalSalesUpload(
   _previous: CorrectionActionState,
   formData: FormData,
 ): Promise<CorrectionActionState> {
+  return withDirectUpload(formData, "sales-bulk", async (formData) => {
   const ownerResult = await getOwnerOrState();
   if (!ownerResult.ok) return ownerResult.state;
 
@@ -671,4 +673,5 @@ export async function bulkHistoricalSalesUpload(
   });
   revalidateSalesCorrectionPaths(store.id);
   return { ...result, summary: preview };
+  });
 }

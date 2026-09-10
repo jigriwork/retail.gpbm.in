@@ -1,3 +1,4 @@
+export const maxDuration = 300;
 import Link from "next/link";
 
 import { SalesReportList } from "@/components/reports/sales-report-list";

@@ -1,6 +1,5 @@
 "use server";
-
-import { reserveSourceFile } from "@/lib/reports/source-files";
+import { withDirectUpload, verifiedSource } from "@/lib/uploads/server";
 import { revalidatePath } from "next/cache";
 
 import { canAccessStore, getAccessibleStores, requireProfile } from "@/lib/auth/session";
@@ -27,7 +26,6 @@ function readNullableString(formData: FormData, key: string) {
 function readBoolean(formData: FormData, key: string) {
   return readString(formData, key) === "on";
 }
-
 
 async function validateReviewAccess(storeId: string) {
   const { profile } = await requireProfile();
@@ -74,20 +72,17 @@ async function uploadReviewPhoto(
     return { path: null, error: null };
   }
 
-  const supabase = await createClient();
-  const path = await reserveSourceFile(storeId, "review-photos", bucketFolder, file.name);
-  const { error } = await supabase.storage.from("review-photos").upload(path, file, {
-    contentType: file.type || "application/octet-stream",
-    upsert: false,
-  });
+  const source = verifiedSource(file);
+  if (source.store_id !== storeId || source.bucket !== "review-photos") throw new Error("Photo store mismatch.");
+  return { path: source.file_path, error: null };
 
-  return { path, error };
 }
 
 export async function saveRackReview(
   _previous: ReviewActionState,
   formData: FormData,
 ): Promise<ReviewActionState> {
+  return withDirectUpload(formData, "rack", async (formData) => {
   const storeId = readString(formData, "storeId");
   const reviewDate = readString(formData, "reviewDate") || getIndiaToday();
   const access = await validateReviewAccess(storeId);
@@ -104,7 +99,7 @@ export async function saveRackReview(
   );
 
   if (photoError) {
-    return { ok: false, message: photoError.message };
+    return { ok: false, message: "Photo could not be verified." };
   }
 
   const supabase = await createClient();
@@ -144,12 +139,14 @@ export async function saveRackReview(
   revalidatePath(`/app/stores/${storeId}`);
 
   return { ok: true, message: existing ? "Rack review updated." : "Rack review submitted." };
+  });
 }
 
 export async function saveCleaningReview(
   _previous: ReviewActionState,
   formData: FormData,
 ): Promise<ReviewActionState> {
+  return withDirectUpload(formData, "cleaning", async (formData) => {
   const storeId = readString(formData, "storeId");
   const reviewDate = readString(formData, "reviewDate") || getIndiaToday();
   const access = await validateReviewAccess(storeId);
@@ -166,7 +163,7 @@ export async function saveCleaningReview(
   );
 
   if (photoError) {
-    return { ok: false, message: photoError.message };
+    return { ok: false, message: "Photo could not be verified." };
   }
 
   const supabase = await createClient();
@@ -212,4 +209,5 @@ export async function saveCleaningReview(
     ok: true,
     message: existing ? "Cleaning review updated." : "Cleaning review submitted.",
   };
+  });
 }

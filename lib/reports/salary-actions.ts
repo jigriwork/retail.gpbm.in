@@ -1,4 +1,5 @@
 "use server";
+import { withDirectUpload } from "@/lib/uploads/server";
 
 import { readSpreadsheet, spreadsheetLimits } from "@/lib/spreadsheets/read";
 import { importReportFile } from "@/lib/reports/import-lifecycle";
@@ -31,7 +32,6 @@ function fileExtension(fileName: string) {
   return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : "";
 }
 
-
 function monthInputToPeriodMonth(monthInput: string) {
   if (!/^\d{4}-\d{2}$/.test(monthInput)) {
     return "";
@@ -44,6 +44,7 @@ export async function uploadSalaryAttendanceReport(
   _previous: SalaryAttendanceUploadState,
   formData: FormData,
 ): Promise<SalaryAttendanceUploadState> {
+  return withDirectUpload(formData, "salary-attendance", async (formData) => {
   const { profile } = await requireProfile();
 
   if (!profile || profile.is_active === false) {
@@ -122,4 +123,5 @@ export async function uploadSalaryAttendanceReport(
       fileName: file.name,
     },
   };
+  });
 }

@@ -1,4 +1,5 @@
 "use client";
+import { DirectUploadForm } from "@/components/uploads/direct-upload-form";
 
 import Link from "next/link";
 import { useActionState } from "react";
@@ -45,7 +46,7 @@ export function StockUploadForm({
 
   return (
     <div className="space-y-4">
-      <form action={formAction} className="space-y-4">
+      <DirectUploadForm result={state} processing={pending} kind={"stock"} action={formAction} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Store</span>
@@ -102,7 +103,7 @@ export function StockUploadForm({
           {pending ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
           Process stock report
         </Button>
-      </form>
+      </DirectUploadForm>
 
       {state.summary ? (
         <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">

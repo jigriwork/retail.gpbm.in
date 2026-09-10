@@ -11,7 +11,7 @@ const root = path.resolve(import.meta.dirname, "../..");
 const clone = value => JSON.parse(JSON.stringify(value));
 // In-memory Supabase contract, deliberately without RLS filtering: application
 // authorization must stand on its own. No real Supabase client or env is loaded.
-export function fixture({ role = "manager", active = true, assigned = ["gp"], anonymous = false, baseline = false, modules = {}, globals = {} } = {}) {
+export function fixture({ role = "manager", active = true, assigned = ["gp"], anonymous = false, baseline = false, directUploads = false, modules = {}, globals = {} } = {}) {
   const db = {
     profiles: [{ id: "actor", role, is_active: active }],
     stores: [{ id: "gp", code: "GP", name: "GP", is_active: true }, { id: "bm", code: "BM", name: "BM", is_active: true }],
@@ -27,7 +27,7 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
       { id: "b1", batch_id: "jan", store_id: "gp", staff_name: "Bob", employee_phone: "old" },
       { id: "a3", batch_id: "jan", store_id: "bm", staff_name: "Alice", employee_phone: "old" },
     ],
-    generated_payslips: [], reports: [], sales_rows: [], sales_upload_batches: [], audit_logs: [], report_imports: [], report_import_chunks: [], staff_name_aliases: [], rack_reviews: [], cleaning_reviews: [], manager_updates: [], tasks: [],
+    upload_intents: [], generated_payslips: [], reports: [], sales_rows: [], sales_upload_batches: [], audit_logs: [], report_imports: [], report_import_chunks: [], staff_name_aliases: [], rack_reviews: [], cleaning_reviews: [], manager_updates: [], tasks: [],
   };
   db.generated_payslips = db.payslip_rows.map(row => ({ ...row, id: `pdf-${row.id}`, payslip_row_id: row.id }));
   const files = new Map();
@@ -114,6 +114,18 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
     "@/lib/payslips/pdf": {},
     "@/lib/payslips/receivables": {},
   };
+  // Existing domain regression cases supply trusted in-memory Files. The new
+  // upload boundary has separate tests with directUploads:true (no bypass).
+  if (!directUploads) mocks["@/lib/uploads/server"] = {
+    withDirectUpload: async (form, _kind, execute) => execute(form),
+    verifiedSource: () => { throw Error("Provide an explicit verified photo fixture"); },
+    bindUpload: async (file, id) => {
+      const run = db.report_imports.find(r => r.id === id);
+      if (!run) return;
+      const result = await client.storage.from("reports").upload(run.file_path, file, { upsert: false });
+      if (result.error && (!files.has(run.file_path) || files.get(run.file_path) !== await file.text())) throw Error("Fixture source upload failed");
+    },
+  };
   function load(name) {
     if (name in modules) return modules[name];
     if (name in mocks) return mocks[name];
@@ -129,7 +141,7 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
     const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
     const loadedModule = { exports: {} };
     const run = vm.runInNewContext(`(function(require, module, exports) {${compiled}\n})`, {
-      File, FormData, URL, Buffer, Blob, AbortSignal, console, process, setTimeout, clearTimeout,
+      File, FormData, URL, Buffer, Blob, AbortSignal, TextEncoder, console, process, setTimeout, clearTimeout,
       fetch() { throw new Error("Network forbidden in regression tests"); },
       ...globals,
     }, { filename });

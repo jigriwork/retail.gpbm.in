@@ -1,4 +1,5 @@
 "use server";
+import { withDirectUpload } from "@/lib/uploads/server";
 
 import { completeQuery } from "@/lib/supabase/complete-query";
 import { importReportFile } from "@/lib/reports/import-lifecycle";
@@ -74,7 +75,6 @@ function fileExtension(fileName: string) {
   const dotIndex = fileName.lastIndexOf(".");
   return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : "";
 }
-
 
 function safeSummaryJson(
   summary: ReturnType<typeof summarizeSalesRows>,
@@ -238,11 +238,11 @@ async function getUnmatchedSalesStaffNames(storeId: string, staffNames: string[]
   return staffNames.filter((name) => !known.has(`${storeId}:${staffNameKey(name)}`));
 }
 
-
 export async function uploadSalesReport(
   _previous: SalesUploadState,
   formData: FormData,
 ): Promise<SalesUploadState> {
+  return withDirectUpload(formData, "sales", async (formData) => {
   const { profile } = await requireProfile();
 
   if (!profile || profile.is_active === false) {
@@ -310,7 +310,6 @@ export async function uploadSalesReport(
   }
 
   const finalReportDate = detectedDates[0] ?? reportDate;
-
 
   const rowsWithStoreColumn = parsedRows.filter((row) => row.storeName);
   const invalidStoreRows = rowsWithStoreColumn.filter((row) => !matchesStoreName(row.storeName, store));
@@ -401,6 +400,7 @@ export async function uploadSalesReport(
       topCategories: summary.topCategories,
     },
   };
+  });
 }
 
 export async function repairSalesReportTotals(
@@ -438,7 +438,6 @@ export async function repairSalesReportTotals(
     .from("sales_rows")
     .select("id,store_id,sale_date,bill_no,item_name,brand,category,staff_name,quantity,net_sale", { count: "exact" })
     .eq("report_id", reportId));
-
 
   const salesRows = rows ?? [];
   const footerRows = salesRows.filter(isFooterSalesRow);
