@@ -60,3 +60,8 @@ test('Another assigned user cannot consume an uploader photo intent',()=>{
 test('Expired lease and incorrect photo module cannot publish',()=>{
  for(const change of ["lease_until=now()-interval '1 second'","kind='cleaning'"])assert.throws(()=>sql(`begin;${photoReady}update upload_intents set ${change};${as(owner)}${photoInsert(owner)}rollback;`));
 });
+
+for(const metadata of ['{}','{"contentLength":100,"mimetype":"text/csv"}'])test(`Storage permission probe ${metadata} does not consume upload intent`,()=>{
+ sql(`begin;${as(manager)}${create}insert into storage.objects(bucket_id,name,metadata) values('reports',:'path','${metadata}');${check("(select status='created' from upload_intents limit 1)")}rollback;`);
+ assert.throws(()=>sql(`begin;${as(manager)}${create}insert into storage.objects(bucket_id,name,metadata) values('reports',:'path','${metadata}');reset role;select claim_upload_intent(:'id','${manager}','sales','probe');rollback;`));
+});

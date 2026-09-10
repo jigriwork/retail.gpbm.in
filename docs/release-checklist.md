@@ -1,6 +1,8 @@
-# Updated release checklist — eight pending migrations
+# Release checklist — original eight-migration bundle
 
-**HARD STOP: no production release is authorized by this document. NOT READY TO RELEASE.** The transport correction is implemented and verified locally; maintenance containment and hosted acceptance are still pending. This checklist supplements the frozen 9 September backup checklist without changing its checksummed artifacts. The old candidate hash/approval phrase does not approve this new candidate.
+**Status update, 10 September 2026:** The user subsequently authorized and released the exact candidate below. All eight migrations passed. Hosted smoke testing found a Storage permission-probe incompatibility; a ninth forward migration is prepared locally and requires approval. See [production release evidence](production-release-2026-09-10.md).
+
+**The remainder is the historical pre-release checklist.** The transport correction is implemented and verified locally; maintenance containment and hosted acceptance are still pending. This checklist supplements the frozen 9 September backup checklist without changing its checksummed artifacts. The old candidate hash/approval phrase does not approve this new candidate.
 
 Candidate: the commit containing `docs/direct-storage-uploads.md` on `fix/p0-security-recovery-safety`. Resolve its exact hash with `git log -1 --format=%H -- docs/direct-storage-uploads.md`. Baseline before this transport batch: `87aa688db1e75d41160bd6817bf5ce2db372619d`. Previous verified live application: `b88d8043b1ea8123a30d16cd61117057e03c8a61`; recheck for drift before any release.
 

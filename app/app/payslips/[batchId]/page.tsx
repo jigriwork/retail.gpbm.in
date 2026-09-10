@@ -173,6 +173,7 @@ export default async function PayslipBatchPage({
             <Link
               className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
               href={`/app/payslips/${batch.id}/zip`}
+              prefetch={false}
             >
               <Download className="size-4" />
               Download all ZIP
