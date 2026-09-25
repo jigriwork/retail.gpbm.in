@@ -2268,6 +2268,10 @@ export type Database = {
         Args: { p_import: string }
         Returns: Json
       }
+      commit_stock_report_import: {
+        Args: { p_import: string }
+        Returns: Json
+      }
       fail_report_import: {
         Args: { p_import: string }
         Returns: undefined

@@ -66,7 +66,7 @@ for (let offset = 0; offset < rows.length; offset += 1000) {
 }
 
 const commitStarted = Date.now();
-const result = JSON.parse(sql(`${asOwner}set statement_timeout='8s';select commit_report_import(${quote(run.id)});`));
+const result = JSON.parse(sql(`${asOwner}set statement_timeout='8s';select commit_stock_report_import(${quote(run.id)});`));
 const commitMs = Date.now() - commitStarted;
 assert.equal(result.ok, true);
 const reportId = result.report_ids[0];
@@ -78,7 +78,7 @@ assert.deepEqual(verification, [String(rows.length), String(rows.length), String
 
 const duplicate = JSON.parse(sql(`${asOwner}select begin_report_import(${quote(context.store)},'stock',${quote(fingerprint)},${quote(fileName)},${quote(JSON.stringify(manifest))}::jsonb,'stop',false);`));
 assert.equal(duplicate.id, run.id);
-const duplicateResult = JSON.parse(sql(`${asOwner}select commit_report_import(${quote(run.id)});`));
+const duplicateResult = JSON.parse(sql(`${asOwner}select commit_stock_report_import(${quote(run.id)});`));
 assert.deepEqual(duplicateResult.report_ids, result.report_ids);
 assert.equal(sql(`select count(*) from stock_rows where report_id=${quote(reportId)};`), String(rows.length));
 

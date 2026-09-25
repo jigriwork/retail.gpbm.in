@@ -18,6 +18,14 @@ select commit_report_import(:'id')->>'ok';
 select count(*) from reports where import_id=:'id';rollback;`);
 assert.deepEqual(r.split('\n'),['true',`${rows}|${rows*2}|${rows*200}`,'true','1']);
 });
+test('Stock-only finalization publishes directly from bounded chunks and is idempotent',()=>{
+ const r=sql(`${setup(24954)}select commit_stock_report_import(:'id')->>'ok';select count(*) from stock_rows where report_id in(select id from reports where import_id=:'id');select commit_stock_report_import(:'id')->>'ok';rollback;`);
+ assert.deepEqual(r.split('\n'),['true','24954','true']);
+});
+test('Stock-only finalization is not executable anonymously',()=>{
+ assert.equal(sql("select has_function_privilege('anon','public.commit_stock_report_import(uuid)','EXECUTE');"),'f');
+ assert.throws(()=>sql("set role anon;select commit_stock_report_import(gen_random_uuid());"));
+});
 test('Invalid final stock chunk rolls back every report, row, audit and version switch; retry remains possible',()=>{
 const r=sql(`${setup(24954,true)}select commit_report_import(:'id')->>'ok';
 select count(*) from reports where import_id=:'id';select count(*) from stock_rows where stock_month='2099-11-01';

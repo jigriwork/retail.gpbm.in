@@ -43,7 +43,9 @@ export async function importReportFile(input: {
     }
     stagedMs = Date.now() - phaseStarted;
     phase = "commit"; phaseStarted = Date.now();
-    const committed = await client.rpc("commit_report_import", { p_import: run.id });
+    const committed = input.type === "stock"
+      ? await client.rpc("commit_stock_report_import", { p_import: run.id })
+      : await client.rpc("commit_report_import", { p_import: run.id });
     if (committed.error || !committed.data) { failureCode = committed.error?.code ?? "no_response"; throw new Error("Commit response unavailable"); }
     console.info("report_import_completed", { importId: run.id, type: input.type, rows: input.rows.length,
       ok: (committed.data as unknown as ImportResult).ok, stagedMs: Math.round(stagedMs), commitMs: Math.round(Date.now() - phaseStarted),

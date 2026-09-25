@@ -3,6 +3,14 @@ import { test } from 'node:test';
 import { fixture } from './helpers/app-fixture.mjs';
 
 const input=()=>({file:new File(['original workbook bytes'],'sales.xlsx'),storeId:'gp',type:'sales',manifest:[{date:'2026-01-01',row_count:1,summary:{}}],rows:[{logical_date:'2026-01-01',net_sale:100}]});
+const stockInput=()=>({file:new File(['original workbook bytes'],'stock.xlsx'),storeId:'gp',type:'stock',manifest:[{date:'2026-01-01',row_count:1,summary:{}}],rows:[{logical_date:'2026-01-01',item_name:'Fixture',quantity:1}]});
+test('Stock imports use the bounded stock-only commit RPC',async()=>{
+ const f=fixture({role:'owner'});const rpc=f.client.rpc;const calls=[];
+ f.client.rpc=async(name,args)=>{calls.push(name);return rpc(name,args);};
+ assert.equal((await f.load('@/lib/reports/import-lifecycle').importReportFile(stockInput())).ok,true);
+ assert.equal(calls.includes('commit_stock_report_import'),true);
+ assert.equal(calls.includes('commit_report_import'),false);
+});
 test('H02 upload failure never publishes a report and preserves retry state',async()=>{
  const f=fixture({role:'owner'});f.failWhen((table,operation)=>table==='storage'&&operation==='upload');
  const result=await f.load('@/lib/reports/import-lifecycle').importReportFile(input());
