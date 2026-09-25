@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BarChart3, CircleAlert, LineChart, Target, Trophy } from "lucide-react";
 
 import { SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
+import { DataFreshnessBadge } from "@/components/app/data-freshness-badge";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import {
   calculateTargetProgress,
@@ -168,6 +169,8 @@ export default async function SalesAnalyticsPage({
           </button>
         </form>
       </section>
+
+      <DataFreshnessBadge freshness={summary.freshness} source="Sales" />
 
       {suspiciousWarnings.length ? (
         <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">

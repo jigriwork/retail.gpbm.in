@@ -5,6 +5,10 @@ import { addDays, getIndiaDayOfMonth, getIndiaMonthStart, getIndiaToday } from "
 import { staffNameKey } from "@/lib/employees/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { Store } from "@/lib/auth/session";
+import type { DataFreshness } from "@/lib/analytics/freshness";
+import { getAnalyticsQueryPath } from "@/lib/analytics/query-path";
+import { loadSalesSummaryV2, loadStaffSalesSummaryV2 } from "@/lib/analytics/phase1";
+import { measureDataOperation, recordShadowComparison } from "@/lib/observability/performance";
 
 export type SalesPeriod = "today" | "yesterday" | "week" | "month" | "last-month" | "custom";
 
@@ -67,6 +71,7 @@ export type SalesSummary = {
   topItems: RankedSale[];
   dailyTrend: DailySalePoint[];
   storeSummaries: StoreSalesSummary[];
+  freshness?: DataFreshness;
 };
 
 export type StaffSalesSummary = {
@@ -261,14 +266,13 @@ function mappedStaffName(row: SalesRowForAnalytics, aliases: Map<string, string>
   return key ? aliases.get(key) ?? row.staff_name : row.staff_name;
 }
 
-export async function getSalesSummary(
+async function getLegacySalesSummary(
   filters: SalesAnalyticsFilters,
   stores: Array<Pick<Store, "id" | "name" | "code" | "monthly_target_enabled" | "monthly_target">>,
 ): Promise<SalesSummary> {
-  const [rows, aliases] = await Promise.all([
-    getSalesRows(filters),
-    getSalesStaffAliasMap(filters),
-  ]);
+  const [rows, aliases] = await measureDataOperation("legacy.sales_summary", () => Promise.all([
+    getSalesRows(filters), getSalesStaffAliasMap(filters),
+  ]));
   const bills = new Set<string>();
   const staff = new Set<string>();
   const brands = new Set<string>();
@@ -362,6 +366,32 @@ export async function getSalesSummary(
   };
 }
 
+function sameSalesTotals(left: SalesSummary, right: SalesSummary) {
+  return left.totalNetSale === right.totalNetSale
+    && left.totalQuantity === right.totalQuantity
+    && left.billCount === right.billCount
+    && left.rowCount === right.rowCount;
+}
+
+export async function getSalesSummary(
+  filters: SalesAnalyticsFilters,
+  stores: Array<Pick<Store, "id" | "name" | "code" | "monthly_target_enabled" | "monthly_target">>,
+): Promise<SalesSummary> {
+  const path = getAnalyticsQueryPath();
+  if (path === "legacy") return getLegacySalesSummary(filters, stores);
+  if (path === "v2") {
+    const result = await loadSalesSummaryV2(filters.storeIds, filters.dateRange, stores);
+    return { ...result.summary, freshness: result.freshness };
+  }
+
+  const [legacy, candidate] = await Promise.all([
+    getLegacySalesSummary(filters, stores),
+    loadSalesSummaryV2(filters.storeIds, filters.dateRange, stores),
+  ]);
+  await recordShadowComparison("sales_summary", sameSalesTotals(legacy, candidate.summary));
+  return legacy;
+}
+
 export async function getStoreSalesSummary(
   filters: SalesAnalyticsFilters,
   stores: Array<Pick<Store, "id" | "name" | "code" | "monthly_target_enabled" | "monthly_target">>,
@@ -370,11 +400,10 @@ export async function getStoreSalesSummary(
   return summary.storeSummaries;
 }
 
-export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
-  const [rows, aliases] = await Promise.all([
-    getSalesRows(filters),
-    getSalesStaffAliasMap(filters),
-  ]);
+async function getLegacyStaffSalesSummary(filters: SalesAnalyticsFilters) {
+  const [rows, aliases] = await measureDataOperation("legacy.staff_sales_summary", () => Promise.all([
+    getSalesRows(filters), getSalesStaffAliasMap(filters),
+  ]));
   const staff = new Map<
     string,
     {
@@ -457,6 +486,25 @@ export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
       } satisfies StaffSalesSummary;
     })
     .sort((left, right) => right.totalSale - left.totalSale);
+}
+
+export async function getStaffSalesSummaryWithFreshness(filters: SalesAnalyticsFilters) {
+  const path = getAnalyticsQueryPath();
+  if (path === "legacy") return { staff: await getLegacyStaffSalesSummary(filters), freshness: null };
+  if (path === "v2") return loadStaffSalesSummaryV2(filters.storeIds, filters.dateRange);
+
+  const [legacy, candidate] = await Promise.all([
+    getLegacyStaffSalesSummary(filters),
+    loadStaffSalesSummaryV2(filters.storeIds, filters.dateRange),
+  ]);
+  const legacyTotals = legacy.reduce((total, row) => total + row.totalSale, 0);
+  const candidateTotals = candidate.staff.reduce((total, row) => total + row.totalSale, 0);
+  await recordShadowComparison("staff_sales_summary", legacyTotals === candidateTotals && legacy.length === candidate.staff.length);
+  return { staff: legacy, freshness: null };
+}
+
+export async function getStaffSalesSummary(filters: SalesAnalyticsFilters) {
+  return (await getStaffSalesSummaryWithFreshness(filters)).staff;
 }
 
 export async function getMissingSalesReportDates(

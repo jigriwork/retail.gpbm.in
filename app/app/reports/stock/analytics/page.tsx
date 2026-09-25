@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CircleAlert, PackageSearch, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { DataFreshnessBadge } from "@/components/app/data-freshness-badge";
 import {
   getLatestStockMonth,
   getStockSummary,
@@ -288,6 +289,7 @@ export default async function StockAnalyticsPage({
 
       {storeSummaries.map(({ store, summary: storeSummary }) => (
         <section className="space-y-5" key={store.id}>
+          <DataFreshnessBadge freshness={storeSummary.freshness} source={`${store.name} stock`} />
           {storeSummaries.length > 1 ? (
             <div className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
               <p className="text-sm font-medium text-muted">Store-wise stock report</p>

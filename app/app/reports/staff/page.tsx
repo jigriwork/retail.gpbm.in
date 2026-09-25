@@ -2,10 +2,11 @@ import Link from "next/link";
 import { UserRoundCheck } from "lucide-react";
 
 import { SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
+import { DataFreshnessBadge } from "@/components/app/data-freshness-badge";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import {
   getDateRangeForPeriod,
-  getStaffSalesSummary,
+  getStaffSalesSummaryWithFreshness,
   type SalesPeriod,
 } from "@/lib/analytics/sales";
 import {
@@ -63,8 +64,8 @@ export default async function StaffSalesPage({
       ? stores.filter((store) => store.id === storeId)
       : stores;
   const selectedStoreIds = selectedStores.map((store) => store.id);
-  const [staffRows, unmatchedWarnings, suspiciousWarnings] = await Promise.all([
-    getStaffSalesSummary({
+  const [staffResult, unmatchedWarnings, suspiciousWarnings] = await Promise.all([
+    getStaffSalesSummaryWithFreshness({
       storeIds: selectedStoreIds,
       dateRange,
     }),
@@ -79,6 +80,7 @@ export default async function StaffSalesPage({
       storeIds: selectedStoreIds,
     }),
   ]);
+  const staffRows = staffResult.staff;
   const totalSales = staffRows.reduce((sum, staff) => sum + staff.totalSale, 0);
   const totalQuantity = staffRows.reduce((sum, staff) => sum + staff.quantitySold, 0);
   const totalBills = staffRows.reduce((sum, staff) => sum + staff.billCount, 0);
@@ -160,6 +162,8 @@ export default async function StaffSalesPage({
           ) : null}
         </form>
       </section>
+
+      <DataFreshnessBadge freshness={staffResult.freshness} source="Staff sales" />
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

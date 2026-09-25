@@ -15,6 +15,19 @@ import { getLatestStockMonth, getStockSummary, type StockSummary } from "@/lib/a
 import { createClient } from "@/lib/supabase/server";
 import { addDays, getIndiaToday, isMondayInIndia } from "@/lib/tasks/dates";
 import type { ManagerUpdate } from "@/lib/updates/queries";
+import { getAnalyticsQueryPath } from "@/lib/analytics/query-path";
+import {
+  decodeSalesSummaryV2,
+  decodeStaffSalesSummaryV2,
+  decodeStockStoreSummaryV2,
+  phase1AnalyticsRpc,
+  phase1Number,
+  phase1Record,
+  phase1Records,
+  phase1Text,
+  phase1TextList,
+} from "@/lib/analytics/phase1";
+import { recordShadowComparison } from "@/lib/observability/performance";
 
 export type WeeklyReviewAudit = {
   rackCompletedDays: number;
@@ -289,7 +302,7 @@ export async function getWeeklyStockSignalAudit(store: Store) {
   } satisfies WeeklyStockSignalAudit;
 }
 
-export async function getStoreWeeklyAuditSummary(store: Store, weekRange: DateRange) {
+async function getLegacyStoreWeeklyAuditSummary(store: Store, weekRange: DateRange) {
   const [sales, staff, missingSalesReports, reviews, updates, tasks, stockSignals] =
     await Promise.all([
       getWeeklySalesAudit(store, weekRange),
@@ -317,7 +330,116 @@ export async function getStoreWeeklyAuditSummary(store: Store, weekRange: DateRa
 }
 
 export async function getWeeklyAuditSummaries(stores: Store[], weekRange: DateRange) {
-  return Promise.all(stores.map((store) => getStoreWeeklyAuditSummary(store, weekRange)));
+  const path = getAnalyticsQueryPath();
+  if (path === "legacy") return Promise.all(stores.map((store) => getLegacyStoreWeeklyAuditSummary(store, weekRange)));
+
+  const loadCandidate = async () => {
+    const payload = phase1Record(await phase1AnalyticsRpc("weekly_audit_summary_v2", {
+      p_store_ids: stores.map((store) => store.id),
+      p_start: weekRange.startDate,
+      p_end: weekRange.endDate,
+      p_top_limit: 5,
+    }));
+    const storeById = new Map(stores.map((store) => [store.id, store]));
+
+    return Promise.all(phase1Records(payload.stores).map(async (row) => {
+      const rawStore = phase1Record(row.store);
+      const store = storeById.get(phase1Text(rawStore.id));
+      if (!store) throw new Error("Weekly audit returned an inaccessible store.");
+      const sales = await decodeSalesSummaryV2(row.sales, weekRange, [store]);
+      const staff = decodeStaffSalesSummaryV2(row.staff);
+      const reviews = phase1Record(row.reviews);
+      const checklist = phase1Record(row.checklist);
+      const updates = phase1Record(row.updates);
+      const tasks = phase1Record(row.tasks);
+      const stockSignals = phase1Record(row.stock_signals);
+      const stockRow = stockSignals.summary;
+      const important = phase1Records(updates.latest_important).map((item) => ({
+        id: phase1Text(item.id),
+        store_id: store.id,
+        created_by: null,
+        title: phase1Text(item.title),
+        details: null,
+        category: null,
+        urgency: phase1Text(item.urgency) || null,
+        status: phase1Text(item.status) || null,
+        photo_path: null,
+        created_task_id: null,
+        created_at: phase1Text(item.created_at) || null,
+        updated_at: null,
+        stores: { id: store.id, name: store.name, code: store.code },
+        created_profile: null,
+        created_task: null,
+      } satisfies ManagerUpdate));
+
+      return {
+        store,
+        weekRange,
+        sales: { ...sales.summary, freshness: sales.freshness },
+        staff: staff.staff,
+        missingSalesReports: phase1Records(row.missing_sales_reports).map((missing) => ({
+          store,
+          date: phase1Text(missing.date),
+          status: phase1Text(missing.status) === "today-not-uploaded" ? "today-not-uploaded" as const : "missing" as const,
+        })),
+        reviews: {
+          rackCompletedDays: phase1Number(reviews.rack_completed_days),
+          cleaningCompletedDays: phase1Number(reviews.cleaning_completed_days),
+          rackDates: phase1TextList(reviews.rack_dates),
+          cleaningDates: phase1TextList(reviews.cleaning_dates),
+        },
+        checklist: {
+          salesReportDays: phase1Number(checklist.sales_report_days),
+          rackReviewDays: phase1Number(checklist.rack_review_days),
+          cleaningReviewDays: phase1Number(checklist.cleaning_review_days),
+          managerUpdateDays: phase1Number(checklist.manager_update_days),
+          estimatedCompletionPercent: phase1Number(checklist.estimated_completion_percent),
+        },
+        updates: {
+          openUrgentCount: phase1Number(updates.open_urgent_count),
+          createdCount: phase1Number(updates.created_count),
+          resolvedCount: phase1Number(updates.resolved_count),
+          latestImportant: important,
+        },
+        tasks: {
+          createdCount: phase1Number(tasks.created_count),
+          completedCount: phase1Number(tasks.completed_count),
+          overduePendingCount: phase1Number(tasks.overdue_pending_count),
+        },
+        stockSignals: {
+          stockMonth: phase1Text(stockSignals.stock_month) || null,
+          slowStockCount: phase1Number(stockSignals.slow_stock_count),
+          deadStockCount: phase1Number(stockSignals.dead_stock_count),
+          fastMovingLowStockCount: phase1Number(stockSignals.fast_moving_low_stock_count),
+          highStockLowSaleCount: phase1Number(stockSignals.high_stock_low_sale_count),
+          summary: stockRow ? decodeStockStoreSummaryV2(stockRow, 30) : null,
+        },
+      } satisfies StoreWeeklyAuditSummary;
+    }));
+  };
+
+  if (path === "v2") return loadCandidate();
+  const [legacy, candidate] = await Promise.all([
+    Promise.all(stores.map((store) => getLegacyStoreWeeklyAuditSummary(store, weekRange))),
+    loadCandidate(),
+  ]);
+  await recordShadowComparison("weekly_audit_summary", JSON.stringify(legacy.map((row) => ({
+    id: row.store.id,
+    sale: row.sales.totalNetSale,
+    missing: row.missingSalesReports.length,
+    tasks: row.tasks.overduePendingCount,
+  }))) === JSON.stringify(candidate.map((row) => ({
+    id: row.store.id,
+    sale: row.sales.totalNetSale,
+    missing: row.missingSalesReports.length,
+    tasks: row.tasks.overduePendingCount,
+  }))));
+  return legacy;
+}
+
+export async function getStoreWeeklyAuditSummary(store: Store, weekRange: DateRange) {
+  const [summary] = await getWeeklyAuditSummaries([store], weekRange);
+  return summary;
 }
 
 export function previousWeekDateParam() {

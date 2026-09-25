@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ClipboardCheck, CircleAlert, Store, Trophy } from "lucide-react";
+import { DataFreshnessBadge } from "@/components/app/data-freshness-badge";
 
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import {
@@ -115,6 +116,10 @@ export default async function AuditPage({
           <ClipboardCheck className="size-5 text-muted" />
         </div>
       </section>
+
+      {audits.map((audit) => (
+        <DataFreshnessBadge freshness={audit.sales.freshness} key={`freshness-${audit.store.id}`} source={`${audit.store.name} sales`} />
+      ))}
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <form className="grid gap-4 sm:grid-cols-4">

@@ -4,6 +4,10 @@ import { analyticsData } from "@/lib/analytics/data";
 import { addDays, getIndiaToday } from "@/lib/tasks/dates";
 import { createClient } from "@/lib/supabase/server";
 import type { Store } from "@/lib/auth/session";
+import type { DataFreshness } from "@/lib/analytics/freshness";
+import { getAnalyticsQueryPath } from "@/lib/analytics/query-path";
+import { loadStockSummaryV2 } from "@/lib/analytics/phase1";
+import { measureDataOperation, recordShadowComparison } from "@/lib/observability/performance";
 
 export type StockLookbackDays = 7 | 15 | 30 | 60 | 90;
 
@@ -83,6 +87,7 @@ export type StockSummary = {
   highStockLowSaleCandidates: StockItemSummary[];
   candidateCounts: { slow: number; dead: number; fastLow: number; highLow: number };
   dataQualityNote: boolean;
+  freshness?: DataFreshness;
 };
 
 
@@ -346,11 +351,12 @@ export async function getHighStockLowSaleCandidates(filters: StockAnalyticsFilte
     .slice(0, 10);
 }
 
-export async function getStockSummary(filters: StockAnalyticsFilters): Promise<StockSummary> {
+async function getLegacyStockSummary(filters: StockAnalyticsFilters): Promise<StockSummary> {
   const maxSlowDays = Math.max(...filters.stores.map(store => storeThresholds(store).slowDays), 30);
   const maxDeadDays = Math.max(...filters.stores.map(store => storeThresholds(store).deadDays), 60);
   const maxDays = Math.max(filters.lookbackDays, maxSlowDays, maxDeadDays);
-  const { stock: stockRows, sales: salesRows } = await analyticsData(filters.storeIds, addDays(getIndiaToday(), -(maxDays - 1)), getIndiaToday(), [filters.stockMonth]);
+  const { stock: stockRows, sales: salesRows } = await measureDataOperation("legacy.stock_summary", () =>
+    analyticsData(filters.storeIds, addDays(getIndiaToday(), -(maxDays - 1)), getIndiaToday(), [filters.stockMonth]));
   const rowsWithin = (days: number) => salesRows.filter(row => row.sale_date && row.sale_date >= addDays(getIndiaToday(), -(days - 1)));
   const items = summarizeItems(stockRows, rowsWithin(filters.lookbackDays), filters.stores);
   const brands = new Map<string, StockRank>();
@@ -406,4 +412,26 @@ export async function getStockSummary(filters: StockAnalyticsFilters): Promise<S
     candidateCounts: { slow: slow.length, dead: dead.length, fastLow: fastLow.length, highLow: highLow.length },
     dataQualityNote,
   };
+}
+
+function sameStockTotals(left: StockSummary, right: StockSummary) {
+  return left.totalStockQuantity === right.totalStockQuantity
+    && left.itemCount === right.itemCount
+    && left.candidateCounts.slow === right.candidateCounts.slow
+    && left.candidateCounts.dead === right.candidateCounts.dead
+    && left.candidateCounts.fastLow === right.candidateCounts.fastLow
+    && left.candidateCounts.highLow === right.candidateCounts.highLow;
+}
+
+export async function getStockSummary(filters: StockAnalyticsFilters): Promise<StockSummary> {
+  const path = getAnalyticsQueryPath();
+  if (path === "legacy") return getLegacyStockSummary(filters);
+  if (path === "v2") return loadStockSummaryV2(filters);
+
+  const [legacy, candidate] = await Promise.all([
+    getLegacyStockSummary(filters),
+    loadStockSummaryV2(filters),
+  ]);
+  await recordShadowComparison("stock_summary", sameStockTotals(legacy, candidate));
+  return legacy;
 }

@@ -1,0 +1,31 @@
+{
+  "environment": {
+    "application": "Next.js 16.3.3 production build",
+    "database": "localhost-only Supabase restored with the verified full-volume baseline",
+    "identity": "synthetic local owner",
+    "production_connection_used": false,
+    "network_note": "Loopback results isolate application/query work and do not represent Vercel-to-Supabase network latency."
+  },
+  "method": {
+    "samples_per_route_per_mode": 20,
+    "sequence": "sequential warm production-server requests",
+    "errors": 0,
+    "modes": ["legacy", "v2"]
+  },
+  "legacy": {
+    "today": { "samples": 20, "errors": 0, "payload_bytes": 85642, "ttfb_p50_ms": 74.66, "ttfb_p95_ms": 132.31, "total_p50_ms": 109.50, "total_p95_ms": 165.94 },
+    "checklist": { "samples": 20, "errors": 0, "payload_bytes": 31564, "ttfb_p50_ms": 90.66, "ttfb_p95_ms": 100.98, "total_p50_ms": 90.77, "total_p95_ms": 101.08 },
+    "sales_analytics": { "samples": 20, "errors": 0, "payload_bytes": 136305, "ttfb_p50_ms": 262.56, "ttfb_p95_ms": 301.34, "total_p50_ms": 262.70, "total_p95_ms": 301.61 },
+    "staff_sales": { "samples": 20, "errors": 0, "payload_bytes": 123326, "ttfb_p50_ms": 244.01, "ttfb_p95_ms": 254.74, "total_p50_ms": 244.14, "total_p95_ms": 254.88 },
+    "stock_analytics": { "samples": 20, "errors": 0, "payload_bytes": 158331, "ttfb_p50_ms": 2974.23, "ttfb_p95_ms": 3931.65, "total_p50_ms": 2974.37, "total_p95_ms": 3931.87 },
+    "weekly_audit": { "samples": 20, "errors": 0, "payload_bytes": 41180, "ttfb_p50_ms": 2939.13, "ttfb_p95_ms": 4004.53, "total_p50_ms": 2939.25, "total_p95_ms": 4004.64 }
+  },
+  "v2": {
+    "today": { "samples": 20, "errors": 0, "payload_bytes": 85642, "ttfb_p50_ms": 75.34, "ttfb_p95_ms": 128.36, "total_p50_ms": 113.71, "total_p95_ms": 162.54 },
+    "checklist": { "samples": 20, "errors": 0, "payload_bytes": 31564, "ttfb_p50_ms": 87.32, "ttfb_p95_ms": 104.72, "total_p50_ms": 87.45, "total_p95_ms": 104.88 },
+    "sales_analytics": { "samples": 20, "errors": 0, "payload_bytes": 137550, "ttfb_p50_ms": 176.34, "ttfb_p95_ms": 194.21, "total_p50_ms": 176.45, "total_p95_ms": 194.35 },
+    "staff_sales": { "samples": 20, "errors": 0, "payload_bytes": 124570, "ttfb_p50_ms": 190.32, "ttfb_p95_ms": 232.08, "total_p50_ms": 190.45, "total_p95_ms": 232.21 },
+    "stock_analytics": { "samples": 20, "errors": 0, "payload_bytes": 165383, "ttfb_p50_ms": 1057.74, "ttfb_p95_ms": 1103.79, "total_p50_ms": 1057.87, "total_p95_ms": 1103.92 },
+    "weekly_audit": { "samples": 20, "errors": 0, "payload_bytes": 43774, "ttfb_p50_ms": 1455.11, "ttfb_p95_ms": 1560.21, "total_p50_ms": 1455.22, "total_p95_ms": 1560.49 }
+  }
+}

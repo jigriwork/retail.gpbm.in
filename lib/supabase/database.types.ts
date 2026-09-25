@@ -2220,6 +2220,22 @@ export type Database = {
         }
         Returns: Json
       }
+      sales_analytics_summary_v2: {
+        Args: { p_store_ids: string[]; p_start: string; p_end: string; p_top_limit?: number }
+        Returns: Json
+      }
+      staff_sales_summary_v2: {
+        Args: { p_store_ids: string[]; p_start: string; p_end: string; p_top_limit?: number }
+        Returns: Json
+      }
+      stock_analytics_summary_v2: {
+        Args: { p_store_ids: string[]; p_stock_month: string; p_lookback_days?: number; p_top_limit?: number }
+        Returns: Json
+      }
+      weekly_audit_summary_v2: {
+        Args: { p_store_ids: string[]; p_start: string; p_end: string; p_top_limit?: number }
+        Returns: Json
+      }
       archive_sales_report: {
         Args: { p_report: string }
         Returns: Json

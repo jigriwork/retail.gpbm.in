@@ -1,0 +1,534 @@
+{
+  "environment": {
+    "kind": "ephemeral-local-postgresql-17",
+    "source": "verified-2026-09-09-production-backup",
+    "network": "localhost-only",
+    "production_connection_used": false
+  },
+  "migration": {
+    "file": "20260925090000_phase1_analytics_summaries.sql",
+    "sha256": "29b58f4b2e3b585992cbcf0a6cffc29df60ae9f9b135287e961d48a4af4d001c",
+    "duration_seconds": 0.028,
+    "existing_migrations_applied_before_candidate": [
+      {
+        "migration": "20260611203000_add_business_reporting_indexes.sql",
+        "seconds": 0.173
+      },
+      {
+        "migration": "20260909100000_active_membership_storage_scope.sql",
+        "seconds": 0.033
+      },
+      {
+        "migration": "20260909101000_complete_analytics.sql",
+        "seconds": 0.021
+      },
+      {
+        "migration": "20260909102000_atomic_report_versions.sql",
+        "seconds": 0.029
+      },
+      {
+        "migration": "20260909103000_transactional_report_repair.sql",
+        "seconds": 0.022
+      },
+      {
+        "migration": "20260909110000_immutable_payslip_versions.sql",
+        "seconds": 0.028
+      },
+      {
+        "migration": "20260909111000_atomic_payroll_imports.sql",
+        "seconds": 0.032
+      },
+      {
+        "migration": "20260910100000_direct_upload_intents.sql",
+        "seconds": 0.028
+      },
+      {
+        "migration": "20260910110000_storage_permission_probe_compatibility.sql",
+        "seconds": 0.022
+      },
+      {
+        "migration": "20260910130000_bounded_report_finalization.sql",
+        "seconds": 0.029
+      },
+      {
+        "migration": "20260910140000_direct_analytics_version_filter.sql",
+        "seconds": 0.029
+      },
+      {
+        "migration": "20260910150000_native_json_analytics_response.sql",
+        "seconds": 0.023
+      }
+    ],
+    "protected_table_fingerprints_unchanged": true,
+    "protected_tables": {
+      "reports": {
+        "count": 223,
+        "unchanged": true
+      },
+      "sales_rows": {
+        "count": 23209,
+        "unchanged": true
+      },
+      "stock_rows": {
+        "count": 38129,
+        "unchanged": true
+      },
+      "profiles": {
+        "count": 5,
+        "unchanged": true
+      },
+      "store_users": {
+        "count": 4,
+        "unchanged": true
+      },
+      "staff_name_aliases": {
+        "count": 106,
+        "unchanged": true
+      },
+      "tasks": {
+        "count": 16,
+        "unchanged": true
+      },
+      "manager_updates": {
+        "count": 1,
+        "unchanged": true
+      },
+      "rack_reviews": {
+        "count": 0,
+        "unchanged": true
+      },
+      "cleaning_reviews": {
+        "count": 0,
+        "unchanged": true
+      },
+      "app_settings": {
+        "count": 5,
+        "unchanged": true
+      }
+    }
+  },
+  "baseline_counts": {
+    "sales_rows": 23209,
+    "stock_rows": 38129
+  },
+  "reconciliation": {
+    "sales": {
+      "legacy": {
+        "source_row_count": 23209,
+        "net_sale": 30229498.68,
+        "quantity": 23219.0
+      },
+      "v2": {
+        "source_row_count": 23209,
+        "net_sale": 30229498.68,
+        "quantity": 23219.0
+      },
+      "exact": true
+    },
+    "staff": {
+      "legacy": {
+        "source_row_count": 23149,
+        "net_sale": 29784016.68,
+        "quantity": 22850.0
+      },
+      "v2": {
+        "source_row_count": 23149,
+        "net_sale": 29784016.68,
+        "quantity": 22850.0
+      },
+      "exact": true
+    },
+    "stock": [
+      {
+        "store": "BM",
+        "legacy": {
+          "stock_month": "2026-06-01",
+          "lookback_days": 30,
+          "total_stock_quantity": 19623.0,
+          "item_count": 12860,
+          "candidate_counts": {
+            "slow": 12860,
+            "dead": 12860,
+            "fast_low": 0,
+            "high_low": 94
+          }
+        },
+        "v2": {
+          "stock_month": "2026-06-01",
+          "lookback_days": 30,
+          "total_stock_quantity": 19623.0,
+          "item_count": 12860,
+          "candidate_counts": {
+            "slow": 12860,
+            "dead": 12860,
+            "fast_low": 0,
+            "high_low": 94
+          }
+        },
+        "top_candidate_keys_exact": true,
+        "exact": true
+      },
+      {
+        "store": "GP",
+        "legacy": {
+          "stock_month": "2026-06-01",
+          "lookback_days": 30,
+          "total_stock_quantity": 58020.0,
+          "item_count": 24602,
+          "candidate_counts": {
+            "slow": 24602,
+            "dead": 21006,
+            "fast_low": 0,
+            "high_low": 535
+          }
+        },
+        "v2": {
+          "stock_month": "2026-06-01",
+          "lookback_days": 30,
+          "total_stock_quantity": 58020.0,
+          "item_count": 24602,
+          "candidate_counts": {
+            "slow": 24602,
+            "dead": 21006,
+            "fast_low": 0,
+            "high_low": 535
+          }
+        },
+        "top_candidate_keys_exact": true,
+        "exact": true
+      }
+    ],
+    "weekly_store_count": 2
+  },
+  "rpc_performance": {
+    "sales_legacy": {
+      "samples": 20,
+      "p50_ms": 163.53,
+      "p95_ms": 187.37,
+      "min_ms": 155.34,
+      "max_ms": 207.6,
+      "payload_bytes": 6841017
+    },
+    "sales_v2": {
+      "samples": 20,
+      "p50_ms": 437.7,
+      "p95_ms": 446.44,
+      "min_ms": 433.62,
+      "max_ms": 473.28,
+      "payload_bytes": 15752
+    },
+    "staff_v2": {
+      "samples": 20,
+      "p50_ms": 489.16,
+      "p95_ms": 508.27,
+      "min_ms": 484.82,
+      "max_ms": 525.75,
+      "payload_bytes": 27421
+    },
+    "stock": [
+      {
+        "store": "BM",
+        "legacy": {
+          "samples": 20,
+          "p50_ms": 86.69,
+          "p95_ms": 88.75,
+          "min_ms": 85.09,
+          "max_ms": 95.73,
+          "payload_bytes": 3355759
+        },
+        "v2": {
+          "samples": 20,
+          "p50_ms": 337.69,
+          "p95_ms": 381.67,
+          "min_ms": 334.61,
+          "max_ms": 383.01,
+          "payload_bytes": 18844
+        }
+      },
+      {
+        "store": "GP",
+        "legacy": {
+          "samples": 20,
+          "p50_ms": 161.04,
+          "p95_ms": 168.35,
+          "min_ms": 158.84,
+          "max_ms": 170.24,
+          "payload_bytes": 7186538
+        },
+        "v2": {
+          "samples": 20,
+          "p50_ms": 663.67,
+          "p95_ms": 712.28,
+          "min_ms": 653.53,
+          "max_ms": 763.56,
+          "payload_bytes": 19002
+        }
+      }
+    ],
+    "weekly_v2": {
+      "samples": 20,
+      "p50_ms": 995.93,
+      "p95_ms": 1044.19,
+      "min_ms": 983.08,
+      "max_ms": 1048.31,
+      "payload_bytes": 44687
+    }
+  },
+  "authorization": {
+    "allowed": {
+      "owner": {
+        "sales": true,
+        "staff": true,
+        "stock": true,
+        "weekly": true
+      },
+      "assigned_manager": {
+        "sales": true,
+        "staff": true,
+        "stock": true,
+        "weekly": true
+      }
+    },
+    "denied": {
+      "anonymous": true,
+      "manager_cross_store_sales": true,
+      "manager_cross_store_staff": true,
+      "manager_cross_store_stock": true,
+      "manager_cross_store_weekly": true,
+      "inactive": true,
+      "service_role_without_user": true
+    }
+  },
+  "plans": {
+    "legacy_sales": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 112.967,
+          "Actual Total Time": 112.967,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 61662,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 694,
+          "Temp Written Blocks": 347,
+          "WAL Records": 0,
+          "WAL FPI": 0,
+          "WAL Bytes": 0
+        },
+        "Settings": {},
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.061,
+        "Triggers": [],
+        "Execution Time": 112.976
+      }
+    ],
+    "v2_sales": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 415.458,
+          "Actual Total Time": 415.458,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 114426,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "WAL Records": 0,
+          "WAL FPI": 0,
+          "WAL Bytes": 0
+        },
+        "Settings": {},
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.034,
+        "Triggers": [],
+        "Execution Time": 415.466
+      }
+    ],
+    "v2_staff": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 466.575,
+          "Actual Total Time": 466.575,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 104474,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "WAL Records": 0,
+          "WAL FPI": 0,
+          "WAL Bytes": 0
+        },
+        "Settings": {},
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.033,
+        "Triggers": [],
+        "Execution Time": 466.583
+      }
+    ],
+    "v2_stock": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 316.21,
+          "Actual Total Time": 316.211,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 30294,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 1229,
+          "Temp Written Blocks": 3379,
+          "WAL Records": 0,
+          "WAL FPI": 0,
+          "WAL Bytes": 0
+        },
+        "Settings": {},
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.039,
+        "Triggers": [],
+        "Execution Time": 316.22
+      }
+    ],
+    "v2_weekly": [
+      {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 973.988,
+          "Actual Total Time": 973.988,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 94838,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 11331,
+          "Temp Written Blocks": 12000,
+          "WAL Records": 0,
+          "WAL FPI": 0,
+          "WAL Bytes": 0
+        },
+        "Settings": {},
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.034,
+        "Triggers": [],
+        "Execution Time": 973.995
+      }
+    ]
+  }
+}
