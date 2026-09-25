@@ -36,10 +36,15 @@ test('H06 workbook XML entities are rejected',async()=>{
  const zip=await JSZip.loadAsync(XLSX.write(excel(),{type:'buffer'}));zip.file('xl/workbook.xml','<!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]><workbook>&e;</workbook>');
  await assert.rejects(read(new File([await zip.generateAsync({type:'uint8array'})],'entities.xlsx')));
 });
+test('H06 reports precise validation rules',async()=>{
+ await assert.rejects(read(new File(['Name\n'+ 'x'.repeat(8193)],'book.csv')),/\[CELL_TEXT_LIMIT\].*8,192 characters/);
+ const book=excel();book.Sheets.Sheet0['!ref']='A2:IV10001';
+ await assert.rejects(read(new File([XLSX.write(book,{type:'buffer'})],'cells.xlsx')),/\[RANGE_CELL_LIMIT\].*2,000,000 cells/);
+});
 test('H06 hung worker is killed by the deadline without inheriting app credentials',async()=>{
  const child=new EventEmitter();child.send=()=>{};let killed=false;child.kill=()=>{killed=true;};
- const f=fixture({modules:{'node:child_process':{spawn(_path,args,options){assert.deepEqual(Object.keys(options.env).sort(),['NODE_ENV','TZ']);assert.ok(args.includes('--max-old-space-size=256'));return child;}}},globals:{setTimeout:fn=>setTimeout(fn,1)}});
- await assert.rejects(f.load('@/lib/spreadsheets/read').readSpreadsheet(new File(['a,b'],'a.csv')));assert.equal(killed,true);
+ const f=fixture({modules:{'node:child_process':{spawn(_path,args,options){assert.deepEqual(Object.keys(options.env).sort(),['NODE_ENV','TZ']);assert.ok(args.includes('--max-old-space-size=512'));return child;}}},globals:{setTimeout:fn=>setTimeout(fn,1)}});
+ await assert.rejects(f.load('@/lib/spreadsheets/read').readSpreadsheet(new File(['a,b'],'a.csv')),/\[PARSER_TIMEOUT\]/);assert.equal(killed,true);
 });
 test('H06 CSV output neutralizes formula prefixes including whitespace and quoted payloads',()=>{
  const escape=fixture().load('@/lib/spreadsheets/csv').csvEscape;
