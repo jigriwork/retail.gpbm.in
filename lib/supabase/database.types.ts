@@ -662,6 +662,7 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          designation: string | null
           id: string
           is_active: boolean | null
           normalized_phone: string | null
@@ -676,6 +677,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          designation?: string | null
           id?: string
           is_active?: boolean | null
           normalized_phone?: string | null
@@ -690,6 +692,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          designation?: string | null
           id?: string
           is_active?: boolean | null
           normalized_phone?: string | null
@@ -720,6 +723,7 @@ export type Database = {
       }
       generated_payslips: {
         Row: {
+          employee_contact_id: string | null
           id: string
           batch_id: string | null
           payslip_row_id: string | null
@@ -746,6 +750,7 @@ export type Database = {
           supersedes_id: string | null
         }
         Insert: {
+          employee_contact_id?: string | null
           id?: string
           batch_id?: string | null
           payslip_row_id?: string | null
@@ -772,6 +777,7 @@ export type Database = {
           supersedes_id?: string | null
         }
         Update: {
+          employee_contact_id?: string | null
           id?: string
           batch_id?: string | null
           payslip_row_id?: string | null
@@ -1057,6 +1063,7 @@ export type Database = {
       }
       payslip_rows: {
         Row: {
+          employee_contact_id: string | null
           id: string
           batch_id: string | null
           store_id: string | null
@@ -1086,6 +1093,7 @@ export type Database = {
           payroll_version_id: string | null
         }
         Insert: {
+          employee_contact_id?: string | null
           id?: string
           batch_id?: string | null
           store_id?: string | null
@@ -1115,6 +1123,7 @@ export type Database = {
           payroll_version_id?: string | null
         }
         Update: {
+          employee_contact_id?: string | null
           id?: string
           batch_id?: string | null
           store_id?: string | null
@@ -1827,6 +1836,180 @@ export type Database = {
           },
         ]
       }
+      staff_account_requests: {
+        Row: {
+          created_at: string
+          decision_at: string | null
+          decision_by: string | null
+          decision_reason: string | null
+          employee_contact_id: string
+          id: string
+          requested_by: string
+          requested_email: string
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          decision_at?: string | null
+          decision_by?: string | null
+          decision_reason?: string | null
+          employee_contact_id: string
+          id?: string
+          requested_by: string
+          requested_email: string
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          decision_at?: string | null
+          decision_by?: string | null
+          decision_reason?: string | null
+          employee_contact_id?: string
+          id?: string
+          requested_by?: string
+          requested_email?: string
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      employee_auth_links: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          approved_at: string
+          approved_by: string
+          auth_user_id: string
+          created_at: string
+          deactivated_at: string | null
+          deactivated_by: string | null
+          deactivation_reason: string | null
+          employee_contact_id: string
+          id: string
+          last_password_changed_at: string | null
+          login_email: string
+          must_change_password: boolean
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          approved_at?: string
+          approved_by: string
+          auth_user_id: string
+          created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          deactivation_reason?: string | null
+          employee_contact_id: string
+          id?: string
+          last_password_changed_at?: string | null
+          login_email: string
+          must_change_password?: boolean
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          approved_at?: string
+          approved_by?: string
+          auth_user_id?: string
+          created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          deactivation_reason?: string | null
+          employee_contact_id?: string
+          id?: string
+          last_password_changed_at?: string | null
+          login_email?: string
+          must_change_password?: boolean
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sensitive_access_grants: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          purpose: string
+          revoked_at: string | null
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          purpose: string
+          revoked_at?: string | null
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          purpose?: string
+          revoked_at?: string | null
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
+      staff_security_events: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          auth_user_id: string | null
+          created_at: string
+          employee_contact_id: string
+          event_type: string
+          id: string
+          outcome: string
+          safe_metadata: Json
+          store_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          auth_user_id?: string | null
+          created_at?: string
+          employee_contact_id: string
+          event_type: string
+          id?: string
+          outcome?: string
+          safe_metadata?: Json
+          store_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          auth_user_id?: string | null
+          created_at?: string
+          employee_contact_id?: string
+          event_type?: string
+          id?: string
+          outcome?: string
+          safe_metadata?: Json
+          store_id?: string
+        }
+        Relationships: []
+      }
       staff_name_aliases: {
         Row: {
           canonical_staff_name: string
@@ -1841,6 +2024,10 @@ export type Database = {
           source_type: string | null
           store_id: string
           updated_at: string | null
+          verification_note: string | null
+          verification_status: string | null
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           canonical_staff_name: string
@@ -1855,6 +2042,10 @@ export type Database = {
           source_type?: string | null
           store_id: string
           updated_at?: string | null
+          verification_note?: string | null
+          verification_status?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           canonical_staff_name?: string
@@ -1869,6 +2060,10 @@ export type Database = {
           source_type?: string | null
           store_id?: string
           updated_at?: string | null
+          verification_note?: string | null
+          verification_status?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {
@@ -2064,10 +2259,12 @@ export type Database = {
       }
       tasks: {
         Row: {
+          assigned_employee_id: string | null
           assigned_to: string | null
           carry_forward: boolean | null
           category: string | null
           completed_at: string | null
+          completion_note: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -2083,10 +2280,12 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          assigned_employee_id?: string | null
           assigned_to?: string | null
           carry_forward?: boolean | null
           category?: string | null
           completed_at?: string | null
+          completion_note?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -2102,10 +2301,12 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          assigned_employee_id?: string | null
           assigned_to?: string | null
           carry_forward?: boolean | null
           category?: string | null
           completed_at?: string | null
+          completion_note?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -2121,6 +2322,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_employee_id_fkey"
+            columns: ["assigned_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employee_contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_assigned_to_fkey"
             columns: ["assigned_to"]
@@ -2197,6 +2405,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_staff_employee: { Args: { p_employee_id: string }; Returns: boolean }
+      complete_my_task: { Args: { p_task_id: string; p_completion_note?: string }; Returns: boolean }
+      consume_credential_action_limit: { Args: { p_employee_id: string }; Returns: boolean }
+      current_staff_employee_id: { Args: Record<PropertyKey, never>; Returns: string | null }
+      finalize_staff_account: { Args: { p_employee_id: string; p_auth_user_id: string; p_email: string; p_request_id?: string }; Returns: string }
+      finish_own_staff_password_change: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_active_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
+      my_payslip_list: { Args: { p_grant_token: string }; Returns: Json }
+      my_salary_summary: { Args: { p_grant_token: string }; Returns: Json }
+      my_sales_summary: { Args: { p_start: string; p_end: string }; Returns: Json }
+      my_tasks_list: { Args: Record<PropertyKey, never>; Returns: Json }
+      record_staff_password_issued: { Args: { p_employee_id: string; p_event_type: string }; Returns: boolean }
+      staff_profile_summary: { Args: Record<PropertyKey, never>; Returns: Json }
+      staff_home_summary: { Args: Record<PropertyKey, never>; Returns: Json }
+      validate_sensitive_access_grant: { Args: { p_token: string; p_purpose: string }; Returns: boolean }
       finish_upload_intent: { Args: { p_id: string; p_lease: string; p_ok: boolean; p_result: Json }; Returns: Json }
       bind_upload_import: { Args: { p_id: string; p_lease: string; p_run: string; p_payroll: boolean }; Returns: Json }
       verify_upload_intent: { Args: { p_id: string; p_lease: string; p_hash: string }; Returns: Json }

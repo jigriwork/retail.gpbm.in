@@ -88,6 +88,7 @@ export async function createTask(formData: FormData): Promise<ActionState> {
   const title = readString(formData, "title");
   const storeId = readNullableString(formData, "storeId");
   const isPrivate = readString(formData, "isPrivate") === "on";
+  const assignedEmployeeId = readNullableString(formData, "assignedEmployeeId");
 
   if (!title) {
     return { ok: false, message: "Task title is required." };
@@ -109,6 +110,18 @@ export async function createTask(formData: FormData): Promise<ActionState> {
     }
   }
 
+  if (assignedEmployeeId) {
+    const supabase = await createClient();
+    const { data: employee } = await supabase
+      .from("employee_contacts")
+      .select("id,store_id,is_active")
+      .eq("id", assignedEmployeeId)
+      .maybeSingle();
+    if (!employee || employee.is_active === false || !employee.store_id || employee.store_id !== storeId || !(await canAccessStore(employee.store_id, profile))) {
+      return { ok: false, message: "Choose an active staff employee from the selected accessible store." };
+    }
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("tasks").insert({
     title,
@@ -122,6 +135,7 @@ export async function createTask(formData: FormData): Promise<ActionState> {
     carry_forward: readString(formData, "carryForward") !== "off",
     assigned_to:
       profile.role === "owner" ? readNullableString(formData, "assignedTo") : null,
+    assigned_employee_id: assignedEmployeeId,
     source: "manual",
     status: "pending",
     created_by: profile.id,
@@ -145,6 +159,7 @@ export async function updateTask(formData: FormData): Promise<ActionState> {
   }
 
   const storeId = readNullableString(formData, "storeId");
+  const assignedEmployeeId = readNullableString(formData, "assignedEmployeeId");
 
   if (write.profile.role !== "owner") {
     if (write.task.is_private) {
@@ -153,6 +168,18 @@ export async function updateTask(formData: FormData): Promise<ActionState> {
 
     if (storeId && !(await canAccessStore(storeId, write.profile))) {
       return { ok: false, message: "You can edit tasks only for assigned stores." };
+    }
+  }
+
+  if (assignedEmployeeId) {
+    const supabase = await createClient();
+    const { data: employee } = await supabase
+      .from("employee_contacts")
+      .select("id,store_id,is_active")
+      .eq("id", assignedEmployeeId)
+      .maybeSingle();
+    if (!employee || employee.is_active === false || !employee.store_id || employee.store_id !== storeId || !(await canAccessStore(employee.store_id, write.profile))) {
+      return { ok: false, message: "Choose an active staff employee from the selected accessible store." };
     }
   }
 
@@ -166,6 +193,7 @@ export async function updateTask(formData: FormData): Promise<ActionState> {
     due_time: readNullableString(formData, "dueTime"),
     carry_forward: readString(formData, "carryForward") !== "off",
     store_id: storeId,
+    assigned_employee_id: assignedEmployeeId,
   };
 
   if (write.profile.role === "owner") {

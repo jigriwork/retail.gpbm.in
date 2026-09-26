@@ -54,7 +54,7 @@ export function TaskCard({ task }: { task: TaskWithRelations }) {
         </span>
         <span className="inline-flex items-center gap-2 rounded-2xl border border-border px-3 py-2">
           <UserRound className="size-3.5" />
-          {task.assigned_profile?.full_name ?? task.assigned_profile?.email ?? "Unassigned"}
+          {task.assigned_employee?.staff_name ?? task.assigned_profile?.full_name ?? task.assigned_profile?.email ?? "Unassigned"}
         </span>
       </div>
 

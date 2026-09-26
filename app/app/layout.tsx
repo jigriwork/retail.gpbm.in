@@ -7,6 +7,7 @@ import { LiveClock } from "@/components/app/live-clock";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth/actions";
 import { requireProfile } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
 
 export default async function ProtectedAppLayout({
   children,
@@ -14,6 +15,10 @@ export default async function ProtectedAppLayout({
   children: React.ReactNode;
 }) {
   const { profile } = await requireProfile();
+
+  if (profile?.role === "staff") {
+    redirect("/staff");
+  }
 
   if (!profile) {
     return (

@@ -92,6 +92,15 @@ export default async function SettingsPage() {
         <RefreshReleaseButton />
       </section>
 
+      <section>
+        <Link
+          className="inline-flex h-11 items-center justify-center rounded-2xl border border-border bg-card px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
+          href="/app/staff-accounts"
+        >
+          Staff Accounts
+        </Link>
+      </section>
+
       <div className="pt-2">
         <h2 className="text-2xl font-semibold">Staff</h2>
         <p className="mt-2 text-sm leading-6 text-muted">

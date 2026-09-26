@@ -17,6 +17,11 @@ export default async function NewTaskPage() {
           .eq("is_active", true)
           .order("full_name")
       : { data: [] };
+  const { data: employees } = await supabase
+    .from("employee_contacts")
+    .select("id,staff_name,store_id")
+    .eq("is_active", true)
+    .order("staff_name");
 
   if (!profile) {
     return null;
@@ -34,6 +39,7 @@ export default async function NewTaskPage() {
         <TaskForm
           action={createTask}
           assignableUsers={profiles ?? []}
+          assignableEmployees={employees ?? []}
           currentProfile={profile}
           stores={stores}
           submitLabel="Create task"

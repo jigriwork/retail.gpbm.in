@@ -30,6 +30,7 @@ export function TaskForm({
   task,
   stores,
   assignableUsers,
+  assignableEmployees,
   currentProfile,
   submitLabel,
 }: {
@@ -37,6 +38,7 @@ export function TaskForm({
   task?: TaskWithRelations | null;
   stores: Store[];
   assignableUsers: Pick<Profile, "id" | "full_name" | "email">[];
+  assignableEmployees: Array<{ id: string; staff_name: string; store_id: string | null }>;
   currentProfile: Profile;
   submitLabel: string;
 }) {
@@ -196,6 +198,20 @@ export function TaskForm({
             </select>
           </label>
         ) : null}
+
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-muted">Assign to staff employee</span>
+          <select
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            defaultValue={task?.assigned_employee_id ?? ""}
+            name="assignedEmployeeId"
+          >
+            <option value="">No staff employee</option>
+            {assignableEmployees.map((employee) => (
+              <option key={employee.id} value={employee.id}>{employee.staff_name}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

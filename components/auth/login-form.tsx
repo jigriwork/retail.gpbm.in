@@ -35,7 +35,8 @@ export function LoginForm() {
       return;
     }
 
-    router.replace("/app/today");
+    router.replace("/");
+    router.refresh();
   }
 
   return (

@@ -1,0 +1,7 @@
+import { completeStaffTask } from "@/lib/staff/actions";
+import { getMyTasks } from "@/lib/staff/portal";
+
+export default async function MyTasksPage() {
+  const tasks = await getMyTasks();
+  return <div className="space-y-5"><div><p className="text-sm font-medium text-muted">Assigned to me</p><h1 className="mt-2 text-3xl font-semibold">My Tasks</h1></div><section className="space-y-3">{tasks.length ? tasks.map((task) => <div className="rounded-2xl border border-border bg-card p-4" key={task.id}><div className="flex justify-between gap-3"><div><p className="font-semibold">{task.title}</p>{task.description ? <p className="mt-2 text-sm leading-6 text-muted">{task.description}</p> : null}</div><span className="text-xs font-semibold capitalize text-muted">{task.status?.replaceAll("_", " ")}</span></div>{task.status !== "done" && task.status !== "cancelled" ? <form action={completeStaffTask} className="mt-4 grid gap-2"><input name="taskId" type="hidden" value={task.id} /><textarea className="min-h-20 rounded-xl border border-border bg-background p-3 text-sm" maxLength={1000} name="completionNote" placeholder="Completion note (optional)" /><button className="h-11 rounded-xl bg-foreground text-sm font-semibold text-background">Mark completed</button></form> : task.completion_note ? <p className="mt-3 text-sm text-muted">Completion: {task.completion_note}</p> : null}</div>) : <p className="rounded-2xl border border-border bg-card p-5 text-sm text-muted">No assigned tasks.</p>}</section></div>;
+}

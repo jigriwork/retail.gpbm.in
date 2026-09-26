@@ -10,7 +10,8 @@ import type { TaskWithRelations } from "@/lib/tasks/queries";
 const taskSelect = `
   *,
   stores(id,name,code),
-  assigned_profile:profiles!tasks_assigned_to_fkey(id,full_name,email)
+  assigned_profile:profiles!tasks_assigned_to_fkey(id,full_name,email),
+  assigned_employee:employee_contacts!tasks_assigned_employee_id_fkey(id,staff_name,store_id)
 `;
 
 export default async function TaskDetailPage({
@@ -26,7 +27,7 @@ export default async function TaskDetailPage({
   }
 
   const supabase = await createClient();
-  const [{ data: task }, stores, { data: profiles }] = await Promise.all([
+  const [{ data: task }, stores, { data: profiles }, { data: employees }] = await Promise.all([
     supabase.from("tasks").select(taskSelect).eq("id", taskId).maybeSingle(),
     getAccessibleStores(profile),
     profile.role === "owner"
@@ -36,6 +37,7 @@ export default async function TaskDetailPage({
           .eq("is_active", true)
           .order("full_name")
       : Promise.resolve({ data: [] }),
+    supabase.from("employee_contacts").select("id,staff_name,store_id").eq("is_active", true).order("staff_name"),
   ]);
 
   if (!task) {
@@ -54,6 +56,7 @@ export default async function TaskDetailPage({
         <TaskForm
           action={updateTask}
           assignableUsers={profiles ?? []}
+          assignableEmployees={employees ?? []}
           currentProfile={profile}
           stores={stores}
           submitLabel="Save task"

@@ -9,19 +9,28 @@ import { fixture } from "../tests/helpers/app-fixture.mjs";
 
 const workbookPath = process.argv[2];
 const periodMonth = process.argv[3] ?? "2026-09-01";
+const rehearsalPort = process.env.STOCK_REHEARSAL_PORT ?? "55439";
+const rehearsalDatabase = process.env.STOCK_REHEARSAL_DATABASE ?? "retail_safety";
+const rehearsalUser = process.env.STOCK_REHEARSAL_USER ?? process.env.USER;
 assert.ok(workbookPath, "Usage: node scripts/rehearse-stock-workbook.mjs <xlsx-path> [YYYY-MM-01]");
 assert.match(periodMonth, /^\d{4}-\d{2}-01$/);
 
 const sql = (statement) => execFileSync(
   "psql",
-  ["-XqAt", "-h", "127.0.0.1", "-p", "55439", "-d", "retail_safety", "-v", "ON_ERROR_STOP=1"],
-  { input: statement, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"], maxBuffer: 32 * 1024 * 1024 },
+  ["-XqAt", "-h", "127.0.0.1", "-p", rehearsalPort, "-U", rehearsalUser, "-d", rehearsalDatabase, "-v", "ON_ERROR_STOP=1"],
+  { input: statement, encoding: "utf8", env: { ...process.env, PGPASSWORD: process.env.STOCK_REHEARSAL_PASSWORD ?? process.env.PGPASSWORD }, stdio: ["pipe", "pipe", "pipe"], maxBuffer: 32 * 1024 * 1024 },
 ).trim();
 const quote = (value) => `'${String(value).replaceAll("'", "''")}'`;
 const owner = "00000000-0000-0000-0000-000000000001";
 const asOwner = `set request.jwt.claim.sub=${quote(owner)};set role authenticated;`;
 
-assert.match(sql("select current_database()||'|'||host(inet_server_addr())||'|'||inet_server_port();"), /^retail_safety\|127\.0\.0\.1\|55439$/);
+const target = sql("select current_database()||'|'||host(inet_server_addr())||'|'||inet_server_port();");
+const dedicatedSafetyTarget = target === "retail_safety|127.0.0.1|55439";
+const localSupabaseTarget = process.env.ALLOW_LOCAL_SUPABASE_REHEARSAL === "1"
+  && rehearsalDatabase === "postgres"
+  && rehearsalPort === "54322"
+  && target.startsWith("postgres|");
+assert.ok(dedicatedSafetyTarget || localSupabaseTarget, `Refusing non-disposable database target: ${target}`);
 sql(`insert into auth.users(id,email) values(${quote(owner)},'stock-rehearsal@example.invalid') on conflict(id) do nothing;
   update profiles set role='owner',is_active=true where id=${quote(owner)};`);
 

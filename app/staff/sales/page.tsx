@@ -1,0 +1,11 @@
+import { getIndiaToday } from "@/lib/tasks/dates";
+import { getMySalesSummary } from "@/lib/staff/portal";
+
+function money(value: number) { return new Intl.NumberFormat("en-IN", { currency: "INR", maximumFractionDigits: 0, style: "currency" }).format(value); }
+
+export default async function MySalesPage() {
+  const end = getIndiaToday();
+  const start = `${end.slice(0, 7)}-01`;
+  const sales = await getMySalesSummary(start, end);
+  return <div className="space-y-5"><div><p className="text-sm font-medium text-muted">Private</p><h1 className="mt-2 text-3xl font-semibold">My Sales</h1></div>{!sales.linkage_verified ? <div className="rounded-2xl border border-warning/30 bg-warning/5 p-5"><p className="font-semibold text-warning">Sales linkage requires owner verification</p><p className="mt-2 text-sm leading-6 text-muted">No sales are guessed from your name. Ask the owner to verify your exact sales identifiers.</p></div> : <><section className="grid grid-cols-3 gap-3"><div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted">Value</p><p className="mt-2 text-lg font-semibold">{money(sales.summary.value)}</p></div><div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted">Bills</p><p className="mt-2 text-lg font-semibold">{sales.summary.bill_count}</p></div><div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted">Quantity</p><p className="mt-2 text-lg font-semibold">{sales.summary.quantity}</p></div></section><section className="space-y-2"><h2 className="text-xl font-semibold">Daily totals</h2>{sales.daily.map((day) => <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4" key={day.sale_date}><div><p className="font-semibold">{new Date(`${day.sale_date}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p><p className="text-xs text-muted">{day.bill_count} bills · {day.quantity} qty</p></div><p className="font-semibold">{money(day.value)}</p></div>)}</section><p className="text-xs text-muted">Data updated through {sales.source_through_date ?? "no uploaded report"}. Missing recent uploads are not a technical failure.</p></>}</div>;
+}

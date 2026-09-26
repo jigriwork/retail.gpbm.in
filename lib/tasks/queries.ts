@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getIndiaToday, getIndiaTomorrow } from "@/lib/tasks/dates";
 
 export type TaskWithRelations = {
+  assigned_employee_id: string | null;
   assigned_to: string | null;
   carry_forward: boolean | null;
   category: string | null;
@@ -24,12 +25,14 @@ export type TaskWithRelations = {
   updated_at: string | null;
   stores: { id: string; name: string; code: string } | null;
   assigned_profile: { id: string; full_name: string | null; email: string | null } | null;
+  assigned_employee: { id: string; staff_name: string; store_id: string | null } | null;
 };
 
 const taskSelect = `
   *,
   stores(id,name,code),
-  assigned_profile:profiles!tasks_assigned_to_fkey(id,full_name,email)
+  assigned_profile:profiles!tasks_assigned_to_fkey(id,full_name,email),
+  assigned_employee:employee_contacts!tasks_assigned_employee_id_fkey(id,staff_name,store_id)
 `;
 
 export async function getTasksForProfile() {
