@@ -54,7 +54,7 @@ export function LoginForm() {
       </label>
       <label className="block">
         <span className="mb-2 block text-sm font-medium text-muted">
-          Password
+          Password / staff PIN
         </span>
         <div className="relative">
           <input

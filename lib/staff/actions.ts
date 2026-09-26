@@ -40,7 +40,6 @@ async function verifyCurrentPassword(email: string, password: string) {
     { auth: { autoRefreshToken: false, persistSession: false } },
   );
   const { error } = await verifier.auth.signInWithPassword({ email, password });
-  await verifier.auth.signOut();
   return !error;
 }
 
@@ -321,20 +320,25 @@ export async function changeStaffPassword(
   _state: StaffActionState,
   formData: FormData,
 ): Promise<StaffActionState> {
-  const { profile } = await requireProfile();
+  const { user, profile } = await requireProfile();
   if (profile?.role !== "staff" || !profile.email) return { ok: false, message: "Staff password change denied." };
   const currentPassword = value(formData, "currentPassword");
   const newPassword = value(formData, "newPassword");
   if (!validPrivatePassword(newPassword)) return { ok: false, message: "Use a 6–8 digit PIN." };
-  if (newPassword !== value(formData, "confirmPassword")) return { ok: false, message: "New passwords do not match." };
-  if (!(await verifyCurrentPassword(profile.email, currentPassword))) return { ok: false, message: "Current password is incorrect." };
+  if (newPassword !== value(formData, "confirmPassword")) return { ok: false, message: "PINs do not match." };
   const supabase = await createClient();
+  const { data: link } = await supabase.from("employee_auth_links")
+    .select("must_change_password").eq("auth_user_id", user.id).maybeSingle();
+  if (!link) return { ok: false, message: "Staff account link is unavailable." };
+  if (!link.must_change_password && !(await verifyCurrentPassword(profile.email, currentPassword))) {
+    return { ok: false, message: "Current PIN is incorrect." };
+  }
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) return { ok: false, message: error.message };
   const { error: finishError } = await supabase.rpc("finish_own_staff_password_change");
   if (finishError) return { ok: false, message: "Password changed, but account finalization failed. Contact the owner." };
   revalidatePath("/staff");
-  return { ok: true, message: "Private password saved. Your dashboard is now available." };
+  return { ok: true, message: "Private PIN saved. Your dashboard is now available." };
 }
 
 export async function verifySalaryPassword(
