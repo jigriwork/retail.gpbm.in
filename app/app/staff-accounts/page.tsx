@@ -7,10 +7,12 @@ import { requireProfile } from "@/lib/auth/session";
 import {
   createStaffAccount,
   decideStaffRequest,
+  hasCredentialManagementGrant,
   linkPayrollRow,
   requestStaffAccount,
   resetStaffTemporaryPassword,
   setStaffAccountActive,
+  verifyCredentialManagementPassword,
   verifySalesAlias,
 } from "@/lib/staff/actions";
 import { getStaffAccountAdminData } from "@/lib/staff/admin";
@@ -19,6 +21,7 @@ export default async function StaffAccountsPage() {
   const { profile } = await requireProfile();
   if (!profile || !["owner", "manager"].includes(profile.role)) return <AccessDenied />;
   const data = await getStaffAccountAdminData(profile);
+  const credentialActionsUnlocked = await hasCredentialManagementGrant();
   const linkByEmployee = new Map(data.links.map((link) => [link.employee_contact_id, link]));
   const openRequestByEmployee = new Map(data.requests.filter((request) => ["pending", "approved"].includes(request.status)).map((request) => [request.employee_contact_id, request]));
   const aliasesByEmployee = new Map<string, typeof data.aliases>();
@@ -36,6 +39,17 @@ export default async function StaffAccountsPage() {
         <p className="text-sm font-medium text-muted">{profile.role === "owner" ? "Owner administration" : "Assigned stores"}</p>
         <h1 className="mt-2 text-3xl font-semibold">Staff Accounts</h1>
         <p className="mt-2 text-sm leading-6 text-muted">Personal email/password accounts linked exactly to existing employees. Passwords are never stored or logged.</p>
+      </section>
+
+      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+        {credentialActionsUnlocked ? (
+          <div><p className="font-semibold text-success">Password actions unlocked</p><p className="mt-1 text-sm text-muted">You can set up or reset multiple staff accounts for 15 minutes without entering your password again.</p></div>
+        ) : (
+          <AccountActionForm action={verifyCredentialManagementPassword} submitLabel="Unlock password actions for 15 minutes">
+            <p className="text-sm text-muted">Enter your own password once, then set up multiple staff accounts.</p>
+            <label className="grid gap-1 text-xs font-semibold text-muted">Your current password<input autoComplete="current-password" className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground" name="currentPassword" required type="password" /></label>
+          </AccountActionForm>
+        )}
       </section>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -62,10 +76,11 @@ export default async function StaffAccountsPage() {
               <div className="rounded-2xl border border-border bg-card p-4" key={request.id}>
                 <p className="font-semibold">{employee?.staff_name ?? "Employee"}</p>
                 <p className="mt-1 text-sm text-muted">{request.requested_email}</p>
+                <p className="mt-1 text-xs text-muted">The manager has already issued the temporary code. Approval activates the blocked account.</p>
                 <form action={decideStaffRequest} className="mt-3 flex flex-wrap gap-2">
                   <input name="requestId" type="hidden" value={request.id} />
-                  <button className="rounded-xl bg-foreground px-4 py-2 text-xs font-semibold text-background" name="decision" value="approved">Approve</button>
-                  <button className="rounded-xl border border-border px-4 py-2 text-xs font-semibold" name="decision" value="rejected">Reject</button>
+                  <button className="rounded-xl bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-50" disabled={!credentialActionsUnlocked} name="decision" value="approved">Approve</button>
+                  <button className="rounded-xl border border-border px-4 py-2 text-xs font-semibold disabled:opacity-50" disabled={!credentialActionsUnlocked} name="decision" value="rejected">Reject</button>
                 </form>
               </div>
             );
@@ -90,37 +105,38 @@ export default async function StaffAccountsPage() {
                 </div>
               </summary>
               <div className="mt-5 grid gap-5 border-t border-border pt-5 lg:grid-cols-2">
-                {!link && !request ? (
-                  <AccountActionForm action={requestStaffAccount} submitLabel={profile.role === "owner" ? "Approve account details" : "Request owner approval"}>
+                {!link && !request && credentialActionsUnlocked ? (
+                  <AccountActionForm action={requestStaffAccount} submitLabel={profile.role === "owner" ? "Create staff account" : "Set password and request approval"}>
                     <input name="employeeId" type="hidden" value={employee.id} />
                     <label className="grid gap-1 text-xs font-semibold text-muted">Personal email<input autoComplete="email" className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground" name="email" required type="email" /></label>
+                    <PasswordFields includeCurrent={false} />
                   </AccountActionForm>
                 ) : null}
-                {!link && request?.status === "approved" ? (
+                {!link && request?.status === "approved" && credentialActionsUnlocked ? (
                   <AccountActionForm action={createStaffAccount} submitLabel="Create account and issue password">
                     <input name="employeeId" type="hidden" value={employee.id} />
                     <input name="requestId" type="hidden" value={request.id} />
                     <input name="email" type="hidden" value={request.requested_email} />
                     <p className="text-sm font-semibold">{request.requested_email}</p>
-                    <PasswordFields />
+                    <PasswordFields includeCurrent={false} />
                   </AccountActionForm>
                 ) : null}
-                {link ? (
-                  <AccountActionForm action={resetStaffTemporaryPassword} submitLabel="Reset temporary password">
+                {link && credentialActionsUnlocked ? (
+                  <AccountActionForm action={resetStaffTemporaryPassword} submitLabel="Reset temporary code">
                     <input name="employeeId" type="hidden" value={employee.id} />
                     <p className="text-sm font-semibold">{link.login_email}</p>
-                    <PasswordFields />
+                    <PasswordFields includeCurrent={false} />
                   </AccountActionForm>
                 ) : null}
-                {profile.role === "owner" && link ? (
+                {profile.role === "owner" && link && credentialActionsUnlocked ? (
                   <form action={setStaffAccountActive} className="grid gap-3">
                     <input name="employeeId" type="hidden" value={employee.id} />
                     <input name="active" type="hidden" value={link.status === "active" ? "false" : "true"} />
                     <input className="h-11 rounded-xl border border-border bg-background px-3 text-sm" name="reason" placeholder="Reason" required={link.status === "active"} />
-                    <input className="h-11 rounded-xl border border-border bg-background px-3 text-sm" name="currentPassword" placeholder="Your current password" required type="password" />
                     <button className="h-11 rounded-xl border border-border px-4 text-sm font-semibold">{link.status === "active" ? "Deactivate account" : "Reactivate account"}</button>
                   </form>
                 ) : null}
+                {!credentialActionsUnlocked ? <p className="text-sm text-muted">Unlock password actions at the top of this page to set up or manage this account.</p> : null}
               </div>
             </details>
           );

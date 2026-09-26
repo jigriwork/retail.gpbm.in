@@ -13,11 +13,10 @@ export function StaffChangePasswordForm() {
   useEffect(() => { if (state.ok) router.refresh(); }, [router, state.ok]);
   return (
     <form action={action} className="grid gap-4">
-      <label className="grid gap-2 text-sm font-medium">Current temporary password<input autoComplete="current-password" className="h-12 rounded-2xl border border-border bg-background px-4" name="currentPassword" required type="password" /></label>
-      <label className="grid gap-2 text-sm font-medium">New private password<input autoComplete="new-password" className="h-12 rounded-2xl border border-border bg-background px-4" name="newPassword" required type="password" /></label>
-      <label className="grid gap-2 text-sm font-medium">Confirm new password<input autoComplete="new-password" className="h-12 rounded-2xl border border-border bg-background px-4" name="confirmPassword" required type="password" /></label>
-      <p className="text-xs leading-5 text-muted">Use at least 10 characters with a letter, number and symbol. Your password is sent only to Supabase Auth and is never stored by GPBM Retail.</p>
-      <button className="h-12 rounded-2xl bg-foreground px-4 font-semibold text-background disabled:opacity-50" disabled={pending}>{pending ? "Saving…" : "Save private password"}</button>
+      <label className="grid gap-2 text-sm font-medium">Current temporary code<input autoComplete="current-password" className="h-12 rounded-2xl border border-border bg-background px-4" inputMode="numeric" name="currentPassword" required type="password" /></label>
+      <label className="grid gap-2 text-sm font-medium">New private PIN (6–8 digits)<input autoComplete="new-password" className="h-12 rounded-2xl border border-border bg-background px-4" inputMode="numeric" maxLength={8} minLength={6} name="newPassword" pattern="[0-9]{6,8}" required type="password" /></label>
+      <label className="grid gap-2 text-sm font-medium">Confirm private PIN<input autoComplete="new-password" className="h-12 rounded-2xl border border-border bg-background px-4" inputMode="numeric" maxLength={8} minLength={6} name="confirmPassword" pattern="[0-9]{6,8}" required type="password" /></label>
+      <button className="h-12 rounded-2xl bg-foreground px-4 font-semibold text-background disabled:opacity-50" disabled={pending}>{pending ? "Saving…" : "Save private PIN"}</button>
       {state.message ? <p className={state.ok ? "text-sm font-semibold text-success" : "text-sm font-semibold text-danger"}>{state.message}</p> : null}
     </form>
   );

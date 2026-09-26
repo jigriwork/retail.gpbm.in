@@ -12,6 +12,9 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 export type StaffActionState = { ok: boolean; message: string };
 
+const credentialGrantCookie = "gpbm_credential_management_grant";
+const credentialGrantSeconds = 15 * 60;
+
 function value(formData: FormData, key: string) {
   const entry = formData.get(key);
   return typeof entry === "string" ? entry.trim() : "";
@@ -22,7 +25,11 @@ function validEmail(email: string) {
 }
 
 function validTemporaryPassword(password: string) {
-  return password.length >= 10 && /[A-Za-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
+  return /^\d{6,8}$/.test(password);
+}
+
+function validPrivatePassword(password: string) {
+  return /^\d{6,8}$/.test(password);
 }
 
 async function verifyCurrentPassword(email: string, password: string) {
@@ -35,6 +42,54 @@ async function verifyCurrentPassword(email: string, password: string) {
   const { error } = await verifier.auth.signInWithPassword({ email, password });
   await verifier.auth.signOut();
   return !error;
+}
+
+export async function hasCredentialManagementGrant() {
+  const token = (await cookies()).get(credentialGrantCookie)?.value;
+  if (!token) return false;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("validate_sensitive_access_grant", {
+    p_purpose: "credential_management",
+    p_token: token,
+  });
+  return !error && data === true;
+}
+
+export async function verifyCredentialManagementPassword(
+  _state: StaffActionState,
+  formData: FormData,
+): Promise<StaffActionState> {
+  const { user, profile } = await requireProfile();
+  if (!profile || !["owner", "manager"].includes(profile.role) || !profile.email) {
+    return { ok: false, message: "Credential management access denied." };
+  }
+  if (!(await verifyCurrentPassword(profile.email, value(formData, "currentPassword")))) {
+    return { ok: false, message: "Your current password is incorrect." };
+  }
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, message: "Secure credential management is unavailable." };
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + credentialGrantSeconds * 1000);
+  await admin.from("sensitive_access_grants").update({ revoked_at: new Date().toISOString() })
+    .eq("auth_user_id", user.id).eq("purpose", "credential_management").is("revoked_at", null);
+  const { error } = await admin.from("sensitive_access_grants").insert({
+    auth_user_id: user.id,
+    expires_at: expiresAt.toISOString(),
+    purpose: "credential_management",
+    token_hash: tokenHash,
+  });
+  if (error) return { ok: false, message: "Unable to unlock staff credential actions." };
+  const cookieStore = await cookies();
+  cookieStore.set(credentialGrantCookie, token, {
+    httpOnly: true,
+    maxAge: credentialGrantSeconds,
+    path: "/app/staff-accounts",
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+  });
+  revalidatePath("/app/staff-accounts");
+  return { ok: true, message: "Password actions unlocked for 15 minutes." };
 }
 
 async function securityEvent(input: {
@@ -65,45 +120,117 @@ export async function requestStaffAccount(
   _state: StaffActionState,
   formData: FormData,
 ): Promise<StaffActionState> {
-  const { profile } = await requireProfile();
+  const { user, profile } = await requireProfile();
   if (!profile || !["owner", "manager"].includes(profile.role)) {
     return { ok: false, message: "Staff account access denied." };
   }
   const employeeId = value(formData, "employeeId");
   const email = value(formData, "email").toLowerCase();
+  const temporaryPassword = value(formData, "temporaryPassword");
   if (!employeeId || !validEmail(email)) return { ok: false, message: "Enter a valid personal email." };
+  if (!validTemporaryPassword(temporaryPassword)) return { ok: false, message: "Use a 6–8 digit temporary code." };
+  if (!(await hasCredentialManagementGrant())) return { ok: false, message: "Unlock staff password actions first." };
   const supabase = await createClient();
-  const { data: allowed } = await supabase.rpc("can_manage_staff_employee", { p_employee_id: employeeId });
-  if (!allowed) return { ok: false, message: "You can request accounts only for active employees in assigned stores." };
+  const [{ data: allowed }, { data: withinLimit }] = await Promise.all([
+    supabase.rpc("can_manage_staff_employee", { p_employee_id: employeeId }),
+    supabase.rpc("consume_credential_action_limit", { p_employee_id: employeeId }),
+  ]);
+  if (!allowed || !withinLimit) return { ok: false, message: withinLimit === false ? "Password action limit reached. Try again after one hour." : "You can create accounts only for active employees in assigned stores." };
   const { data: employee } = await supabase.from("employee_contacts").select("id,store_id,staff_name").eq("id", employeeId).maybeSingle();
   if (!employee?.store_id) return { ok: false, message: "Employee store is missing." };
-  const status = profile.role === "owner" ? "approved" : "pending";
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, message: "Server Auth administration is not configured." };
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    ban_duration: "876000h",
+    email,
+    email_confirm: true,
+    password: temporaryPassword,
+    user_metadata: { full_name: employee.staff_name },
+  });
+  if (createError || !created.user) return { ok: false, message: createError?.message ?? "Unable to prepare the staff account." };
+  const { error: profileError } = await admin.from("profiles").update({
+    email,
+    full_name: employee.staff_name,
+    is_active: false,
+    role: "staff",
+  }).eq("id", created.user.id);
+  if (profileError) {
+    await admin.auth.admin.deleteUser(created.user.id);
+    return { ok: false, message: "Unable to secure the pending staff account." };
+  }
+
+  if (profile.role === "owner") {
+    const { error: unbanError } = await admin.auth.admin.updateUserById(created.user.id, { ban_duration: "none" });
+    const { error: finalizeError } = unbanError ? { error: unbanError } : await supabase.rpc("finalize_staff_account", {
+      p_auth_user_id: created.user.id,
+      p_email: email,
+      p_employee_id: employeeId,
+    });
+    if (finalizeError) {
+      await admin.auth.admin.updateUserById(created.user.id, { ban_duration: "876000h" });
+      await admin.auth.admin.deleteUser(created.user.id);
+      return { ok: false, message: finalizeError.message };
+    }
+    await securityEvent({ actorId: user.id, actorRole: profile.role, authUserId: created.user.id, employeeId, eventType: "temporary_password_issued", storeId: employee.store_id });
+    revalidatePath("/app/staff-accounts");
+    return { ok: true, message: "Staff account created. Share the temporary code privately; it will not be shown again." };
+  }
+
   const { data: request, error } = await supabase.from("staff_account_requests").insert({
-    decision_at: profile.role === "owner" ? new Date().toISOString() : null,
-    decision_by: profile.role === "owner" ? profile.id : null,
     employee_contact_id: employee.id,
+    pending_auth_user_id: created.user.id,
     requested_by: profile.id,
     requested_email: email,
-    status,
+    status: "pending",
     store_id: employee.store_id,
   }).select("id").single();
-  if (error) return { ok: false, message: error.code === "23505" ? "This employee or email already has an open request." : error.message };
-  await securityEvent({ actorId: profile.id, actorRole: profile.role, employeeId, eventType: "request_created", safeMetadata: { request_id: request.id, status }, storeId: employee.store_id });
+  if (error) {
+    await admin.auth.admin.deleteUser(created.user.id);
+    return { ok: false, message: error.code === "23505" ? "This employee or email already has an open request." : error.message };
+  }
+  await securityEvent({ actorId: profile.id, actorRole: profile.role, authUserId: created.user.id, employeeId, eventType: "request_created", safeMetadata: { request_id: request.id, status: "pending" }, storeId: employee.store_id });
+  await securityEvent({ actorId: profile.id, actorRole: profile.role, authUserId: created.user.id, employeeId, eventType: "temporary_password_issued", safeMetadata: { request_id: request.id, pending_owner_approval: true }, storeId: employee.store_id });
   revalidatePath("/app/staff-accounts");
-  return { ok: true, message: profile.role === "owner" ? "Request approved. You can now create the account." : "Request sent for owner approval." };
+  return { ok: true, message: "Email and temporary code saved securely in Auth. The account remains blocked until owner approval." };
 }
 
 export async function decideStaffRequest(formData: FormData): Promise<void> {
   const { profile } = await requireProfile();
   if (profile?.role !== "owner") return;
+  if (!(await hasCredentialManagementGrant())) return;
   const requestId = value(formData, "requestId");
   const decision = value(formData, "decision");
   if (!requestId || !["approved", "rejected"].includes(decision)) return;
   const supabase = await createClient();
   const { data: request } = await supabase.from("staff_account_requests").select("*").eq("id", requestId).eq("status", "pending").maybeSingle();
   if (!request) return;
-  await supabase.from("staff_account_requests").update({ decision_at: new Date().toISOString(), decision_by: profile.id, decision_reason: value(formData, "reason") || null, status: decision }).eq("id", request.id).eq("status", "pending");
-  await securityEvent({ actorId: profile.id, actorRole: profile.role, employeeId: request.employee_contact_id, eventType: decision === "approved" ? "request_approved" : "request_rejected", safeMetadata: { request_id: request.id }, storeId: request.store_id });
+  const admin = createAdminClient();
+  if (!admin) return;
+  if (decision === "rejected") {
+    await supabase.from("staff_account_requests").update({ decision_at: new Date().toISOString(), decision_by: profile.id, decision_reason: value(formData, "reason") || null, status: "rejected" }).eq("id", request.id).eq("status", "pending");
+    if (request.pending_auth_user_id) await admin.auth.admin.deleteUser(request.pending_auth_user_id);
+    await securityEvent({ actorId: profile.id, actorRole: profile.role, employeeId: request.employee_contact_id, eventType: "request_rejected", safeMetadata: { request_id: request.id }, storeId: request.store_id });
+    revalidatePath("/app/staff-accounts");
+    return;
+  }
+  if (!request.pending_auth_user_id) {
+    await supabase.from("staff_account_requests").update({ decision_at: new Date().toISOString(), decision_by: profile.id, status: "approved" }).eq("id", request.id).eq("status", "pending");
+    revalidatePath("/app/staff-accounts");
+    return;
+  }
+  const { error: unbanError } = await admin.auth.admin.updateUserById(request.pending_auth_user_id, { ban_duration: "none" });
+  if (unbanError) return;
+  const { error: finalizeError } = await supabase.rpc("finalize_staff_account", {
+    p_auth_user_id: request.pending_auth_user_id,
+    p_email: request.requested_email,
+    p_employee_id: request.employee_contact_id,
+    p_request_id: request.id,
+  });
+  if (finalizeError) {
+    await admin.auth.admin.updateUserById(request.pending_auth_user_id, { ban_duration: "876000h" });
+    return;
+  }
+  await securityEvent({ actorId: profile.id, actorRole: profile.role, authUserId: request.pending_auth_user_id, employeeId: request.employee_contact_id, eventType: "request_approved", safeMetadata: { request_id: request.id }, storeId: request.store_id });
   revalidatePath("/app/staff-accounts");
 }
 
@@ -117,10 +244,9 @@ export async function createStaffAccount(
   const requestId = value(formData, "requestId") || undefined;
   const email = value(formData, "email").toLowerCase();
   const temporaryPassword = value(formData, "temporaryPassword");
-  const currentPassword = value(formData, "currentPassword");
   if (!validEmail(email)) return { ok: false, message: "Enter a valid personal email." };
-  if (!validTemporaryPassword(temporaryPassword)) return { ok: false, message: "Temporary password must be 10+ characters with a letter, number and symbol." };
-  if (!(await verifyCurrentPassword(profile.email, currentPassword))) return { ok: false, message: "Confirm your own current password to continue." };
+  if (!validTemporaryPassword(temporaryPassword)) return { ok: false, message: "Use a 6–8 digit temporary code." };
+  if (!(await hasCredentialManagementGrant())) return { ok: false, message: "Unlock staff password actions first." };
   const supabase = await createClient();
   const [{ data: allowed }, { data: withinLimit }, { data: employee }] = await Promise.all([
     supabase.rpc("can_manage_staff_employee", { p_employee_id: employeeId }),
@@ -139,7 +265,7 @@ export async function createStaffAccount(
   }
   await securityEvent({ actorId: user.id, actorRole: profile.role, authUserId: created.user.id, employeeId, eventType: "temporary_password_issued", storeId: employee.store_id });
   revalidatePath("/app/staff-accounts");
-  return { ok: true, message: "Staff account created. Share the temporary password privately; it will not be shown again." };
+  return { ok: true, message: "Staff account created. Share the temporary code privately; it will not be shown again." };
 }
 
 export async function resetStaffTemporaryPassword(
@@ -150,8 +276,8 @@ export async function resetStaffTemporaryPassword(
   if (!profile || !["owner", "manager"].includes(profile.role) || !profile.email) return { ok: false, message: "Password reset denied." };
   const employeeId = value(formData, "employeeId");
   const temporaryPassword = value(formData, "temporaryPassword");
-  if (!validTemporaryPassword(temporaryPassword)) return { ok: false, message: "Temporary password must be 10+ characters with a letter, number and symbol." };
-  if (!(await verifyCurrentPassword(profile.email, value(formData, "currentPassword")))) return { ok: false, message: "Confirm your own current password to continue." };
+  if (!validTemporaryPassword(temporaryPassword)) return { ok: false, message: "Use a 6–8 digit temporary code." };
+  if (!(await hasCredentialManagementGrant())) return { ok: false, message: "Unlock staff password actions first." };
   const supabase = await createClient();
   const [{ data: allowed }, { data: withinLimit }, { data: link }] = await Promise.all([
     supabase.rpc("can_manage_staff_employee", { p_employee_id: employeeId }),
@@ -171,7 +297,7 @@ export async function resetStaffTemporaryPassword(
   }
   await supabase.rpc("record_staff_password_issued", { p_employee_id: employeeId, p_event_type: "temporary_password_reset" });
   revalidatePath("/app/staff-accounts");
-  return { ok: true, message: "Temporary password reset. The staff member must change it at next login." };
+  return { ok: true, message: "Temporary code reset. The staff member must change it at next login." };
 }
 
 export async function setStaffAccountActive(formData: FormData) {
@@ -179,7 +305,7 @@ export async function setStaffAccountActive(formData: FormData) {
   if (profile?.role !== "owner" || !profile.email) return;
   const employeeId = value(formData, "employeeId");
   const active = value(formData, "active") === "true";
-  if (!(await verifyCurrentPassword(profile.email, value(formData, "currentPassword")))) return;
+  if (!(await hasCredentialManagementGrant())) return;
   const admin = createAdminClient();
   if (!admin) return;
   const { data: link } = await admin.from("employee_auth_links").select("*").eq("employee_contact_id", employeeId).maybeSingle();
@@ -199,7 +325,7 @@ export async function changeStaffPassword(
   if (profile?.role !== "staff" || !profile.email) return { ok: false, message: "Staff password change denied." };
   const currentPassword = value(formData, "currentPassword");
   const newPassword = value(formData, "newPassword");
-  if (!validTemporaryPassword(newPassword)) return { ok: false, message: "New password must be 10+ characters with a letter, number and symbol." };
+  if (!validPrivatePassword(newPassword)) return { ok: false, message: "Use a 6–8 digit PIN." };
   if (newPassword !== value(formData, "confirmPassword")) return { ok: false, message: "New passwords do not match." };
   if (!(await verifyCurrentPassword(profile.email, currentPassword))) return { ok: false, message: "Current password is incorrect." };
   const supabase = await createClient();

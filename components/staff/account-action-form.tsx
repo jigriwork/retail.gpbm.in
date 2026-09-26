@@ -29,19 +29,27 @@ export function AccountActionForm({
   );
 }
 
-export function PasswordFields({ includeTemporary = true }: { includeTemporary?: boolean }) {
+export function PasswordFields({
+  includeCurrent = true,
+  includeTemporary = true,
+}: {
+  includeCurrent?: boolean;
+  includeTemporary?: boolean;
+}) {
   return (
     <>
       {includeTemporary ? (
         <label className="grid gap-1 text-xs font-semibold text-muted">
-          Temporary password
-          <input autoComplete="new-password" className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground" name="temporaryPassword" required type="password" />
+          Temporary access code (6–8 digits)
+          <input autoComplete="new-password" className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground" inputMode="numeric" maxLength={8} minLength={6} name="temporaryPassword" pattern="[0-9]{6,8}" required type="password" />
         </label>
       ) : null}
-      <label className="grid gap-1 text-xs font-semibold text-muted">
-        Your current password (recent authentication)
-        <input autoComplete="current-password" className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground" name="currentPassword" required type="password" />
-      </label>
+      {includeCurrent ? (
+        <label className="grid gap-1 text-xs font-semibold text-muted">
+          Your current password (recent authentication)
+          <input autoComplete="current-password" className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground" name="currentPassword" required type="password" />
+        </label>
+      ) : null}
     </>
   );
 }

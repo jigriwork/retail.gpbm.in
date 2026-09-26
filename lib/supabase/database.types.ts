@@ -1844,6 +1844,7 @@ export type Database = {
           decision_reason: string | null
           employee_contact_id: string
           id: string
+          pending_auth_user_id: string | null
           requested_by: string
           requested_email: string
           status: string
@@ -1857,6 +1858,7 @@ export type Database = {
           decision_reason?: string | null
           employee_contact_id: string
           id?: string
+          pending_auth_user_id?: string | null
           requested_by: string
           requested_email: string
           status?: string
@@ -1870,6 +1872,7 @@ export type Database = {
           decision_reason?: string | null
           employee_contact_id?: string
           id?: string
+          pending_auth_user_id?: string | null
           requested_by?: string
           requested_email?: string
           status?: string
