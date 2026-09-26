@@ -70,10 +70,10 @@ export default async function ProtectedAppLayout({
               <Image alt="" className="shrink-0 rounded-lg" height={28} src="/icon-192.png" width={28} />
               <span className="min-w-0 truncate">GPBM Retail</span>
               <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[0.6rem] font-bold uppercase text-muted sm:hidden">
-                v8.0.1
+                v9.0.0
               </span>
               <span className="hidden rounded-full border border-border bg-card px-2 py-0.5 text-[0.65rem] font-bold uppercase text-muted sm:inline-flex">
-                Version 8.0.1
+                Version 9.0.0
               </span>
             </Link>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-muted">
