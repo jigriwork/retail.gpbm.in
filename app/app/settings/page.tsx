@@ -6,6 +6,7 @@ import { FirmMappingForm } from "@/components/stores/firm-mapping-form";
 import { StoreTargetForm } from "@/components/stores/store-target-form";
 import { updateStoreFirmName } from "@/lib/stores/firm-actions";
 import { updateStoreTarget } from "@/lib/stores/target-actions";
+import packageJson from "@/package.json";
 
 const labels: Record<string, string> = {
   salary_day: "Salary day",
@@ -85,7 +86,7 @@ export default async function SettingsPage() {
       <div className="pt-2">
         <h2 className="text-2xl font-semibold">App release</h2>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Current version: v9.2.0
+          Current version: v{packageJson.version}
         </p>
       </div>
       <section>

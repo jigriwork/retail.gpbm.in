@@ -5,6 +5,7 @@ import { LockKeyhole } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
 import { signOut } from "@/lib/auth/actions";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
+import packageJson from "@/package.json";
 
 function InactiveAccount() {
   return (
@@ -54,7 +55,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold">Retail</h1>
               <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[0.65rem] font-bold uppercase text-muted">
-                Version 9.3.0
+                Version {packageJson.version}
               </span>
             </div>
           </div>
