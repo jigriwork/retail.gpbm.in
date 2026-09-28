@@ -464,7 +464,7 @@ function SalesStatusCards({ statuses }: { statuses: StoreSalesStatus[] }) {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
                 <div className="rounded-xl border border-border p-3">
                   <p className="text-xs font-medium text-muted">Uploaded by</p>
                   <p className="mt-1 break-words text-sm font-semibold">
@@ -476,8 +476,29 @@ function SalesStatusCards({ statuses }: { statuses: StoreSalesStatus[] }) {
                   <p className="mt-1 text-sm font-semibold">{formatDateTime(latestReport?.created_at)}</p>
                 </div>
                 <div className="rounded-xl border border-border p-3">
-                  <p className="text-xs font-medium text-muted">Total sale</p>
+                  <p className="text-xs font-medium text-muted">Actual sale (incl. tax)</p>
                   <p className="mt-1 text-sm font-semibold">{formatMoney(latestReport?.summary?.totalNetSale)}</p>
+                </div>
+                <div className="rounded-xl border border-border p-3">
+                  <p className="text-xs font-medium text-muted">MRP value</p>
+                  <p className="mt-1 text-sm font-semibold">
+                    {latestReport?.summary?.mrpRowCount
+                      ? formatMoney(latestReport.summary.totalMrpValue)
+                      : "Not available"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border p-3">
+                  <p className="text-xs font-medium text-muted">Net discount given</p>
+                  <p className="mt-1 text-sm font-semibold">
+                    {latestReport?.summary?.mrpRowCount
+                      ? formatMoney(latestReport.summary.totalDiscountValue)
+                      : "Not available"}
+                  </p>
+                  {Number(latestReport?.summary?.totalMrpValue ?? 0) > 0 ? (
+                    <p className="mt-1 text-xs text-muted">
+                      Avg {Number(latestReport?.summary?.averageDiscountPercent ?? 0).toFixed(1)}%
+                    </p>
+                  ) : latestReport?.summary?.mrpRowCount ? <p className="mt-1 text-xs text-muted">Avg not available</p> : null}
                 </div>
                 <div className="rounded-xl border border-border p-3">
                   <p className="text-xs font-medium text-muted">Bills</p>

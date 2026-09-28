@@ -102,8 +102,19 @@ export default async function ReportsPage() {
                     {status.yesterdayReport ? "Uploaded" : "Missing"}
                   </span>
                 </div>
-                <p className="mt-4 text-2xl font-semibold">
+                <p className="mt-4 text-xs font-medium text-muted">Actual sale (incl. tax)</p>
+                <p className="mt-1 text-2xl font-semibold">
                   {formatMoney(status.latestReport?.summary?.totalNetSale)}
+                </p>
+                <p className="mt-2 text-xs font-medium text-muted">
+                  MRP value: {status.latestReport?.summary?.mrpRowCount
+                    ? formatMoney(status.latestReport.summary.totalMrpValue)
+                    : "Not available"}
+                </p>
+                <p className="mt-1 text-xs font-medium text-muted">
+                  Net discount: {status.latestReport?.summary?.mrpRowCount
+                    ? `${formatMoney(status.latestReport.summary.totalDiscountValue)} · ${Number(status.latestReport.summary.totalMrpValue ?? 0) > 0 ? `Avg ${Number(status.latestReport.summary.averageDiscountPercent ?? 0).toFixed(1)}%` : "Avg not available"}`
+                    : "Not available"}
                 </p>
                 <p className="mt-1 text-xs font-medium text-muted">
                   Latest: {status.latestReport?.report_date ?? "No upload yet"}

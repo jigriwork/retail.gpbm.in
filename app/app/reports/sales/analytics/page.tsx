@@ -187,7 +187,10 @@ export default async function SalesAnalyticsPage({
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          ["Total net sale", formatMoney(summary.totalNetSale)],
+          ["Actual sales (incl. tax)", formatMoney(summary.totalNetSale)],
+          ["MRP value", summary.pricedRowCount ? formatMoney(summary.totalMrpValue) : "Not available"],
+          ["Net discount given", summary.pricedRowCount ? formatMoney(summary.totalDiscountValue) : "Not available"],
+          ["Average discount", summary.totalMrpValue > 0 ? `${summary.averageDiscountPercent.toFixed(1)}%` : "Not available"],
           ["Total quantity", formatNumber(summary.totalQuantity)],
           ["Bill count", String(summary.billCount)],
           ["Average bill value", formatMoney(summary.averageBillValue)],
@@ -255,6 +258,11 @@ export default async function SalesAnalyticsPage({
                     <p className="font-semibold">{store.store.name}</p>
                     <p className="mt-1 text-xs font-medium text-muted">
                       Bills {store.billCount} · Qty {formatNumber(store.totalQuantity)}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-muted">
+                      {store.totalMrpValue > 0
+                        ? `MRP ${formatMoney(store.totalMrpValue)} · Discount ${formatMoney(store.totalDiscountValue)} · Avg ${store.averageDiscountPercent.toFixed(1)}%`
+                        : "MRP and discount not available"}
                     </p>
                   </div>
                   <p className="font-semibold">{formatMoney(store.totalNetSale)}</p>

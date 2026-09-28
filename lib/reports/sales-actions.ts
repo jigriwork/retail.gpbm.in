@@ -30,6 +30,10 @@ export type SalesUploadState = {
     reportDate: string;
     rowsProcessed: number;
     totalNetSale: number;
+    totalMrpValue: number;
+    totalDiscountValue: number;
+    averageDiscountPercent: number;
+    mrpRowCount: number;
     billCount: number;
     staffNames: string[];
     detectedDate: string | null;
@@ -90,6 +94,10 @@ function safeSummaryJson(
 ) {
   return {
     totalNetSale: summary.totalNetSale,
+    totalMrpValue: summary.totalMrpValue,
+    totalDiscountValue: summary.totalDiscountValue,
+    averageDiscountPercent: summary.averageDiscountPercent,
+    mrpRowCount: summary.mrpRowCount,
     rowCount: summary.rowCount,
     billCount: summary.billCount,
     staffNames: summary.staffNames,
@@ -392,6 +400,10 @@ export async function uploadSalesReport(
       reportDate: finalReportDate,
       rowsProcessed: summary.rowCount,
       totalNetSale: summary.totalNetSale,
+      totalMrpValue: summary.totalMrpValue,
+      totalDiscountValue: summary.totalDiscountValue,
+      averageDiscountPercent: summary.averageDiscountPercent,
+      mrpRowCount: summary.mrpRowCount,
       billCount: summary.billCount,
       staffNames: summary.staffNames,
       ...uploadMetadata,

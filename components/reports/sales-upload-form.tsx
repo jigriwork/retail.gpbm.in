@@ -102,7 +102,7 @@ export function SalesUploadForm({
           <p className="mt-2 text-sm leading-6 text-muted">
             Owner can see this upload on Today - Daily Sales Upload Status.
           </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <div className="rounded-2xl border border-border p-3">
               <p className="text-xs font-medium text-muted">Report date</p>
               <p className="mt-1 font-semibold">{state.summary.reportDate}</p>
@@ -115,8 +115,23 @@ export function SalesUploadForm({
               <p className="mt-1 font-semibold">{state.summary.rowsProcessed}</p>
             </div>
             <div className="rounded-2xl border border-border p-3">
-              <p className="text-xs font-medium text-muted">Total sale</p>
+              <p className="text-xs font-medium text-muted">Actual sale (incl. tax)</p>
               <p className="mt-1 font-semibold">{formatMoney(state.summary.totalNetSale)}</p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">MRP value</p>
+              <p className="mt-1 font-semibold">
+                {state.summary.mrpRowCount ? formatMoney(state.summary.totalMrpValue) : "Not available"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border p-3">
+              <p className="text-xs font-medium text-muted">Net discount given</p>
+              <p className="mt-1 font-semibold">
+                {state.summary.mrpRowCount ? formatMoney(state.summary.totalDiscountValue) : "Not available"}
+              </p>
+              {state.summary.totalMrpValue > 0 ? (
+                <p className="mt-1 text-xs text-muted">Avg {state.summary.averageDiscountPercent.toFixed(1)}%</p>
+              ) : <p className="mt-1 text-xs text-muted">Avg not available</p>}
             </div>
             <div className="rounded-2xl border border-border p-3">
               <p className="text-xs font-medium text-muted">Bills</p>

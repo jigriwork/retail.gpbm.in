@@ -211,14 +211,37 @@ export default async function SalesCorrectionPage({
                   ) : null}
                 </div>
               </div>
-              <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
+              <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-2xl border border-border p-3">
                   <p className="text-xs font-medium text-muted">Rows</p>
                   <p className="mt-1 font-semibold">{report.row_count ?? 0}</p>
                 </div>
                 <div className="rounded-2xl border border-border p-3">
-                  <p className="text-xs font-medium text-muted">Total sale</p>
+                  <p className="text-xs font-medium text-muted">Actual sale (incl. tax)</p>
                   <p className="mt-1 font-semibold">{formatMoney(summaryValue(report, "totalNetSale"))}</p>
+                </div>
+                <div className="rounded-2xl border border-border p-3">
+                  <p className="text-xs font-medium text-muted">MRP value</p>
+                  <p className="mt-1 font-semibold">
+                    {Number(summaryValue(report, "mrpRowCount") ?? 0) > 0
+                      ? formatMoney(summaryValue(report, "totalMrpValue"))
+                      : "Not available"}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-border p-3">
+                  <p className="text-xs font-medium text-muted">Net discount given</p>
+                  <p className="mt-1 font-semibold">
+                    {Number(summaryValue(report, "mrpRowCount") ?? 0) > 0
+                      ? formatMoney(summaryValue(report, "totalDiscountValue"))
+                      : "Not available"}
+                  </p>
+                  {Number(summaryValue(report, "totalMrpValue") ?? 0) > 0 ? (
+                    <p className="mt-1 text-xs text-muted">
+                      Avg {Number(summaryValue(report, "averageDiscountPercent") ?? 0).toFixed(1)}%
+                    </p>
+                  ) : Number(summaryValue(report, "mrpRowCount") ?? 0) > 0 ? (
+                    <p className="mt-1 text-xs text-muted">Avg not available</p>
+                  ) : null}
                 </div>
                 <div className="rounded-2xl border border-border p-3">
                   <p className="text-xs font-medium text-muted">Bills</p>

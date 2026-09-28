@@ -54,6 +54,10 @@ export type StoreSalesSummary = {
   billCount: number;
   averageBillValue: number;
   rowCount: number;
+  totalMrpValue: number;
+  totalDiscountValue: number;
+  averageDiscountPercent: number;
+  pricedRowCount: number;
 };
 
 export type SalesSummary = {
@@ -61,6 +65,10 @@ export type SalesSummary = {
   totalQuantity: number;
   billCount: number;
   averageBillValue: number;
+  totalMrpValue: number;
+  totalDiscountValue: number;
+  averageDiscountPercent: number;
+  pricedRowCount: number;
   staffCount: number;
   brandCount: number;
   categoryCount: number;
@@ -261,6 +269,92 @@ async function getSalesStaffAliasMap(filters: SalesAnalyticsFilters) {
   return new Map(aliases.map(alias => [`${alias.store_id}:${alias.normalized_source_name}`, alias.canonical_staff_name]));
 }
 
+type StorePricing = {
+  totalMrpValue: number;
+  totalDiscountValue: number;
+  averageDiscountPercent: number;
+  pricedRowCount: number;
+};
+
+type SalesPricing = StorePricing & { byStore: Map<string, StorePricing> };
+
+function summaryNumber(summary: unknown, key: string) {
+  if (!summary || typeof summary !== "object" || Array.isArray(summary)) return 0;
+  const value = Number((summary as Record<string, unknown>)[key] ?? 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function discountPercent(discount: number, mrp: number) {
+  return mrp > 0 ? (discount / mrp) * 100 : 0;
+}
+
+async function getSalesPricing(filters: SalesAnalyticsFilters): Promise<SalesPricing> {
+  const byStore = new Map<string, StorePricing>();
+  if (!filters.storeIds.length) {
+    return { totalMrpValue: 0, totalDiscountValue: 0, averageDiscountPercent: 0, pricedRowCount: 0, byStore };
+  }
+
+  const supabase = await createClient();
+  const { data } = await completeQuery(supabase
+    .from("reports")
+    .select("store_id,summary", { count: "exact" })
+    .eq("report_type", "sales")
+    .eq("is_current", true)
+    .eq("status", "processed")
+    .in("store_id", filters.storeIds)
+    .gte("report_date", filters.dateRange.startDate)
+    .lte("report_date", filters.dateRange.endDate));
+
+  let totalMrpValue = 0;
+  let totalDiscountValue = 0;
+  let pricedRowCount = 0;
+
+  for (const report of data ?? []) {
+    const mrp = summaryNumber(report.summary, "totalMrpValue");
+    const discount = summaryNumber(report.summary, "totalDiscountValue");
+    const rows = summaryNumber(report.summary, "mrpRowCount");
+    totalMrpValue += mrp;
+    totalDiscountValue += discount;
+    pricedRowCount += rows;
+
+    if (report.store_id) {
+      const current = byStore.get(report.store_id) ?? {
+        totalMrpValue: 0,
+        totalDiscountValue: 0,
+        averageDiscountPercent: 0,
+        pricedRowCount: 0,
+      };
+      current.totalMrpValue += mrp;
+      current.totalDiscountValue += discount;
+      current.pricedRowCount += rows;
+      current.averageDiscountPercent = discountPercent(current.totalDiscountValue, current.totalMrpValue);
+      byStore.set(report.store_id, current);
+    }
+  }
+
+  return {
+    totalMrpValue,
+    totalDiscountValue,
+    averageDiscountPercent: discountPercent(totalDiscountValue, totalMrpValue),
+    pricedRowCount,
+    byStore,
+  };
+}
+
+function withSalesPricing(summary: SalesSummary, pricing: SalesPricing): SalesSummary {
+  return {
+    ...summary,
+    totalMrpValue: pricing.totalMrpValue,
+    totalDiscountValue: pricing.totalDiscountValue,
+    averageDiscountPercent: pricing.averageDiscountPercent,
+    pricedRowCount: pricing.pricedRowCount,
+    storeSummaries: summary.storeSummaries.map((storeSummary) => {
+      const storePricing = pricing.byStore.get(storeSummary.store.id);
+      return { ...storeSummary, ...storePricing };
+    }),
+  };
+}
+
 function mappedStaffName(row: SalesRowForAnalytics, aliases: Map<string, string>) {
   const key = aliasKey(row.store_id, row.staff_name);
   return key ? aliases.get(key) ?? row.staff_name : row.staff_name;
@@ -294,6 +388,10 @@ async function getLegacySalesSummary(
       billCount: 0,
       averageBillValue: 0,
       rowCount: 0,
+      totalMrpValue: 0,
+      totalDiscountValue: 0,
+      averageDiscountPercent: 0,
+      pricedRowCount: 0,
     });
   }
 
@@ -353,6 +451,10 @@ async function getLegacySalesSummary(
     totalQuantity,
     billCount: bills.size,
     averageBillValue: calculateAverageBillValue(totalNetSale, bills.size),
+    totalMrpValue: 0,
+    totalDiscountValue: 0,
+    averageDiscountPercent: 0,
+    pricedRowCount: 0,
     staffCount: staff.size,
     brandCount: brands.size,
     categoryCount: categories.size,
@@ -378,18 +480,28 @@ export async function getSalesSummary(
   stores: Array<Pick<Store, "id" | "name" | "code" | "monthly_target_enabled" | "monthly_target">>,
 ): Promise<SalesSummary> {
   const path = getAnalyticsQueryPath();
-  if (path === "legacy") return getLegacySalesSummary(filters, stores);
+  if (path === "legacy") {
+    const [summary, pricing] = await Promise.all([
+      getLegacySalesSummary(filters, stores),
+      getSalesPricing(filters),
+    ]);
+    return withSalesPricing(summary, pricing);
+  }
   if (path === "v2") {
-    const result = await loadSalesSummaryV2(filters.storeIds, filters.dateRange, stores);
-    return { ...result.summary, freshness: result.freshness };
+    const [result, pricing] = await Promise.all([
+      loadSalesSummaryV2(filters.storeIds, filters.dateRange, stores),
+      getSalesPricing(filters),
+    ]);
+    return withSalesPricing({ ...result.summary, freshness: result.freshness }, pricing);
   }
 
-  const [legacy, candidate] = await Promise.all([
+  const [legacy, candidate, pricing] = await Promise.all([
     getLegacySalesSummary(filters, stores),
     loadSalesSummaryV2(filters.storeIds, filters.dateRange, stores),
+    getSalesPricing(filters),
   ]);
   await recordShadowComparison("sales_summary", sameSalesTotals(legacy, candidate.summary));
-  return legacy;
+  return withSalesPricing(legacy, pricing);
 }
 
 export async function getStoreSalesSummary(

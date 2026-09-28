@@ -128,6 +128,10 @@ function safeSummaryJson(
 ) {
   return {
     totalNetSale: summary.totalNetSale,
+    totalMrpValue: summary.totalMrpValue,
+    totalDiscountValue: summary.totalDiscountValue,
+    averageDiscountPercent: summary.averageDiscountPercent,
+    mrpRowCount: summary.mrpRowCount,
     rowCount: summary.rowCount,
     billCount: summary.billCount,
     staffNames: summary.staffNames,

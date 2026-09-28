@@ -7,6 +7,10 @@ import { createClient } from "@/lib/supabase/server";
 
 export type SalesReportSummary = {
   totalNetSale?: number;
+  totalMrpValue?: number;
+  totalDiscountValue?: number;
+  averageDiscountPercent?: number;
+  mrpRowCount?: number;
   rowCount?: number;
   billCount?: number;
   returnsCount?: number;

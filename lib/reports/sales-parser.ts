@@ -24,6 +24,10 @@ export type ParsedSalesRow = {
 
 export type SalesSummary = {
   totalNetSale: number;
+  totalMrpValue: number;
+  totalDiscountValue: number;
+  averageDiscountPercent: number;
+  mrpRowCount: number;
   rowCount: number;
   billCount: number;
   staffNames: string[];
@@ -55,22 +59,25 @@ const headerAliases = {
   size: ["size"],
   color: ["color", "colour"],
   quantity: ["sale qty", "sale quantity", "net sale qty", "net qty", "quantity", "qty", "pcs", "pieces"],
-  mrp: ["mrp", "m.r.p", "m.r.p.", "rate", "price"],
-  discount: ["discount", "disc", "discount amount"],
+  mrp: ["mrp", "m.r.p", "m.r.p.", "maximum retail price", "rate", "price"],
+  discount: ["discount", "discount amount", "disc", "sp. disc.", "sp. disc", "special discount"],
   netSale: [
+    "actual price",
+    "actual amount",
     "net amount",
     "net amt",
+    "final amount",
+    "bill value",
+    "net sale value",
     "net sale",
     "sale amount",
     "sales amount",
-    "amount",
-    "net amount",
-    "total amount",
-    "total",
-    "final amount",
-    "net sale value",
     "sales value",
-    "bill value",
+    "total amount",
+    "amount",
+    "total",
+    // Last-resort compatibility only. Taxable value excludes GST and must
+    // never win when an actual/net amount column is present.
     "taxable amount",
     "taxable value",
   ],
@@ -84,6 +91,7 @@ const minimumHeaderMatches = 4;
 const salesIdentityFields = ["billNo", "itemName", "brand", "category", "staffName"] as const;
 const totalRowPattern = /\b(grand\s+totals?|godown\s+wise\s+totals?|godown\s+totals?|sub\s*totals?|totals?)\b/i;
 const amountLikeHeaderAliases = [
+  "mrp value",
   "net sale value",
   "net amount",
   "net sale",
@@ -197,8 +205,13 @@ function buildColumnMap(headers: unknown[]) {
   for (const [field, aliases] of Object.entries(headerAliases) as Array<
     [keyof Omit<ParsedSalesRow, "rawData">, string[]]
   >) {
-    const aliasSet = new Set(aliases.map(normalizeHeader));
-    const index = normalizedHeaders.findIndex((header) => aliasSet.has(header));
+    // Alias order is semantic priority. Real daily files often put TAXABLE
+    // AMOUNT before NET AMOUNT and RATE before MRP; choosing the first sheet
+    // column therefore stores the wrong price.
+    const index = aliases
+      .map(normalizeHeader)
+      .map((alias) => normalizedHeaders.findIndex((header) => header === alias))
+      .find((candidate) => candidate >= 0) ?? -1;
 
     if (index >= 0) {
       map.set(field, unique[index]);
@@ -258,6 +271,14 @@ function valueFor(
   return header ? row[header] : null;
 }
 
+function valueForAliases(row: Record<string, unknown>, aliases: string[]) {
+  for (const alias of aliases.map(normalizeHeader)) {
+    const header = Object.keys(row).find((key) => normalizeHeader(key) === alias);
+    if (header) return row[header];
+  }
+  return null;
+}
+
 function isClearTotalRow(row: ParsedSalesRow) {
   const identityText = [
     row.storeName,
@@ -285,6 +306,10 @@ function parseSalesRow(
   row: Record<string, unknown>,
   columnMap: Map<keyof Omit<ParsedSalesRow, "rawData">, string>,
 ): ParsedSalesRow {
+  const quantity = numberValue(valueFor(row, columnMap, "quantity"));
+  const unitMrp = numberValue(valueFor(row, columnMap, "mrp"));
+  const aggregateMrp = numberValue(valueForAliases(row, ["mrp value"]));
+
   return {
     storeName: stringValue(valueFor(row, columnMap, "storeName")),
     saleDate: dateValue(valueFor(row, columnMap, "saleDate")),
@@ -296,8 +321,11 @@ function parseSalesRow(
     category: stringValue(valueFor(row, columnMap, "category")),
     size: stringValue(valueFor(row, columnMap, "size")),
     color: stringValue(valueFor(row, columnMap, "color")),
-    quantity: numberValue(valueFor(row, columnMap, "quantity")),
-    mrp: numberValue(valueFor(row, columnMap, "mrp")),
+    quantity,
+    // Some older category/brand summaries provide total MRP VALUE rather
+    // than a unit MRP. Convert it to a unit value so all downstream totals
+    // retain the same `mrp * quantity` meaning.
+    mrp: unitMrp ?? (aggregateMrp !== null && quantity ? aggregateMrp / quantity : null),
     discount: numberValue(valueFor(row, columnMap, "discount")),
     netSale: numberValue(valueFor(row, columnMap, "netSale")),
     staffName: stringValue(valueFor(row, columnMap, "staffName")),
@@ -396,6 +424,12 @@ function topFromBucket(bucket: Map<string, number>) {
     .map(([name, sale]) => ({ name, sale }));
 }
 
+function effectiveDiscount(mrp: number, quantity: number, actualPrice: number) {
+  const mrpValue = mrp * quantity;
+  const discount = Math.max(Math.abs(mrpValue) - Math.abs(actualPrice), 0);
+  return quantity < 0 || actualPrice < 0 ? -discount : discount;
+}
+
 export function summarizeSalesRows(rows: ParsedSalesRow[]): SalesSummary {
   const bills = new Set<string>();
   const staff = new Set<string>();
@@ -403,10 +437,21 @@ export function summarizeSalesRows(rows: ParsedSalesRow[]): SalesSummary {
   const brandSales = new Map<string, number>();
   const categorySales = new Map<string, number>();
   let totalNetSale = 0;
+  let totalMrpValue = 0;
+  let totalDiscountValue = 0;
+  let mrpRowCount = 0;
 
   for (const row of rows) {
     const sale = row.netSale ?? 0;
     totalNetSale += sale;
+
+    if (row.mrp !== null && row.quantity !== null) {
+      totalMrpValue += row.mrp * row.quantity;
+      if (row.netSale !== null) {
+        totalDiscountValue += effectiveDiscount(row.mrp, row.quantity, row.netSale);
+      }
+      mrpRowCount += 1;
+    }
 
     if (row.billNo) {
       bills.add(normalizeName(row.billNo));
@@ -423,6 +468,10 @@ export function summarizeSalesRows(rows: ParsedSalesRow[]): SalesSummary {
 
   return {
     totalNetSale,
+    totalMrpValue,
+    totalDiscountValue,
+    averageDiscountPercent: totalMrpValue > 0 ? (totalDiscountValue / totalMrpValue) * 100 : 0,
+    mrpRowCount,
     rowCount: rows.length,
     billCount: bills.size,
     staffNames: [...staff].sort(),
