@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   BarChart3,
+  BookOpenCheck,
   Bot,
   CalendarCheck,
   ClipboardCheck,
@@ -23,6 +24,15 @@ import {
 } from "lucide-react";
 
 import { ChecklistCard } from "@/components/checklist/checklist-card";
+import { OwnerNotesPanel } from "@/components/owner/owner-notes-panel";
+import { OwnerToolsStrip } from "@/components/owner/owner-tools-strip";
+import type { TaskChoice } from "@/components/owner/priority-followup";
+import {
+  DailyPriorities,
+  OwnerTaskWorkboard,
+  SalesFreshness,
+  SecretaryShortcut,
+} from "@/components/owner/owner-today";
 import { SyncNowButton } from "@/components/app/sync-now-button";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { getAccessibleStores, requireProfile, type Store as RetailStore } from "@/lib/auth/session";
@@ -46,7 +56,17 @@ import { getStockOverview, type StockOverview } from "@/lib/reports/stock-querie
 import { getReviewStatuses } from "@/lib/reviews/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getTaskSummary } from "@/lib/tasks/queries";
+import { getOwnerTaskWorkboard } from "@/lib/tasks/queries";
 import { getTodayUpdateSummary } from "@/lib/updates/queries";
+import {
+  assessPriorities,
+  getOpenTaskChoices,
+  getRecommendationFollowups,
+  type AssessedPriority,
+} from "@/lib/owner/followups";
+import { getSharedOwnerNotes } from "@/lib/owner/notes";
+import { buildDailyPriorities, getSalesCoverage } from "@/lib/owner/priorities";
+import { getOwnerToolsSummary, type OwnerToolsSummary } from "@/lib/owner/tools-summary";
 import {
   getAvailableReceivableMonths,
   getReceivableSummaryForMonth,
@@ -56,6 +76,8 @@ import { formatMonth as formatPayslipMonth } from "@/lib/payslips/utils";
 type TodaySearchParams = {
   audit?: string;
   more?: string;
+  notesQuery?: string;
+  notesView?: string;
   stock?: string;
 };
 
@@ -107,12 +129,6 @@ const ownerShortcuts = [
     href: "/app/reports/staff-aliases",
     icon: UserRoundCog,
     title: "Fix Staff Names",
-  },
-  {
-    description: "Delete, replace or import historical sales safely.",
-    href: "/app/reports/correction",
-    icon: ShieldAlert,
-    title: "Fix Wrong Upload",
   },
   {
     description: "Import month-to-date or financial-year sales.",
@@ -176,6 +192,12 @@ const managerShortcuts = [
     href: "/app/checklist",
     icon: ClipboardCheck,
     title: "Checklist",
+  },
+  {
+    description: "Opening, floor, complaint and closing routines for your store.",
+    href: "/app/sops",
+    icon: BookOpenCheck,
+    title: "Store SOPs",
   },
   {
     description: "See assigned tasks and urgent work.",
@@ -570,7 +592,8 @@ async function StockPulseSection({ stores }: { stores: TodayStore[] }) {
           <p className="text-sm font-medium text-muted">Loaded Stock Pulse</p>
           <h2 className="mt-2 text-2xl font-semibold">Stock movement snapshot</h2>
           <p className="mt-2 text-sm leading-6 text-muted">
-            This section is loaded only on request and shown store-wise so stock signals are not mixed across stores.
+            Uploaded quantity is the closing quantity / pieces column from the latest stock file. Movement signals are
+            directional and may be unreliable where sales dates are missing; they are not profit, ageing or size-demand conclusions.
           </p>
         </div>
         <Link className="inline-flex h-11 items-center justify-center rounded-2xl border border-border px-4 text-sm font-semibold" href="/app/reports/stock/analytics">
@@ -752,24 +775,34 @@ async function MoreDetailsSection({
 }
 
 function OwnerToday({
+  handledPriorities,
   historicalImport,
   missingPhoneCount,
+  notes,
+  notesArchived,
+  notesSearch,
+  priorities,
   salesIssues,
   salesStatuses,
   stockOverview,
-  taskSummary,
-  updateSummary,
+  taskChoices,
+  taskWorkboard,
+  toolsSummary,
 }: {
+  handledPriorities: AssessedPriority[];
   historicalImport: HistoricalImportSummary;
   missingPhoneCount: number;
+  notes: Awaited<ReturnType<typeof getSharedOwnerNotes>>;
+  notesArchived: boolean;
+  notesSearch: string;
+  priorities: AssessedPriority[];
   salesIssues: ReturnType<typeof salesIssueSummary>;
   salesStatuses: StoreSalesStatus[];
   stockOverview: StockOverview;
-  taskSummary: Awaited<ReturnType<typeof getTaskSummary>>;
-  updateSummary: Awaited<ReturnType<typeof getTodayUpdateSummary>>;
+  taskChoices: TaskChoice[];
+  taskWorkboard: Awaited<ReturnType<typeof getOwnerTaskWorkboard>>;
+  toolsSummary: OwnerToolsSummary;
 }) {
-  const criticalSalesIssues =
-    salesIssues.missingToday + salesIssues.missingYesterday + salesIssues.suspiciousCount + salesIssues.missingStaffCount;
   const historicalTone = historicalImport.warningCount ? "warning" : historicalImport.latest ? "success" : "default";
   const historicalText = historicalImport.latest
     ? `${historicalImport.latest.status ?? "uploaded"}: ${historicalImport.latest.detected_start_date ?? "?"} to ${
@@ -792,14 +825,19 @@ function OwnerToday({
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          href="/app/reports"
-          icon={criticalSalesIssues ? AlertTriangle : LineChart}
-          label="Missing / suspicious sales"
-          tone={criticalSalesIssues ? "danger" : "success"}
-          value={criticalSalesIssues ? String(criticalSalesIssues) : "Clear"}
-        />
+      <DailyPriorities handled={handledPriorities} priorities={priorities} tasks={taskChoices} />
+      <OwnerToolsStrip handledCount={handledPriorities.length} summary={toolsSummary} />
+      <SalesFreshness statuses={salesStatuses} />
+      <SecretaryShortcut />
+      <OwnerTaskWorkboard workboard={taskWorkboard} />
+      <OwnerNotesPanel
+        archived={notesArchived}
+        available={notes.available}
+        notes={notes.notes}
+        search={notesSearch}
+      />
+
+      <section className="grid gap-3 sm:grid-cols-3">
         <MetricCard
           href="/app/reports/correction"
           icon={History}
@@ -814,36 +852,10 @@ function OwnerToday({
           tone={stockOverview.missingCount ? "warning" : "success"}
           value={stockOverview.missingCount ? `${stockOverview.missingCount} stock pending` : "Stock ready"}
         />
-        <MetricCard
-          href="/app/reports/staff-aliases"
-          icon={UserRoundCog}
-          label="Staff issues"
-          tone={salesIssues.unmatchedStaffCount || salesIssues.missingStaffCount ? "danger" : "success"}
-          value={
-            salesIssues.unmatchedStaffCount || salesIssues.missingStaffCount
-              ? `${salesIssues.unmatchedStaffCount} unmatched`
-              : "Clear"
-          }
-        />
-        <MetricCard
-          href="/app/tasks"
-          icon={ListTodo}
-          label="Today tasks"
-          tone={taskSummary.urgentCount ? "warning" : "default"}
-          value={`${taskSummary.todayCount} total`}
-        />
-        <MetricCard
-          href="/app/updates?status=open&urgency=urgent"
-          icon={MessageSquareText}
-          label="Urgent manager updates"
-          tone={updateSummary.openUrgentCount ? "warning" : "success"}
-          value={String(updateSummary.openUrgentCount)}
-        />
         <MetricCard href="/app/reports/correction" icon={ShieldAlert} label="Fix Wrong Upload" value="Open" />
-        <MetricCard href="/app/secretary" icon={Bot} label="AI Secretary" value="Ask" />
       </section>
 
-      {salesIssues.topStaff ? (
+      {salesIssues.topStaff && salesIssues.unmatchedStaffCount === 0 && salesIssues.missingStaffCount === 0 ? (
         <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
           <p className="text-sm font-medium text-muted">Lightweight staff pulse</p>
           <h2 className="mt-2 text-2xl font-semibold">{salesIssues.topStaff.name}</h2>
@@ -870,7 +882,6 @@ function OwnerToday({
         <ShortcutGrid shortcuts={ownerShortcuts} />
       </section>
 
-      <SalesStatusCards statuses={salesStatuses} />
       <StockStatusMini stockOverview={stockOverview} />
     </>
   );
@@ -1003,6 +1014,39 @@ export default async function TodayPage({
     isOwner ? getHistoricalImportSummary(stores) : Promise.resolve({ latest: null, warningCount: 0 }),
   ]);
   const salesIssues = salesIssueSummary(salesStatuses);
+  const notesSearch = (params.notesQuery ?? "").slice(0, 80);
+  const notesArchived = params.notesView === "archived";
+  const [notes, taskWorkboard, coverage, taskChoices, toolsSummary] = isOwner
+    ? await Promise.all([
+        getSharedOwnerNotes({ archived: notesArchived, search: notesSearch }),
+        getOwnerTaskWorkboard(),
+        getSalesCoverage(stores),
+        getOpenTaskChoices(),
+        getOwnerToolsSummary(),
+      ])
+    : [
+        { available: false, notes: [] },
+        { dueToday: [], overdue: [], recentlyCompleted: [], waiting: [] },
+        [],
+        [],
+        null,
+      ];
+  // Build every current exception, then hide ones an owner has already handled
+  // unless the evidence changed materially; the visible list stays capped at five.
+  const allPriorities = isOwner
+    ? buildDailyPriorities({
+        coverage,
+        limit: 20,
+        overdueTasks: taskWorkboard.overdue,
+        salesStatuses,
+        stores,
+        urgentUpdates: updateSummary.openUrgentCount,
+      })
+    : [];
+  const followups = isOwner
+    ? await getRecommendationFollowups({ keys: allPriorities.map((priority) => `priority:${priority.id}`) })
+    : { available: false, records: [] };
+  const assessed = assessPriorities(allPriorities, followups.records);
   const showStock = params.stock === "1";
   const showAudit = params.audit === "1";
   const showMore = params.more === "1";
@@ -1014,11 +1058,17 @@ export default async function TodayPage({
         <OwnerToday
           historicalImport={historicalImport}
           missingPhoneCount={missingPhoneCount}
+          notes={notes}
+          notesArchived={notesArchived}
+          notesSearch={notesSearch}
+          handledPriorities={assessed.handled}
+          priorities={assessed.visible}
           salesIssues={salesIssues}
           salesStatuses={salesStatuses}
           stockOverview={stockOverview}
-          taskSummary={taskSummary}
-          updateSummary={updateSummary}
+          taskChoices={taskChoices}
+          taskWorkboard={taskWorkboard}
+          toolsSummary={toolsSummary as OwnerToolsSummary}
         />
       ) : (
         <ManagerToday

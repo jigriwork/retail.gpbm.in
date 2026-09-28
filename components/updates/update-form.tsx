@@ -20,6 +20,9 @@ export function ManagerUpdateForm({
   assignableUsers,
   defaultStoreId,
   defaultCategory,
+  defaultDetails,
+  defaultTitle,
+  defaultUrgency,
   mode,
   stores,
   update,
@@ -28,6 +31,9 @@ export function ManagerUpdateForm({
   assignableUsers: Pick<Profile, "id" | "full_name" | "email">[];
   defaultStoreId?: string;
   defaultCategory?: string;
+  defaultDetails?: string;
+  defaultTitle?: string;
+  defaultUrgency?: string;
   mode: "create" | "edit";
   stores: Store[];
   update?: ManagerUpdate | null;
@@ -80,7 +86,7 @@ export function ManagerUpdateForm({
           <span className="mb-2 block text-sm font-medium text-muted">Urgency</span>
           <select
             className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm capitalize outline-none focus:border-foreground"
-            defaultValue={update?.urgency ?? "normal"}
+            defaultValue={update?.urgency ?? defaultUrgency ?? "normal"}
             name="urgency"
           >
             {updateUrgencies.map((urgency) => (
@@ -113,7 +119,7 @@ export function ManagerUpdateForm({
         <span className="mb-2 block text-sm font-medium text-muted">Title</span>
         <input
           className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-base outline-none focus:border-foreground"
-          defaultValue={update?.title ?? ""}
+          defaultValue={update?.title ?? defaultTitle ?? ""}
           name="title"
           placeholder="What needs attention?"
           required
@@ -124,7 +130,7 @@ export function ManagerUpdateForm({
         <span className="mb-2 block text-sm font-medium text-muted">Details</span>
         <textarea
           className="min-h-32 w-full rounded-2xl border border-border bg-card px-4 py-3 text-base outline-none focus:border-foreground"
-          defaultValue={update?.details ?? ""}
+          defaultValue={update?.details ?? defaultDetails ?? ""}
           name="details"
           placeholder="Add the full store update, issue, customer follow-up, stock note, or pending work."
         />

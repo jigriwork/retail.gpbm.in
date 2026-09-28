@@ -85,7 +85,7 @@ export default async function SettingsPage() {
       <div className="pt-2">
         <h2 className="text-2xl font-semibold">App release</h2>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Current version: v9.1.1
+          Current version: v9.2.0
         </p>
       </div>
       <section>

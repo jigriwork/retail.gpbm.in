@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Bot, Brain, MessageCircle } from "lucide-react";
 
 import { AccessDenied } from "@/components/app/access-denied";
@@ -18,7 +19,7 @@ export default async function SecretaryPage() {
   const [{ data: chats }, memories] = await Promise.all([
     supabase
       .from("ai_chats")
-      .select("id,role,content,created_at")
+      .select("id,role,content,created_at,metadata")
       .eq("user_id", session.profile.id)
       .order("created_at", { ascending: false })
       .limit(20),
@@ -91,6 +92,14 @@ export default async function SecretaryPage() {
                     {chat.role === "user" ? "You" : "AI Secretary"}
                   </p>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{chat.content}</p>
+                  {chat.role === "assistant" && !(chat.metadata as { error?: boolean } | null)?.error ? (
+                    <Link
+                      className="mt-3 inline-flex text-xs font-semibold underline"
+                      href={`/app/owner/follow-ups/new?chat=${chat.id}`}
+                    >
+                      Follow up this recommendation
+                    </Link>
+                  ) : null}
                 </article>
               ))}
             </div>

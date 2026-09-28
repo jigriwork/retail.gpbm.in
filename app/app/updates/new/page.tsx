@@ -3,15 +3,21 @@ import Link from "next/link";
 
 import { ManagerUpdateForm } from "@/components/updates/update-form";
 import { createManagerUpdate } from "@/lib/updates/actions";
+import { updateCategories, updateUrgencies } from "@/lib/updates/constants";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function NewUpdatePage({
   searchParams,
 }: {
-  searchParams: Promise<{ storeId?: string; category?: string }>;
+  searchParams: Promise<{ storeId?: string; category?: string; details?: string; title?: string; urgency?: string }>;
 }) {
-  const { storeId, category } = await searchParams;
+  const { storeId, category, details, title, urgency } = await searchParams;
+  // Optional prefill from SOP "Record exception" links; values are validated and bounded.
+  const defaultCategory = category && updateCategories.includes(category) ? category : undefined;
+  const defaultUrgency = updateUrgencies.find((value) => value === urgency);
+  const defaultTitle = title?.slice(0, 120);
+  const defaultDetails = details?.slice(0, 1000);
   const { profile } = await requireProfile();
   const stores = await getAccessibleStores(profile);
   const defaultStoreId = stores.some((store) => store.id === storeId) ? storeId : stores[0]?.id;
@@ -42,7 +48,10 @@ export default async function NewUpdatePage({
           <ManagerUpdateForm
             action={createManagerUpdate}
             assignableUsers={profiles ?? []}
-            defaultCategory={category}
+            defaultCategory={defaultCategory}
+            defaultDetails={defaultDetails}
+            defaultTitle={defaultTitle}
+            defaultUrgency={defaultUrgency}
             defaultStoreId={defaultStoreId}
             mode="create"
             stores={stores}

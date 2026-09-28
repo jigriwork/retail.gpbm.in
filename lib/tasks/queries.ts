@@ -1,8 +1,8 @@
 import "server-only";
 import { completeQuery } from "@/lib/supabase/complete-query";
-import { getAccessibleStores, type Profile } from "@/lib/auth/session";
+import { getAccessibleStores, requireOwner, type Profile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { getIndiaToday, getIndiaTomorrow } from "@/lib/tasks/dates";
+import { addDays, getIndiaToday, getIndiaTomorrow } from "@/lib/tasks/dates";
 
 export type TaskWithRelations = {
   assigned_employee_id: string | null;
@@ -98,5 +98,33 @@ export async function getTaskSummary(
     urgentCount: urgentTasks.length,
     privateCount: privateTasks.length,
     storeCounts,
+  };
+}
+
+export async function getOwnerTaskWorkboard() {
+  if (!(await requireOwner())) {
+    return { dueToday: [], overdue: [], recentlyCompleted: [], waiting: [] };
+  }
+
+  const tasks = await getTasksForProfile();
+  const today = getIndiaToday();
+  const recentCutoff = addDays(today, -14);
+  const active = tasks.filter((task) => !["done", "cancelled"].includes(task.status ?? "pending"));
+  const recentlyCompleted = tasks
+    .filter(
+      (task) =>
+        task.status === "done" &&
+        Boolean(task.completed_at && task.completed_at.slice(0, 10) >= recentCutoff),
+    )
+    .sort((left, right) => String(right.completed_at).localeCompare(String(left.completed_at)))
+    .slice(0, 5);
+
+  return {
+    dueToday: active.filter((task) => task.status !== "waiting" && task.due_date === today),
+    overdue: active.filter(
+      (task) => task.status !== "waiting" && Boolean(task.due_date && task.due_date < today),
+    ),
+    recentlyCompleted,
+    waiting: active.filter((task) => task.status === "waiting"),
   };
 }

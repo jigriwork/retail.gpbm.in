@@ -1,13 +1,16 @@
 import type { NextConfig } from "next";
 
 const isDevelopment = process.env.NODE_ENV === "development";
+const localDevelopmentSources = isDevelopment
+  ? " http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*"
+  : "";
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data: https://*.supabase.co",
+  `img-src 'self' blob: data: https://*.supabase.co${localDevelopmentSources}`,
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co${localDevelopmentSources}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -15,7 +18,7 @@ const contentSecurityPolicy = [
   "frame-src 'none'",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
-  "upgrade-insecure-requests",
+  ...(isDevelopment ? [] : ["upgrade-insecure-requests"]),
 ].join("; ");
 
 const securityHeaders = [

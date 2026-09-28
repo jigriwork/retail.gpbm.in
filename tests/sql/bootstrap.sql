@@ -6,6 +6,10 @@ create role service_role nologin bypassrls;
 grant anon,authenticated to authenticator;
 create schema auth;
 create schema storage;
+-- Supabase installs pgcrypto in the extensions schema; migrations call extensions.digest().
+create schema extensions;
+create extension pgcrypto with schema extensions;
+grant usage on schema extensions to anon,authenticated,service_role;
 create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}');
 create function auth.uid() returns uuid language sql stable as $$
   select coalesce(nullif(current_setting('request.jwt.claim.sub', true),''),nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid

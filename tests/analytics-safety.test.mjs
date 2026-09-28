@@ -60,22 +60,35 @@ test('H01 detail retrieval tolerates a smaller server page cap without truncatio
  const query={order(){return this;},async range(start){return {data:all.slice(start,start+500),error:null,count:all.length};}};
  assert.deepEqual(Array.from((await f.load('@/lib/supabase/complete-query').completeQuery(query)).data,row=>row.id),all.map(row=>row.id));
 });
+// measureDataOperation classifies the caller's role once per request through the
+// request-cached profile lookup. That is instrumentation, not analytics data fan-out.
+const instrumentationCall=call=>call.table==='profiles'&&call.operation==='select';
+const dataRequests=calls=>calls.filter(call=>!instrumentationCall(call)).length;
 test('H01 measured request fan-out before/after on identical fixtures',async()=>{
  const rows=[];
  for(const baseline of [true,false]){
   const f=analyticsFixture(1001,baseline);
   let started=performance.now();
   const stock=await f.load('@/lib/analytics/stock').getStockSummary({storeIds:['gp'],stockMonth:'2026-09-01',lookbackDays:30,stores:f.db.stores});
-  rows.push({version:baseline?'before':'after',flow:'stock summary',requests:f.calls.length,ms:Math.round(performance.now()-started),quantity:stock.totalStockQuantity});
+  assert.ok(f.calls.filter(instrumentationCall).length<=1,'instrumentation may add at most one cached profile lookup');
+  rows.push({version:baseline?'before':'after',flow:'stock summary',requests:dataRequests(f.calls),instrumentation:f.calls.filter(instrumentationCall).length,ms:Math.round(performance.now()-started),quantity:stock.totalStockQuantity});
   const w=analyticsFixture(1001,baseline);started=performance.now();
   await w.load('@/lib/audit/weekly').getWeeklyAuditSummaries(w.db.stores,{startDate:w.today,endDate:w.today});
-  rows.push({version:baseline?'before':'after',flow:'weekly audit (two stores)',requests:w.calls.length,ms:Math.round(performance.now()-started)});
+  assert.ok(w.calls.filter(instrumentationCall).length<=1,'instrumentation may add at most one cached profile lookup');
+  rows.push({version:baseline?'before':'after',flow:'weekly audit (two stores)',requests:dataRequests(w.calls),instrumentation:w.calls.filter(instrumentationCall).length,ms:Math.round(performance.now()-started)});
  }
  const oldStock=rows.find(r=>r.version==='before'&&r.flow==='stock summary');
  const newStock=rows.find(r=>r.version==='after'&&r.flow==='stock summary');
  assert.equal(oldStock.requests,12);assert.equal(newStock.requests,1);
  assert.ok(rows.find(r=>r.version==='after'&&r.flow.startsWith('weekly')).requests<rows.find(r=>r.version==='before'&&r.flow.startsWith('weekly')).requests);
  console.log('PERFORMANCE_FIXTURE',JSON.stringify(rows));
+});
+test('H01 repeated measured operations reuse one request-cached role lookup',async()=>{
+ const f=analyticsFixture(1001,false);
+ const stock=f.load('@/lib/analytics/stock');
+ for(const stockMonth of ['2026-07-01','2026-08-01','2026-09-01'])await stock.getStockSummary({storeIds:['gp'],stockMonth,lookbackDays:30,stores:f.db.stores});
+ assert.equal(f.calls.filter(instrumentationCall).length,1);
+ assert.equal(dataRequests(f.calls),3);
 });
 test('H01 dashboard and AI stock counts include candidates beyond the ten displayed',async()=>{
  const f=analyticsFixture(1001);f.db.sales_rows=[];

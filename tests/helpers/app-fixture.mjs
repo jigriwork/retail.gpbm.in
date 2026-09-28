@@ -27,7 +27,7 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
       { id: "b1", batch_id: "jan", store_id: "gp", staff_name: "Bob", employee_phone: "old" },
       { id: "a3", batch_id: "jan", store_id: "bm", staff_name: "Alice", employee_phone: "old" },
     ],
-    upload_intents: [], generated_payslips: [], reports: [], sales_rows: [], sales_upload_batches: [], audit_logs: [], report_imports: [], report_import_chunks: [], staff_name_aliases: [], rack_reviews: [], cleaning_reviews: [], manager_updates: [], tasks: [],
+    upload_intents: [], generated_payslips: [], reports: [], sales_rows: [], sales_upload_batches: [], audit_logs: [], report_imports: [], report_import_chunks: [], staff_name_aliases: [], rack_reviews: [], cleaning_reviews: [], manager_updates: [], tasks: [], owner_notes: [],
   };
   db.generated_payslips = db.payslip_rows.map(row => ({ ...row, id: `pdf-${row.id}`, payslip_row_id: row.id }));
   const files = new Map();
@@ -104,6 +104,7 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
   const mocks = {
     "server-only": {},
     "next/cache": { revalidatePath() {} },
+    "next/headers": { headers: async () => ({ get: () => null }) },
     "next/navigation": { redirect(url) { throw new Error(`Redirect: ${url}`); } },
     react: { cache: fn => {
       const memo = new Map();
@@ -141,7 +142,7 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
     const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
     const loadedModule = { exports: {} };
     const run = vm.runInNewContext(`(function(require, module, exports) {${compiled}\n})`, {
-      File, FormData, URL, Buffer, Blob, AbortSignal, TextEncoder, console, process, setTimeout, clearTimeout,
+      File, FormData, URL, Buffer, Blob, AbortSignal, TextEncoder, console, crypto: globalThis.crypto, performance: globalThis.performance, process, setTimeout, clearTimeout,
       fetch() { throw new Error("Network forbidden in regression tests"); },
       ...globals,
     }, { filename });

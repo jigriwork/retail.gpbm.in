@@ -526,6 +526,461 @@ export type Database = {
         }
         Relationships: []
       }
+      owner_notes: {
+        Row: {
+          archived_at: string | null
+          content: string
+          converted_task_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          content?: string
+          converted_task_id?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          content?: string
+          converted_task_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "owner_notes_converted_task_id_fkey"
+            columns: ["converted_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "owner_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "owner_notes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_decisions: {
+        Row: {
+          brand: string | null
+          created_at: string
+          created_by: string
+          evidence: Json | null
+          evidence_basis: string | null
+          followup_id: string | null
+          hypothesis: string
+          id: string
+          kind: string
+          learned: string
+          measure_filter: string | null
+          measure_type: string
+          responsible_name: string
+          responsible_profile_id: string | null
+          result: string | null
+          result_note: string
+          review_date: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+          store_id: string | null
+          success_measure: string
+          task_id: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          created_by: string
+          evidence?: Json | null
+          evidence_basis?: string | null
+          followup_id?: string | null
+          hypothesis: string
+          id?: string
+          kind: string
+          learned?: string
+          measure_filter?: string | null
+          measure_type: string
+          responsible_name?: string
+          responsible_profile_id?: string | null
+          result?: string | null
+          result_note?: string
+          review_date: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          status?: string
+          store_id?: string | null
+          success_measure: string
+          task_id?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          created_by?: string
+          evidence?: Json | null
+          evidence_basis?: string | null
+          followup_id?: string | null
+          hypothesis?: string
+          id?: string
+          kind?: string
+          learned?: string
+          measure_filter?: string | null
+          measure_type?: string
+          responsible_name?: string
+          responsible_profile_id?: string | null
+          result?: string | null
+          result_note?: string
+          review_date?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          status?: string
+          store_id?: string | null
+          success_measure?: string
+          task_id?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_decisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_decisions_followup_id_fkey"
+            columns: ["followup_id"]
+            isOneToOne: false
+            referencedRelation: "recommendation_followups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_decisions_responsible_profile_id_fkey"
+            columns: ["responsible_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_decisions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_decisions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_decisions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_decisions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recommendation_followups: {
+        Row: {
+          created_at: string
+          created_by: string
+          evidence_text: string
+          id: string
+          outcome: string
+          reason: string
+          recommendation_key: string
+          signal: Json
+          source: string
+          source_chat_id: string | null
+          status: string
+          task_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          evidence_text?: string
+          id?: string
+          outcome?: string
+          reason?: string
+          recommendation_key: string
+          signal?: Json
+          source: string
+          source_chat_id?: string | null
+          status: string
+          task_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          evidence_text?: string
+          id?: string
+          outcome?: string
+          reason?: string
+          recommendation_key?: string
+          signal?: Json
+          source?: string
+          source_chat_id?: string | null
+          status?: string
+          task_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_followups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendation_followups_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sop_revisions: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: string
+          snapshot: Json
+          sop_id: string
+          version: number
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          snapshot: Json
+          sop_id: string
+          version: number
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          snapshot?: Json
+          sop_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sop_revisions_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sop_revisions_sop_id_fkey"
+            columns: ["sop_id"]
+            isOneToOne: false
+            referencedRelation: "sops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sops: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          escalate_when: string
+          exception_category: string
+          id: string
+          is_active: boolean
+          purpose: string
+          sop_key: string
+          sort_order: number
+          steps: Json
+          store_id: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+          when_to_use: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          escalate_when?: string
+          exception_category?: string
+          id?: string
+          is_active?: boolean
+          purpose?: string
+          sop_key: string
+          sort_order?: number
+          steps: Json
+          store_id?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          when_to_use?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          escalate_when?: string
+          exception_category?: string
+          id?: string
+          is_active?: boolean
+          purpose?: string
+          sop_key?: string
+          sort_order?: number
+          steps?: Json
+          store_id?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          when_to_use?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sops_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sops_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sops_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_reviews: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          conclusion: string
+          created_at: string
+          created_by: string
+          evidence: Json
+          evidence_generated_at: string | null
+          id: string
+          next_week_decisions: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          conclusion?: string
+          created_at?: string
+          created_by: string
+          evidence?: Json
+          evidence_generated_at?: string | null
+          id?: string
+          next_week_decisions?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          conclusion?: string
+          created_at?: string
+          created_by?: string
+          evidence?: Json
+          evidence_generated_at?: string | null
+          id?: string
+          next_week_decisions?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_reviews_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_reviews_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_reviews_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -2408,6 +2863,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      convert_owner_note_to_task: { Args: { p_note_id: string }; Returns: string }
+      create_followup_task: {
+        Args: {
+          p_evidence?: string
+          p_key: string
+          p_signal?: Json
+          p_source: string
+          p_source_chat_id?: string
+          p_title: string
+        }
+        Returns: string
+      }
+      evaluate_business_decision: { Args: { p_decision_id: string }; Returns: Json }
+      review_business_decision: {
+        Args: { p_decision_id: string; p_learned?: string; p_result: string; p_result_note?: string }
+        Returns: Json
+      }
       can_manage_staff_employee: { Args: { p_employee_id: string }; Returns: boolean }
       complete_my_task: { Args: { p_task_id: string; p_completion_note?: string }; Returns: boolean }
       consume_credential_action_limit: { Args: { p_employee_id: string }; Returns: boolean }
