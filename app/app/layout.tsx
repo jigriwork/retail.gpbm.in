@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { LockKeyhole, Settings, ShieldCheck } from "lucide-react";
+import { LockKeyhole, LogOut, Settings, ShieldCheck, UsersRound } from "lucide-react";
 
 import { BottomNav } from "@/components/app/bottom-nav";
 import { LiveClock } from "@/components/app/live-clock";
@@ -61,23 +61,21 @@ export default async function ProtectedAppLayout({
 
   return (
     <div className="min-h-dvh bg-background pb-24 text-foreground">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 py-2 backdrop-blur sm:px-4 sm:py-3">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-start justify-between gap-x-3 gap-y-2 sm:flex-nowrap sm:items-center sm:gap-3">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 pb-2 pt-[max(env(safe-area-inset-top),0.5rem)] backdrop-blur sm:px-4 sm:py-3">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 sm:gap-3">
           <div className="min-w-0 flex-1">
             <Link
-              className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-base font-semibold tracking-normal sm:text-lg"
+              className="flex min-w-0 items-center gap-2 text-base font-semibold tracking-normal sm:text-lg"
               href="/app/today"
             >
               <Image alt="" className="shrink-0 rounded-lg" height={28} src="/icon-192.png" width={28} />
               <span className="min-w-0 truncate">GPBM Retail</span>
-              <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[0.6rem] font-bold uppercase text-muted sm:hidden">
-                v{packageJson.version}
-              </span>
-              <span className="hidden rounded-full border border-border bg-card px-2 py-0.5 text-[0.65rem] font-bold uppercase text-muted sm:inline-flex">
-                Version {packageJson.version}
+              <span className="shrink-0 rounded-full border border-border bg-card px-1.5 py-0.5 text-[0.6rem] font-bold uppercase text-muted sm:px-2 sm:text-[0.65rem]">
+                <span className="sm:hidden">v{packageJson.version}</span>
+                <span className="hidden sm:inline">Version {packageJson.version}</span>
               </span>
             </Link>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-muted">
+            <div className="mt-1 hidden flex-wrap items-center gap-2 text-xs font-medium text-muted sm:flex">
               <span className="rounded-full border border-border bg-card px-2 py-1 capitalize">
                 {profile.role}
               </span>
@@ -86,28 +84,35 @@ export default async function ProtectedAppLayout({
                   Users
                 </Link>
               ) : null}
-              <Link aria-label="Settings" href="/app/settings">
-                <Settings className="size-4" />
-              </Link>
             </div>
           </div>
-          <form action={signOut} className="shrink-0 sm:hidden">
-            <Button className="h-10 rounded-xl px-3 text-xs" variant="secondary">
-              Logout
+          <LiveClock className="hidden shrink-0 text-right sm:block" compact />
+          {profile.role === "owner" ? (
+            <Link
+              aria-label="Users"
+              className="flex size-9 shrink-0 items-center justify-center rounded-xl text-muted hover:text-foreground sm:hidden"
+              href="/app/users"
+            >
+              <UsersRound className="size-4" />
+            </Link>
+          ) : null}
+          <Link
+            aria-label="Settings"
+            className="flex size-9 shrink-0 items-center justify-center rounded-xl text-muted hover:text-foreground"
+            href="/app/settings"
+          >
+            <Settings className="size-4" />
+          </Link>
+          <form action={signOut} className="shrink-0">
+            <Button aria-label="Log out" className="h-9 rounded-xl px-2.5 text-xs sm:h-10 sm:px-3" variant="secondary">
+              <LogOut className="size-4 sm:hidden" />
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </form>
-          <div className="flex w-full shrink-0 items-center justify-between gap-2 sm:w-auto sm:justify-end sm:gap-3">
-            <LiveClock className="text-left sm:text-right" compact />
-            <form action={signOut} className="hidden sm:block">
-              <Button className="hidden h-10 rounded-xl px-3 text-xs sm:inline-flex" variant="secondary">
-                Logout
-              </Button>
-            </form>
-          </div>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl px-4 py-5">{children}</main>
+      <main className="mx-auto w-full max-w-5xl px-3 py-4 sm:px-4 sm:py-5">{children}</main>
       <BottomNav role={profile.role} />
     </div>
   );

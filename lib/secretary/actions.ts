@@ -13,12 +13,8 @@ export type SecretaryChatState = {
 };
 
 const defaultModel = "gemini-2.5-flash";
-const fallbackModels = [
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
-  "gemini-flash-latest",
-  "gemini-2.0-flash",
-];
+// gemini-2.5-flash-lite and gemini-2.0-flash were retired by Google (404).
+const fallbackModels = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.5-flash"];
 const maxPromptLength = 600;
 const maxContextLength = 14000;
 
@@ -40,14 +36,11 @@ function memoryTitle(prompt: string) {
   return prompt.replace(/^(remember|save this|note this)[:\s-]*/i, "").slice(0, 60) || "Secretary note";
 }
 
-function isModelNotFoundError(status: number) {
-  return status === 404;
-}
-
 function isRetryableModelError(status: number) {
-  // Only retry on 404 (model not found). Do NOT retry on:
-  // 400 (bad request), 401/403 (auth/permission), 429 (rate limit), 500+ (server errors)
-  return status === 404;
+  // Try the next model when this one is missing (404), rate limited (429),
+  // overloaded (5xx) or returned no text (0). Do NOT retry on 400 (bad request)
+  // or 401/403 (auth/permission): another model will fail the same way.
+  return status === 0 || status === 404 || status === 429 || status >= 500;
 }
 
 async function tryGenerateContent(model: string, apiKey: string, requestBody: object) {
@@ -65,15 +58,24 @@ async function tryGenerateContent(model: string, apiKey: string, requestBody: ob
   }
 
   const data = (await response.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> }; finishReason?: string }>;
   };
-  const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("\n").trim();
+  const candidate = data.candidates?.[0];
+  const text = candidate?.content?.parts
+    ?.filter((part) => !part.thought)
+    .map((part) => part.text ?? "")
+    .join("")
+    .trim();
 
   if (!text) {
     return { ok: false as const, status: 0, model };
   }
 
-  return { ok: true as const, text, model };
+  return {
+    ok: true as const,
+    text: candidate?.finishReason === "MAX_TOKENS" ? `${text}…\n\n(Answer was cut short — ask a narrower question for more detail.)` : text,
+    model,
+  };
 }
 
 async function callGemini(prompt: string, context: string) {
@@ -103,8 +105,13 @@ async function callGemini(prompt: string, context: string) {
       },
     ],
     generationConfig: {
-      maxOutputTokens: 700,
+      // Gemini 2.5+ "thinks" by default and those hidden tokens count against
+      // maxOutputTokens: with a 700 budget ~670 went to thinking, so replies
+      // arrived cut after one sentence or empty. The Secretary summarises
+      // prepared context, so thinking is off and the whole budget is the answer.
+      maxOutputTokens: 1500,
       temperature: 0.35,
+      thinkingConfig: { thinkingBudget: 0 },
     },
   };
 
@@ -116,18 +123,11 @@ async function callGemini(prompt: string, context: string) {
     return { text: primaryResult.text, model: primaryResult.model };
   }
 
-  // Only fallback on model-not-found (404), not on auth/safety/other errors
-  if (!isRetryableModelError(primaryResult.status)) {
-    if (primaryResult.status === 0) {
-      throw new Error("Gemini returned an empty response.");
-    }
-    throw new Error(
-      `Gemini request failed (${primaryResult.status}). Check API key and account permissions.`,
-    );
-  }
+  let lastStatus = primaryResult.status;
 
-  // Try fallback models (skip if same as primary)
+  // Try fallback models (skip if same as primary) unless the error is auth/request-related.
   for (const fallbackModel of fallbackModels) {
+    if (!isRetryableModelError(lastStatus)) break;
     if (fallbackModel === primaryModel) continue;
 
     const fallbackResult = await tryGenerateContent(fallbackModel, apiKey, requestBody);
@@ -136,16 +136,21 @@ async function callGemini(prompt: string, context: string) {
       return { text: fallbackResult.text, model: fallbackResult.model };
     }
 
-    // Stop fallback chain if error is NOT model-related
-    if (!isModelNotFoundError(fallbackResult.status)) {
-      throw new Error(
-        `Gemini request failed (${fallbackResult.status}). Check API key and account permissions.`,
-      );
-    }
+    lastStatus = fallbackResult.status;
+  }
+
+  if (lastStatus === 400 || lastStatus === 401 || lastStatus === 403) {
+    throw new Error(`Gemini request failed (${lastStatus}). Check API key and account permissions.`);
+  }
+
+  if (lastStatus === 429 || lastStatus >= 500) {
+    throw new Error(`Gemini is busy right now (${lastStatus}).`);
   }
 
   throw new Error(
-    "Gemini model is unavailable. Run npm run check:gemini and verify GEMINI_MODEL.",
+    lastStatus === 0
+      ? "Gemini returned an empty response."
+      : "Gemini model is unavailable. Run npm run check:gemini and verify GEMINI_MODEL.",
   );
 }
 
@@ -194,6 +199,9 @@ export async function sendSecretaryMessage(
       content: answer,
       metadata: { source: "secretary", model: usedModel } satisfies Json,
     });
+
+    revalidatePath("/app/secretary");
+    return { ok: true, message: "Secretary replied." };
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unexpected error contacting Gemini.";
@@ -209,13 +217,6 @@ export async function sendSecretaryMessage(
     revalidatePath("/app/secretary");
     return { ok: false, message: userMessage };
   }
-
-  revalidatePath("/app/secretary");
-  return { ok: true, message: "Secretary replied." };
-}
-
-export async function sendSecretaryPrompt(formData: FormData) {
-  await sendSecretaryMessage({ ok: false, message: "" }, formData);
 }
 
 export async function deactivateMemory(formData: FormData) {

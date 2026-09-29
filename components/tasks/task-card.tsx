@@ -39,26 +39,26 @@ export function TaskCard({ task }: { task: TaskWithRelations }) {
         ) : null}
       </div>
 
-      <div className="mt-4 grid gap-2 text-xs font-semibold text-muted sm:grid-cols-2">
-        <span className="inline-flex items-center gap-2 rounded-2xl border border-border px-3 py-2 capitalize">
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-semibold text-muted">
+        <span className="inline-flex min-w-0 items-center gap-2 rounded-2xl border border-border px-2.5 py-1.5 [&>svg]:shrink-0 capitalize">
           <Store className="size-3.5" />
           {task.stores?.name ?? "Personal"}
         </span>
-        <span className="inline-flex items-center gap-2 rounded-2xl border border-border px-3 py-2">
+        <span className="inline-flex min-w-0 items-center gap-2 rounded-2xl border border-border px-2.5 py-1.5 [&>svg]:shrink-0">
           <Calendar className="size-3.5" />
           {displayDate(task.due_date)}
         </span>
-        <span className="inline-flex items-center gap-2 rounded-2xl border border-border px-3 py-2">
+        <span className="inline-flex min-w-0 items-center gap-2 rounded-2xl border border-border px-2.5 py-1.5 [&>svg]:shrink-0">
           <Clock3 className="size-3.5" />
           {task.due_time?.slice(0, 5) ?? "Any time"}
         </span>
-        <span className="inline-flex items-center gap-2 rounded-2xl border border-border px-3 py-2">
+        <span className="inline-flex min-w-0 items-center gap-2 rounded-2xl border border-border px-2.5 py-1.5 [&>svg]:shrink-0">
           <UserRound className="size-3.5" />
           {task.assigned_employee?.staff_name ?? task.assigned_profile?.full_name ?? task.assigned_profile?.email ?? "Unassigned"}
         </span>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold capitalize text-muted">
+      <div className="mt-3 flex flex-wrap gap-1.5 text-xs font-semibold capitalize text-muted">
         <span className="rounded-full border border-border px-3 py-1">
           {label(task.category, "No category")}
         </span>
@@ -73,7 +73,7 @@ export function TaskCard({ task }: { task: TaskWithRelations }) {
         </span>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-4">
         <TaskActionButtons taskId={task.id} />
       </div>
     </article>

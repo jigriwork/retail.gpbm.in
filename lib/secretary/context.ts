@@ -95,31 +95,31 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
     }),
   ]);
 
-  const stockPulse = latestStockMonth
-    ? await getStockSummary({
-        storeIds,
-        stockMonth: latestStockMonth,
-        lookbackDays: 30,
-        stores,
-      })
-    : null;
   const weeklyRange = getPreviousWeekRangeAsiaKolkata();
-  const weeklyAudits = shouldIncludeWeeklyAudit(prompt)
-    ? await getWeeklyAuditSummaries(stores, weeklyRange)
-    : [];
-  const { data: urgentUpdates } = await checkedQuery(supabase
-    .from("manager_updates")
-    .select("title,details,urgency,status,created_at,stores(name,code)")
-    .in("store_id", storeIds)
-    .or("status.is.null,status.eq.open")
-    .order("created_at", { ascending: false })
-    .limit(maxImportantUpdates));
-  const { data: recentSalesBatches } = await checkedQuery(supabase
-    .from("sales_upload_batches")
-    .select("original_file_name,status,upload_mode,detected_start_date,detected_end_date,total_dates,imported_dates,skipped_dates,replaced_dates,failed_dates,total_net_sale,stores(name,code)")
-    .in("store_id", storeIds)
-    .order("created_at", { ascending: false })
-    .limit(3));
+  const [stockPulse, weeklyAudits, { data: urgentUpdates }, { data: recentSalesBatches }] = await Promise.all([
+    latestStockMonth
+      ? getStockSummary({
+          storeIds,
+          stockMonth: latestStockMonth,
+          lookbackDays: 30,
+          stores,
+        })
+      : null,
+    shouldIncludeWeeklyAudit(prompt) ? getWeeklyAuditSummaries(stores, weeklyRange) : [],
+    checkedQuery(supabase
+      .from("manager_updates")
+      .select("title,details,urgency,status,created_at,stores(name,code)")
+      .in("store_id", storeIds)
+      .or("status.is.null,status.eq.open")
+      .order("created_at", { ascending: false })
+      .limit(maxImportantUpdates)),
+    checkedQuery(supabase
+      .from("sales_upload_batches")
+      .select("original_file_name,status,upload_mode,detected_start_date,detected_end_date,total_dates,imported_dates,skipped_dates,replaced_dates,failed_dates,total_net_sale,stores(name,code)")
+      .in("store_id", storeIds)
+      .order("created_at", { ascending: false })
+      .limit(3)),
+  ]);
 
   return [
     `Current India time: ${nowInIndia()}.`,
@@ -218,6 +218,7 @@ export function secretarySystemPrompt() {
     "You do not invent sales or stock data.",
     "You can suggest content ideas only when user asks or when stock/sales data clearly supports it.",
     "Keep answers concise and action-oriented.",
+    "Answer the question directly; do not open by restating the date, time or the owner's name.",
     "Use phrases like: Want to review this? You may want to start with... Here are the 3 things that need attention.",
     "Avoid phrases like: Do this now. You must. Your command.",
   ].join("\n");

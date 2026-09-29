@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Bot, CalendarClock, CheckCircle2, ChevronRight, Clock3, ListTodo, UploadCloud } from "lucide-react";
+import { AlertTriangle, Bot, CalendarClock, CheckCircle2, ChevronDown, ChevronRight, Clock3, ListTodo, UploadCloud } from "lucide-react";
 
 import { PriorityFollowup, type TaskChoice } from "@/components/owner/priority-followup";
 import type { AssessedPriority } from "@/lib/owner/followups";
@@ -25,62 +25,65 @@ export function DailyPriorities({
   tasks?: TaskChoice[];
 }) {
   return (
-    <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+    <section className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-muted">Start here</p>
-          <h2 className="mt-2 text-2xl font-semibold">Today&apos;s priorities</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            Only evidence-backed exceptions, capped at five.
-            <span className="block sm:hidden"> Swipe to review each priority.</span>
-          </p>
+          <h2 className="text-xl font-semibold sm:text-2xl">
+            Today&apos;s priorities
+            {priorities.length ? <span className="ml-2 align-middle text-sm font-semibold text-muted">{priorities.length}</span> : null}
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-muted">Only evidence-backed exceptions, capped at five.</p>
         </div>
         <ListTodo className="size-5 shrink-0 text-muted" />
       </div>
 
       {priorities.length ? (
-        <div className="mt-5 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto pb-2 sm:block sm:space-y-3 sm:overflow-visible sm:pb-0">
+        <div className="mt-4 space-y-3">
           {priorities.map((priority, index) => {
             const followup = "followup" in priority ? priority.followup : null;
+            // Title and evidence stay visible; the action detail opens on tap so all
+            // five priorities fit on a phone screen. The first one starts open.
             return (
-              <article
-                className="block w-[88%] shrink-0 snap-start rounded-2xl border border-border bg-background p-4 sm:w-auto"
+              <details
+                className="group rounded-2xl border border-border bg-background p-3 sm:p-4"
                 key={priority.id}
+                open={index === 0}
               >
-                <div className="flex items-start gap-3">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background">
+                <summary className="flex cursor-pointer list-none items-start gap-3 [&::-webkit-details-marker]:hidden">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background sm:size-8">
                     {index + 1}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold">
-                        <Link className="hover:underline" href={priority.href}>{priority.title}</Link>
-                      </h3>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold leading-6">{priority.title}</span>
                       {priority.uncertain ? (
                         <span className="rounded-full border border-warning/50 px-2 py-0.5 text-[0.65rem] font-bold text-warning">UNCERTAIN</span>
                       ) : null}
                       {followup?.kind === "raised_again" ? (
                         <span className="rounded-full border border-danger/40 px-2 py-0.5 text-[0.65rem] font-bold text-danger">RAISED AGAIN</span>
                       ) : null}
-                    </div>
-                    {followup?.kind === "raised_again" ? (
-                      <p className="mt-2 rounded-xl border border-danger/20 bg-danger/5 px-3 py-2 text-xs leading-5">{followup.explanation}</p>
-                    ) : null}
-                    <p className="mt-2 text-xs font-semibold text-muted">What happened · {priority.evidenceDate}</p>
-                    <p className="mt-1 text-sm leading-6 text-muted">{priority.evidence}</p>
-                    <p className="mt-3 text-sm leading-6"><span className="font-semibold">Do:</span> {priority.action}</p>
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-muted">
-                      <span>Who: {priority.owner}</span>
-                      <span>Confidence: {priority.confidence}</span>
-                      <span>Check: {priority.review}</span>
-                    </div>
-                    {followup ? <PriorityFollowup priorityId={priority.id} tasks={tasks} /> : null}
+                    </span>
+                    <span className="mt-0.5 block text-sm leading-6 text-muted">{priority.evidence}</span>
+                  </span>
+                  <ChevronDown className="mt-1 size-4 shrink-0 text-muted transition group-open:rotate-180" />
+                </summary>
+                <div className="mt-2 pl-10 sm:pl-11">
+                  {followup?.kind === "raised_again" ? (
+                    <p className="mb-2 rounded-xl border border-danger/20 bg-danger/5 px-3 py-2 text-xs leading-5">{followup.explanation}</p>
+                  ) : null}
+                  <p className="text-xs font-semibold text-muted">What happened · {priority.evidenceDate}</p>
+                  <p className="mt-2 text-sm leading-6"><span className="font-semibold">Do:</span> {priority.action}</p>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-muted">
+                    <span>Who: {priority.owner}</span>
+                    <span>Confidence: {priority.confidence}</span>
+                    <span>Check: {priority.review}</span>
                   </div>
-                  <Link aria-label={`Open ${priority.title}`} className="shrink-0" href={priority.href}>
-                    <ChevronRight className="size-4 text-muted" />
+                  <Link className="mt-3 inline-flex items-center gap-1 text-xs font-semibold underline" href={priority.href}>
+                    Open <ChevronRight className="size-3.5" />
                   </Link>
+                  {followup ? <PriorityFollowup priorityId={priority.id} tasks={tasks} /> : null}
                 </div>
-              </article>
+              </details>
             );
           })}
         </div>
@@ -115,28 +118,25 @@ export function SalesFreshness({ statuses }: { statuses: StoreSalesStatus[] }) {
   const expectedDate = addDays(getIndiaToday(), -1);
 
   return (
-    <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+    <section className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-muted">Daily control</p>
-          <h2 className="mt-2 text-2xl font-semibold">Sales-upload freshness</h2>
-        </div>
+        <h2 className="text-xl font-semibold sm:text-2xl">Sales uploads</h2>
         <UploadCloud className="size-5 text-muted" />
       </div>
-      <p className="mt-2 text-sm leading-6 text-muted">Current means the latest closed day ({displayDate(expectedDate)}) is available.</p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <p className="mt-1 text-sm leading-6 text-muted">Current means {displayDate(expectedDate)} (last closed day) is uploaded.</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 sm:gap-3">
         {statuses.map((status) => {
           const latest = status.latestReport?.report_date ?? null;
           const current = Boolean(latest && latest >= expectedDate);
           return (
-            <Link className="rounded-2xl border border-border bg-background p-4" href={`/app/reports/sales?storeId=${status.store.id}`} key={status.store.id}>
+            <Link className="rounded-2xl border border-border bg-background p-3 sm:p-4" href={`/app/reports/sales?storeId=${status.store.id}`} key={status.store.id}>
               <div className="flex items-center justify-between gap-3">
                 <p className="font-semibold">{status.store.name}</p>
                 <span className={current ? "rounded-full border border-success/40 px-2 py-1 text-xs font-semibold text-success" : "rounded-full border border-danger/40 px-2 py-1 text-xs font-semibold text-danger"}>
                   {current ? "Current" : "Behind"}
                 </span>
               </div>
-              <p className="mt-3 text-sm text-muted">Latest sales date: {displayDate(latest)}</p>
+              <p className="mt-2 text-sm text-muted">Latest sales date: {displayDate(latest)}</p>
               <p className="mt-1 text-xs text-muted">Uploaded: {status.latestReport?.created_at ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(status.latestReport.created_at)) : "Not available"}</p>
             </Link>
           );
@@ -176,18 +176,17 @@ export function OwnerTaskWorkboard({
     { icon: CheckCircle2, label: "Recently done", tasks: workboard.recentlyCompleted, empty: "No recent completion." },
   ];
   return (
-    <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+    <section className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-muted">Existing task system</p>
-          <h2 className="mt-2 text-2xl font-semibold">Owner workboard</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">A clearer view only—no overdue task was changed or removed.</p>
+          <h2 className="text-xl font-semibold sm:text-2xl">Store &amp; team tasks</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">Tasks for stores and managers, by status.</p>
         </div>
-        <Link className="text-xs font-semibold text-muted" href="/app/tasks">All tasks</Link>
+        <Link className="shrink-0 text-xs font-semibold text-muted" href="/app/tasks">All tasks</Link>
       </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 sm:gap-3">
         {groups.map(({ empty, icon: Icon, label, tasks }) => (
-          <div className="rounded-2xl border border-border p-4" key={label}>
+          <div className="rounded-2xl border border-border p-3 sm:p-4" key={label}>
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="inline-flex items-center gap-2 font-semibold"><Icon className="size-4 text-muted" />{label}</p>
               <span className="rounded-full border border-border px-2 py-0.5 text-xs font-semibold text-muted">{tasks.length}</span>
@@ -202,17 +201,18 @@ export function OwnerTaskWorkboard({
 
 export function SecretaryShortcut() {
   return (
-    <section className="rounded-[1.35rem] border border-border bg-foreground p-5 text-background shadow-sm">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-background/65">Your existing private assistant</p>
-          <h2 className="mt-2 text-2xl font-semibold">Ask the Secretary</h2>
-          <p className="mt-2 text-sm leading-6 text-background/70">Uses the existing backend and your own private chat history.</p>
-        </div>
-        <Link className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-background px-4 text-sm font-semibold text-foreground" href="/app/secretary">
-          <Bot className="size-4" /> Open Secretary
-        </Link>
-      </div>
-    </section>
+    <Link
+      className="flex items-center gap-3 rounded-[1.35rem] border border-border bg-foreground p-4 text-background shadow-sm"
+      href="/app/secretary"
+    >
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-background text-foreground">
+        <Bot className="size-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold">Ask the AI Secretary</span>
+        <span className="block text-sm leading-5 text-background/70">Sales, stock, staff or what needs attention.</span>
+      </span>
+      <ChevronRight className="size-5 shrink-0 text-background/70" />
+    </Link>
   );
 }

@@ -25,6 +25,7 @@ import {
 
 import { ChecklistCard } from "@/components/checklist/checklist-card";
 import { OwnerNotesPanel } from "@/components/owner/owner-notes-panel";
+import { OwnerTodoList } from "@/components/owner/owner-todo-list";
 import { OwnerToolsStrip } from "@/components/owner/owner-tools-strip";
 import type { TaskChoice } from "@/components/owner/priority-followup";
 import {
@@ -65,6 +66,8 @@ import {
   type AssessedPriority,
 } from "@/lib/owner/followups";
 import { getSharedOwnerNotes } from "@/lib/owner/notes";
+import { getOwnerTodos } from "@/lib/owner/todos";
+import { getIndiaToday, getIndiaTomorrow } from "@/lib/tasks/dates";
 import { buildDailyPriorities, getSalesCoverage } from "@/lib/owner/priorities";
 import { getOwnerToolsSummary, type OwnerToolsSummary } from "@/lib/owner/tools-summary";
 import {
@@ -353,19 +356,19 @@ function ShortcutGrid({
   shortcuts: Array<{ description: string; href: string; icon: React.ComponentType<{ className?: string }>; title: string }>;
 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
       {shortcuts.map((item) => {
         const Icon = item.icon;
 
         return (
           <Link
-            className="rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:border-foreground hover:bg-black/[0.02]"
+            className="rounded-2xl border border-border bg-card p-3 shadow-sm transition hover:border-foreground hover:bg-black/[0.02] sm:p-4"
             href={item.href}
             key={`${item.title}-${item.href}`}
           >
-            <Icon className="mb-4 size-5 text-muted" />
-            <h3 className="font-semibold">{item.title}</h3>
-            <p className="mt-2 text-sm leading-6 text-muted">{item.description}</p>
+            <Icon className="mb-2 size-5 text-muted sm:mb-4" />
+            <h3 className="text-sm font-semibold leading-5 sm:text-base">{item.title}</h3>
+            <p className="mt-2 hidden text-sm leading-6 text-muted sm:block">{item.description}</p>
           </Link>
         );
       })}
@@ -387,7 +390,7 @@ function MetricCard({
   value: string;
 }) {
   const className = [
-    "rounded-[1.35rem] border border-border bg-card p-4 shadow-sm",
+    "min-w-0 rounded-[1.35rem] border border-border bg-card p-3 shadow-sm sm:p-4",
     href ? "transition hover:border-foreground" : "",
   ].join(" ");
   const valueClass =
@@ -400,9 +403,9 @@ function MetricCard({
           : "";
   const content = (
     <>
-      <Icon className="mb-4 size-5 text-muted" />
+      <Icon className="mb-2 size-5 text-muted sm:mb-4" />
       <p className="text-xs font-medium text-muted">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${valueClass}`}>{value}</p>
+      <p className={`mt-1 break-words text-lg font-semibold leading-6 sm:text-2xl sm:leading-8 ${valueClass}`}>{value}</p>
     </>
   );
 
@@ -550,21 +553,21 @@ function SalesStatusCards({ statuses }: { statuses: StoreSalesStatus[] }) {
 
 function StockStatusMini({ stockOverview }: { stockOverview: StockOverview }) {
   return (
-    <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted">Stock Upload Status</p>
-          <h2 className="mt-2 text-2xl font-semibold">{stockOverview.headline}</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Monthly stock report due {stockOverview.dueDate}.</p>
+    <section className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-muted">Stock upload</p>
+          <h2 className="mt-1 text-xl font-semibold sm:text-2xl">{stockOverview.headline}</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">Monthly stock report due {stockOverview.dueDate}.</p>
         </div>
         <Link
-          className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+          className="inline-flex h-10 shrink-0 items-center justify-center rounded-2xl bg-foreground px-3 text-sm font-semibold text-background transition hover:bg-black/85 sm:h-11 sm:px-4"
           href="/app/reports/stock"
         >
           Upload Stock
         </Link>
       </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <MetricCard icon={PackageSearch} label="Uploaded" value={String(stockOverview.uploadedCount)} />
         <MetricCard
           icon={AlertTriangle}
@@ -574,7 +577,7 @@ function StockStatusMini({ stockOverview }: { stockOverview: StockOverview }) {
         />
         {stockOverview.statuses.map((status) => (
           <Link
-            className="rounded-2xl border border-border p-3 transition hover:border-foreground"
+            className="min-w-0 rounded-2xl border border-border p-3 transition hover:border-foreground"
             href={`/app/reports/stock?storeId=${status.store.id}`}
             key={status.store.id}
           >
@@ -639,7 +642,7 @@ async function StockPulseSection({ stores }: { stores: TodayStore[] }) {
               </Link>
             </div>
             {stockPulse ? (
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <MetricCard icon={TriangleAlert} label="Slow stock" value={String(stockPulse.candidateCounts.slow)} />
                 <MetricCard icon={AlertTriangle} label="No-sale stock" value={String(stockPulse.candidateCounts.dead)} />
                 <MetricCard icon={ShoppingBag} label="Fast low stock" value={String(stockPulse.candidateCounts.fastLow)} />
@@ -666,7 +669,7 @@ async function WeeklyAuditSection({ stores }: { stores: TodayStore[] }) {
       <h2 className="mt-2 text-2xl font-semibold">
         Previous week: {previousWeekRange.startDate} to {previousWeekRange.endDate}
       </h2>
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
         <MetricCard icon={CalendarCheck} label="Stores audited" value={String(weeklyAudits.length)} />
         <MetricCard icon={AlertTriangle} label="Missing sales days" tone={missingSalesReports ? "danger" : "success"} value={String(missingSalesReports)} />
         <MetricCard icon={MessageSquareText} label="Urgent updates" tone={urgentUpdates ? "warning" : "success"} value={String(urgentUpdates)} />
@@ -753,7 +756,7 @@ async function MoreDetailsSection({
             Open upload
           </Link>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           <MetricCard icon={CalendarCheck} label="Uploaded" value={String(salaryOverview.uploadedCount)} />
           <MetricCard
             icon={AlertTriangle}
@@ -795,6 +798,18 @@ async function MoreDetailsSection({
   );
 }
 
+function TodayHeader({ subtitle, title }: { subtitle: string; title: string }) {
+  return (
+    <section className="flex items-center justify-between gap-3 px-1">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-semibold sm:text-3xl">{title}</h1>
+        <p className="mt-1 hidden text-sm leading-6 text-muted sm:block">{subtitle}</p>
+      </div>
+      <SyncNowButton />
+    </section>
+  );
+}
+
 function OwnerToday({
   handledPriorities,
   historicalImport,
@@ -808,6 +823,7 @@ function OwnerToday({
   stockOverview,
   taskChoices,
   taskWorkboard,
+  todos,
   toolsSummary,
 }: {
   handledPriorities: AssessedPriority[];
@@ -822,6 +838,7 @@ function OwnerToday({
   stockOverview: StockOverview;
   taskChoices: TaskChoice[];
   taskWorkboard: Awaited<ReturnType<typeof getOwnerTaskWorkboard>>;
+  todos: Awaited<ReturnType<typeof getOwnerTodos>>;
   toolsSummary: OwnerToolsSummary;
 }) {
   const historicalTone = historicalImport.warningCount ? "warning" : historicalImport.latest ? "success" : "default";
@@ -833,24 +850,14 @@ function OwnerToday({
 
   return (
     <>
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted">Today</p>
-            <h1 className="mt-2 text-3xl font-semibold">Owner Command Center</h1>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Start with exceptions, uploads, staff issues, and buying actions.
-            </p>
-          </div>
-          <SyncNowButton />
-        </div>
-      </section>
+      <TodayHeader subtitle="Start with exceptions, uploads, staff issues, and buying actions." title="Owner Command Center" />
 
       <DailyPriorities handled={handledPriorities} priorities={priorities} tasks={taskChoices} />
-      <OwnerToolsStrip handledCount={handledPriorities.length} summary={toolsSummary} />
+      <OwnerTodoList doneToday={todos.doneToday} open={todos.open} today={getIndiaToday()} tomorrow={getIndiaTomorrow()} />
       <SalesFreshness statuses={salesStatuses} />
-      <SecretaryShortcut />
+      <OwnerToolsStrip handledCount={handledPriorities.length} summary={toolsSummary} />
       <OwnerTaskWorkboard workboard={taskWorkboard} />
+      <SecretaryShortcut />
       <OwnerNotesPanel
         archived={notesArchived}
         available={notes.available}
@@ -858,7 +865,7 @@ function OwnerToday({
         search={notesSearch}
       />
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
         <MetricCard
           href="/app/reports/correction"
           icon={History}
@@ -930,21 +937,12 @@ function ManagerToday({
 
   return (
     <>
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted">Today</p>
-            <h1 className="mt-2 text-3xl font-semibold">My Store Command Center</h1>
-            <p className="mt-2 text-sm leading-6 text-muted">Complete your daily store actions here.</p>
-          </div>
-          <SyncNowButton />
-        </div>
-      </section>
+      <TodayHeader subtitle="Complete your daily store actions here." title="My Store Command Center" />
 
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+      <section className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm sm:p-5">
         <p className="text-sm font-medium text-muted">My assigned store{stores.length === 1 ? "" : "s"}</p>
-        <h2 className="mt-2 text-2xl font-semibold">{assignedStoreLabel}</h2>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <h2 className="mt-1 text-xl font-semibold sm:text-2xl">{assignedStoreLabel}</h2>
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           <MetricCard
             href="/app/reports/sales"
             icon={UploadCloud}
@@ -1037,13 +1035,14 @@ export default async function TodayPage({
   const salesIssues = salesIssueSummary(salesStatuses);
   const notesSearch = (params.notesQuery ?? "").slice(0, 80);
   const notesArchived = params.notesView === "archived";
-  const [notes, taskWorkboard, coverage, taskChoices, toolsSummary] = isOwner
+  const [notes, taskWorkboard, coverage, taskChoices, toolsSummary, todos] = isOwner
     ? await Promise.all([
         getSharedOwnerNotes({ archived: notesArchived, search: notesSearch }),
         getOwnerTaskWorkboard(),
         getSalesCoverage(stores),
         getOpenTaskChoices(),
         getOwnerToolsSummary(),
+        getOwnerTodos(),
       ])
     : [
         { available: false, notes: [] },
@@ -1051,6 +1050,7 @@ export default async function TodayPage({
         [],
         [],
         null,
+        { doneToday: [], open: [] },
       ];
   // Build every current exception, then hide ones an owner has already handled
   // unless the evidence changed materially; the visible list stays capped at five.
@@ -1089,6 +1089,7 @@ export default async function TodayPage({
           stockOverview={stockOverview}
           taskChoices={taskChoices}
           taskWorkboard={taskWorkboard}
+          todos={todos}
           toolsSummary={toolsSummary as OwnerToolsSummary}
         />
       ) : (
@@ -1101,14 +1102,12 @@ export default async function TodayPage({
         />
       )}
 
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <p className="text-sm font-medium text-muted">More details</p>
-        <h2 className="mt-2 text-2xl font-semibold">Load heavier sections only when needed</h2>
-        <p className="mt-2 text-sm leading-6 text-muted">
-          Stock pulse, weekly audit, reviews, receivables, salary attendance detail and store lists are kept out of
-          the first render so Today opens faster.
+      <section className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm sm:p-5">
+        <h2 className="text-xl font-semibold sm:text-2xl">More details</h2>
+        <p className="mt-1 text-sm leading-6 text-muted">
+          Stock pulse, weekly audit, checklist, reviews, salary attendance and receivables load on tap so Today opens faster.
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           {!showStock ? (
             <Link
               className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-black/[0.03]"

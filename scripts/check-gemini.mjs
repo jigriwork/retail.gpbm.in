@@ -37,12 +37,7 @@ loadEnvFile();
 // ─── Config ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
-const FALLBACK_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
-  "gemini-flash-latest",
-  "gemini-2.0-flash",
-];
+const FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.5-flash"];
 
 const API_KEY = process.env.GEMINI_API_KEY;
 const CONFIGURED_MODEL = process.env.GEMINI_MODEL || DEFAULT_MODEL;
@@ -131,9 +126,12 @@ const testBody = {
       parts: [{ text: "Reply with exactly: GPBM Retail OK" }],
     },
   ],
+  // Same thinking setting as the app: thinking tokens count against
+  // maxOutputTokens and would otherwise leave the reply empty.
   generationConfig: {
     maxOutputTokens: 20,
     temperature: 0,
+    thinkingConfig: { thinkingBudget: 0 },
   },
 };
 
@@ -159,7 +157,8 @@ async function testModel(modelName) {
         .join("")
         .trim() ?? "";
 
-    return { ok: true, text };
+    // An empty reply is a failure: the Secretary would show "empty response".
+    return text ? { ok: true, text } : { ok: false, status: 0 };
   } catch (error) {
     return { ok: false, status: -1, error: error.message };
   }
@@ -177,6 +176,11 @@ if (primaryResult.ok) {
 }
 
 log("❌", `${CONFIGURED_MODEL} failed (HTTP ${primaryResult.status}).`);
+
+if (primaryResult.status === 0) {
+  log("💡", "The model replied with no text. Check thinkingConfig / maxOutputTokens.");
+  process.exit(1);
+}
 
 if (primaryResult.status !== 404) {
   log("💡", "This is not a model-not-found error. Check API key and account.");

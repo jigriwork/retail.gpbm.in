@@ -15,11 +15,12 @@ export function SyncNowButton() {
       aria-label="Sync latest data"
       disabled={isPending}
       onClick={() => startTransition(() => router.refresh())}
+      className="shrink-0 px-3 sm:px-4"
       type="button"
       variant="secondary"
     >
       <RefreshCw className={isPending ? "size-4 animate-spin" : "size-4"} />
-      {isPending ? "Syncing" : "Sync now"}
+      <span className="hidden sm:inline">{isPending ? "Syncing" : "Sync now"}</span>
     </Button>
   );
 }

@@ -2,6 +2,7 @@ import "server-only";
 import { completeQuery } from "@/lib/supabase/complete-query";
 import { getAccessibleStores, requireOwner, type Profile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { OWNER_TODO_CATEGORY } from "@/lib/owner/todos";
 import { addDays, getIndiaToday, getIndiaTomorrow } from "@/lib/tasks/dates";
 
 export type TaskWithRelations = {
@@ -106,7 +107,8 @@ export async function getOwnerTaskWorkboard() {
     return { dueToday: [], overdue: [], recentlyCompleted: [], waiting: [] };
   }
 
-  const tasks = await getTasksForProfile();
+  // Personal owner to-dos have their own list on Today.
+  const tasks = (await getTasksForProfile()).filter((task) => task.category !== OWNER_TODO_CATEGORY);
   const today = getIndiaToday();
   const recentCutoff = addDays(today, -14);
   const active = tasks.filter((task) => !["done", "cancelled"].includes(task.status ?? "pending"));

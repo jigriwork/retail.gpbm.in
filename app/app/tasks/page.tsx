@@ -29,33 +29,30 @@ export default async function TasksPage({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted">Tasks</p>
-            <h1 className="mt-2 text-3xl font-semibold">Daily command list</h1>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              {stores.length} accessible store{stores.length === 1 ? "" : "s"}.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:items-end">
-            <Link
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 text-sm font-semibold transition hover:bg-black/[0.03]"
-              href="/app/tasks/new"
-            >
-              <Plus className="size-4" />
-              Add Task
-            </Link>
-            {profile?.role === "owner" ? <GenerateRemindersButton /> : null}
-          </div>
+      <section className="space-y-3 px-1">
+        <div>
+          <h1 className="text-2xl font-semibold sm:text-3xl">Tasks</h1>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Daily command list · {stores.length} accessible store{stores.length === 1 ? "" : "s"}.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            href="/app/tasks/new"
+          >
+            <Plus className="size-4" />
+            Add Task
+          </Link>
+          {profile?.role === "owner" ? <GenerateRemindersButton /> : null}
         </div>
       </section>
 
-      <nav className="flex gap-2 overflow-x-auto pb-1">
+      <nav className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0">
         {tabs.map((item) => (
           <Link
             className={cn(
-              "whitespace-nowrap rounded-2xl border border-border px-4 py-2 text-sm font-semibold text-muted",
+              "whitespace-nowrap rounded-2xl border border-border px-3.5 py-2 text-sm font-semibold text-muted",
               activeTab === item.value && "bg-foreground text-background",
             )}
             href={`/app/tasks?tab=${item.value}`}
