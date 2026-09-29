@@ -9,6 +9,23 @@ import { getIndiaToday } from "@/lib/tasks/dates";
 // they still appear under Tasks, so there is no separate table to keep in sync.
 export const OWNER_TODO_CATEGORY = "owner-todo";
 
+/** Insert row for a new owner to-do (used by the To-do card and by Tia). */
+export function ownerTodoRow(ownerId: string, title: string, dueDate: string | null) {
+  return {
+    title,
+    category: OWNER_TODO_CATEGORY,
+    priority: "normal",
+    due_date: dueDate,
+    is_private: true,
+    carry_forward: true,
+    store_id: null,
+    assigned_to: ownerId,
+    created_by: ownerId,
+    source: "manual",
+    status: "pending",
+  };
+}
+
 export type OwnerTodo = {
   completed_at: string | null;
   due_date: string | null;

@@ -2,156 +2,44 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireOwner } from "@/lib/auth/session";
-import { buildSecretaryContext, secretarySystemPrompt } from "@/lib/secretary/context";
+import { getAccessibleStores, requireOwner } from "@/lib/auth/session";
+import { buildSecretaryContext, detectReplyLanguage, ownerFirstName, secretarySystemPrompt } from "@/lib/secretary/context";
+import { runChatWithTools, speakAsTia, transcribeVoiceNote, type GeminiContent } from "@/lib/secretary/gemini";
+import { createTiaExecutor, isTiaActionUndone, tiaTools, type TiaAction } from "@/lib/secretary/tools";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
+import { getIndiaToday } from "@/lib/tasks/dates";
 
 export type SecretaryChatState = {
   ok: boolean;
   message: string;
+  /** Set when the owner spoke: the client asks for this reply as audio. */
+  speakChatId?: string;
+  transcript?: string;
 };
 
-const defaultModel = "gemini-2.5-flash";
-// gemini-2.5-flash-lite and gemini-2.0-flash were retired by Google (404).
-const fallbackModels = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.5-flash"];
-const maxPromptLength = 600;
-const maxContextLength = 14000;
+const maxPromptLength = 1000;
+const maxContextLength = 16000;
+const historyMessages = 24;
+// A pause this long starts a new conversation, so Tia greets again.
+const newConversationGapMs = 3 * 60 * 60 * 1000;
+const maxAudioBytes = 120 * 1024;
+const audioTypes = new Set(["audio/webm", "audio/mp4", "audio/aac", "audio/ogg", "audio/mpeg", "audio/wav", "audio/x-m4a"]);
 
-function getConfiguredModel() {
-  return process.env.GEMINI_MODEL || defaultModel;
-}
+type ChatMetadata = { source?: string; error?: boolean; spoken?: boolean; model?: string; actions?: TiaAction[] };
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
 }
 
-function isMemoryPrompt(prompt: string) {
-  const lower = prompt.toLowerCase();
-  return lower.includes("remember") || lower.includes("save this") || lower.includes("note this");
-}
-
-function memoryTitle(prompt: string) {
-  return prompt.replace(/^(remember|save this|note this)[:\s-]*/i, "").slice(0, 60) || "Secretary note";
-}
-
-function isRetryableModelError(status: number) {
-  // Try the next model when this one is missing (404), rate limited (429),
-  // overloaded (5xx) or returned no text (0). Do NOT retry on 400 (bad request)
-  // or 401/403 (auth/permission): another model will fail the same way.
-  return status === 0 || status === 404 || status === 429 || status >= 500;
-}
-
-async function tryGenerateContent(model: string, apiKey: string, requestBody: object) {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-    {
-      body: JSON.stringify(requestBody),
-      headers: { "Content-Type": "application/json" },
-      method: "POST",
-    },
-  );
-
-  if (!response.ok) {
-    return { ok: false as const, status: response.status, model };
-  }
-
-  const data = (await response.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> }; finishReason?: string }>;
-  };
-  const candidate = data.candidates?.[0];
-  const text = candidate?.content?.parts
-    ?.filter((part) => !part.thought)
-    .map((part) => part.text ?? "")
-    .join("")
-    .trim();
-
-  if (!text) {
-    return { ok: false as const, status: 0, model };
-  }
-
-  return {
-    ok: true as const,
-    text: candidate?.finishReason === "MAX_TOKENS" ? `${text}…\n\n(Answer was cut short — ask a narrower question for more detail.)` : text,
-    model,
-  };
-}
-
-async function callGemini(prompt: string, context: string) {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("Gemini API key is not configured.");
-  }
-
-  const requestBody = {
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            text: [
-              secretarySystemPrompt(),
-              "",
-              "Compact GPBM Retail context:",
-              context.slice(0, maxContextLength),
-              "",
-              "Owner question:",
-              prompt,
-            ].join("\n"),
-          },
-        ],
-      },
-    ],
-    generationConfig: {
-      // Gemini 2.5+ "thinks" by default and those hidden tokens count against
-      // maxOutputTokens: with a 700 budget ~670 went to thinking, so replies
-      // arrived cut after one sentence or empty. The Secretary summarises
-      // prepared context, so thinking is off and the whole budget is the answer.
-      maxOutputTokens: 1500,
-      temperature: 0.35,
-      thinkingConfig: { thinkingBudget: 0 },
-    },
-  };
-
-  // Try configured model first
-  const primaryModel = getConfiguredModel();
-  const primaryResult = await tryGenerateContent(primaryModel, apiKey, requestBody);
-
-  if (primaryResult.ok) {
-    return { text: primaryResult.text, model: primaryResult.model };
-  }
-
-  let lastStatus = primaryResult.status;
-
-  // Try fallback models (skip if same as primary) unless the error is auth/request-related.
-  for (const fallbackModel of fallbackModels) {
-    if (!isRetryableModelError(lastStatus)) break;
-    if (fallbackModel === primaryModel) continue;
-
-    const fallbackResult = await tryGenerateContent(fallbackModel, apiKey, requestBody);
-
-    if (fallbackResult.ok) {
-      return { text: fallbackResult.text, model: fallbackResult.model };
-    }
-
-    lastStatus = fallbackResult.status;
-  }
-
-  if (lastStatus === 400 || lastStatus === 401 || lastStatus === 403) {
-    throw new Error(`Gemini request failed (${lastStatus}). Check API key and account permissions.`);
-  }
-
-  if (lastStatus === 429 || lastStatus >= 500) {
-    throw new Error(`Gemini is busy right now (${lastStatus}).`);
-  }
-
-  throw new Error(
-    lastStatus === 0
-      ? "Gemini returned an empty response."
-      : "Gemini model is unavailable. Run npm run check:gemini and verify GEMINI_MODEL.",
-  );
+async function readVoiceNote(formData: FormData) {
+  const file = formData.get("audio");
+  if (!(file instanceof Blob) || file.size === 0) return null;
+  const mimeType = file.type.split(";")[0].toLowerCase();
+  if (!audioTypes.has(mimeType)) throw new Error("That recording format is not supported.");
+  if (file.size > maxAudioBytes) throw new Error("That voice note is too long. Keep it under 45 seconds.");
+  return { data: Buffer.from(await file.arrayBuffer()).toString("base64"), mimeType };
 }
 
 export async function sendSecretaryMessage(
@@ -161,62 +49,186 @@ export async function sendSecretaryMessage(
   const session = await requireOwner();
 
   if (!session?.profile) {
-    return { ok: false, message: "AI Secretary is owner-only in this version." };
+    return { ok: false, message: "Tia is available to owners only." };
   }
 
-  const prompt = readString(formData, "prompt").slice(0, maxPromptLength);
-
-  if (!prompt) {
-    return { ok: false, message: "Type a question for the AI Secretary." };
-  }
-
+  const profile = session.profile;
   const supabase = await createClient();
-  await supabase.from("ai_chats").insert({
-    user_id: session.profile.id,
-    role: "user",
-    content: prompt,
-    metadata: { source: "secretary" } satisfies Json,
-  });
-
-  if (isMemoryPrompt(prompt)) {
-    await supabase.from("ai_memories").insert({
-      user_id: session.profile.id,
-      title: memoryTitle(prompt),
-      content: prompt,
-      memory_type: "owner_note",
-      importance: 3,
-      is_active: true,
-    });
-  }
+  const stores = await getAccessibleStores(profile);
+  let prompt = readString(formData, "prompt").slice(0, maxPromptLength);
+  let spoken = false;
 
   try {
-    const context = await buildSecretaryContext(session.profile, prompt);
-    const { text: answer, model: usedModel } = await callGemini(prompt, context);
+    const voiceNote = await readVoiceNote(formData);
+    if (voiceNote) {
+      prompt = (await transcribeVoiceNote(voiceNote, stores.map((store) => store.name).join(", "))).slice(0, maxPromptLength);
+      spoken = true;
+      if (!prompt) return { ok: false, message: "I couldn't hear anything. Try again a little closer to the phone." };
+    }
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Could not read the voice note." };
+  }
 
-    await supabase.from("ai_chats").insert({
-      user_id: session.profile.id,
-      role: "assistant",
-      content: answer,
-      metadata: { source: "secretary", model: usedModel } satisfies Json,
+  if (!prompt) {
+    return { ok: false, message: "Type or say something for Tia." };
+  }
+
+  // Earlier conversation, oldest first; failed replies are left out so Tia
+  // does not repeat old error text.
+  const { data: recent } = await supabase
+    .from("ai_chats")
+    .select("role,content,created_at,metadata")
+    .eq("user_id", profile.id)
+    .order("created_at", { ascending: false })
+    .limit(historyMessages);
+  const earlier = [...(recent ?? [])].reverse();
+  const lastAt = earlier.at(-1)?.created_at;
+  const greet = !lastAt || Date.now() - Date.parse(lastAt) > newConversationGapMs;
+  const history: GeminiContent[] = [];
+  for (const chat of earlier) {
+    if (!chat.content || (chat.metadata as ChatMetadata | null)?.error) continue;
+    const role = chat.role === "user" ? "user" : "model";
+    // Gemini needs alternating turns; merge any repeats.
+    if (history.at(-1)?.role === role) history.at(-1)!.parts[0].text += `\n${chat.content}`;
+    else history.push({ role, parts: [{ text: chat.content }] });
+  }
+  if (history[0]?.role === "model") history.shift();
+  if (history.at(-1)?.role === "user") history.pop();
+
+  await supabase.from("ai_chats").insert({
+    user_id: profile.id,
+    role: "user",
+    content: prompt,
+    metadata: { source: "secretary", spoken } satisfies Json,
+  });
+
+  const executor = createTiaExecutor({ profile, stores });
+  try {
+    const context = await buildSecretaryContext(profile, prompt);
+    const system = [
+      secretarySystemPrompt({
+        greet,
+        language: detectReplyLanguage(prompt),
+        ownerName: ownerFirstName(profile),
+        spoken,
+        today: getIndiaToday(),
+      }),
+      "",
+      "Current GPBM Retail snapshot:",
+      context.slice(0, maxContextLength),
+    ].join("\n");
+    // Repeated on the message itself: a long Hinglish history otherwise
+    // outweighs the system instruction. Only the owner's words are stored.
+    const languageNote = { devanagari: "[हिंदी में जवाब दें]", english: "[Reply in English]", hinglish: "[Reply in Hinglish]" }[
+      detectReplyLanguage(prompt)
+    ];
+    const { model, text } = await runChatWithTools({
+      execute: executor.execute,
+      history,
+      message: `${prompt}\n\n${languageNote}`,
+      system,
+      tools: tiaTools,
     });
 
+    const { data: saved } = await supabase
+      .from("ai_chats")
+      .insert({
+        user_id: profile.id,
+        role: "assistant",
+        content: text,
+        metadata: { source: "secretary", model, spoken, actions: executor.actions } as unknown as Json,
+      })
+      .select("id")
+      .single();
+
     revalidatePath("/app/secretary");
-    return { ok: true, message: "Secretary replied." };
+    if (executor.actions.length) {
+      revalidatePath("/app/today");
+      revalidatePath("/app/tasks");
+    }
+    return { ok: true, message: "Tia replied.", speakChatId: spoken ? saved?.id : undefined, transcript: spoken ? prompt : undefined };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unexpected error contacting Gemini.";
-    const userMessage = errorMessage.includes("unavailable")
-      ? errorMessage
-      : `I could not reach Gemini just now. ${errorMessage}`;
+    const errorMessage = error instanceof Error ? error.message : "Unexpected error contacting Gemini.";
+    const userMessage = errorMessage.includes("unavailable") ? errorMessage : `I could not reach Gemini just now. ${errorMessage}`;
     await supabase.from("ai_chats").insert({
-      user_id: session.profile.id,
+      user_id: profile.id,
       role: "assistant",
       content: `${userMessage}\n\nWant to try again in a minute?`,
-      metadata: { source: "secretary", error: true } satisfies Json,
+      metadata: { source: "secretary", error: true, actions: executor.actions } as unknown as Json,
     });
     revalidatePath("/app/secretary");
     return { ok: false, message: userMessage };
   }
+}
+
+function speakableText(text: string) {
+  const plain = text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/^\s*[*-]\s+/gm, "")
+    .replace(/\[id:[^\]]+\]/g, "")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+  if (plain.length <= 700) return plain;
+  // Long written answers: read the opening and point to the screen.
+  const cut = plain.slice(0, 700);
+  const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("? "), cut.lastIndexOf("! "), cut.lastIndexOf("\n"));
+  return `${cut.slice(0, end > 200 ? end + 1 : 700)} The rest is on your screen.`;
+}
+
+/** Returns Tia's reply as WAV audio (base64) in her voice. */
+export async function speakSecretaryReply(chatId: string): Promise<{ ok: boolean; audio?: string; text?: string; message?: string }> {
+  const session = await requireOwner();
+  if (!session?.profile) return { ok: false, message: "Tia is available to owners only." };
+
+  const supabase = await createClient();
+  const { data: chat } = await supabase
+    .from("ai_chats")
+    .select("content,role")
+    .eq("id", chatId)
+    .eq("user_id", session.profile.id)
+    .maybeSingle();
+  if (!chat?.content || chat.role !== "assistant") return { ok: false, message: "Reply not found." };
+
+  const text = speakableText(chat.content);
+  try {
+    return { ok: true, audio: (await speakAsTia(text)).toString("base64"), text };
+  } catch (error) {
+    // The client falls back to the phone's own Indian voice with this text.
+    return { ok: false, text, message: error instanceof Error ? error.message : "Could not create audio." };
+  }
+}
+
+/** Reverses one change Tia made (tick, add or reschedule). */
+export async function undoSecretaryAction(chatId: string, index: number): Promise<{ ok: boolean; message: string }> {
+  const session = await requireOwner();
+  if (!session?.profile) return { ok: false, message: "Tia is available to owners only." };
+
+  const supabase = await createClient();
+  const { data: chat } = await supabase
+    .from("ai_chats")
+    .select("metadata")
+    .eq("id", chatId)
+    .eq("user_id", session.profile.id)
+    .maybeSingle();
+  const action = ((chat?.metadata ?? {}) as ChatMetadata).actions?.[index];
+  if (!chat || !action) return { ok: false, message: "Nothing to undo." };
+
+  const { data: task } = await supabase.from("tasks").select("status,due_date").eq("id", action.taskId).maybeSingle();
+  if (isTiaActionUndone(action, task)) return { ok: true, message: "Already undone." };
+
+  const change =
+    action.kind === "added"
+      ? { status: "cancelled", completed_at: null }
+      : action.kind === "completed"
+        ? { status: action.previous?.status ?? "pending", completed_at: action.previous?.completed_at ?? null }
+        : { due_date: action.previous?.due_date ?? null };
+  const { error } = await supabase.from("tasks").update(change).eq("id", action.taskId);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/app/secretary");
+  revalidatePath("/app/today");
+  revalidatePath("/app/tasks");
+  return { ok: true, message: "Undone." };
 }
 
 export async function deactivateMemory(formData: FormData) {

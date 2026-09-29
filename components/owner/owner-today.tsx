@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Bot, CalendarClock, CheckCircle2, ChevronDown, ChevronRight, Clock3, ListTodo, UploadCloud } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, ChevronRight, Clock3, ListTodo, Mic, UploadCloud } from "lucide-react";
 
 import { PriorityFollowup, type TaskChoice } from "@/components/owner/priority-followup";
 import type { AssessedPriority } from "@/lib/owner/followups";
@@ -206,11 +206,11 @@ export function SecretaryShortcut() {
       href="/app/secretary"
     >
       <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-background text-foreground">
-        <Bot className="size-5" />
+        <Mic className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-semibold">Ask the AI Secretary</span>
-        <span className="block text-sm leading-5 text-background/70">Sales, stock, staff or what needs attention.</span>
+        <span className="block font-semibold">Talk to Tia</span>
+        <span className="block text-sm leading-5 text-background/70">Your secretary — ask, tick off to-dos, in English or Hindi.</span>
       </span>
       <ChevronRight className="size-5 shrink-0 text-background/70" />
     </Link>

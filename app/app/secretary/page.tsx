@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { Bot, Brain, MessageCircle } from "lucide-react";
+import { Brain, MessageCircle } from "lucide-react";
 
 import { AccessDenied } from "@/components/app/access-denied";
 import { SecretaryChat } from "@/components/secretary/secretary-chat";
+import { SpeakButton, TiaActionList } from "@/components/secretary/tia-message-actions";
 import { deactivateMemory, sendSecretaryMessage } from "@/lib/secretary/actions";
-import { getActiveAiMemories } from "@/lib/secretary/context";
+import { getActiveAiMemories, greetingForNow, ownerFirstName } from "@/lib/secretary/context";
+import { isTiaActionUndone, type TiaAction } from "@/lib/secretary/tools";
 import { requireOwner } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -32,11 +34,14 @@ function FormattedAnswer({ text }: { text: string }) {
   );
 }
 
+// Tia may transcribe, look things up, act and then speak in one visit.
+export const maxDuration = 60;
+
 export default async function SecretaryPage() {
   const session = await requireOwner();
 
   if (!session?.profile) {
-    return <AccessDenied message="AI Secretary is owner-only in this version." />;
+    return <AccessDenied message="Tia is available to owners only." />;
   }
 
   const supabase = await createClient();
@@ -58,16 +63,30 @@ export default async function SecretaryPage() {
   }
   const orderedChats = turns.reverse().flat();
 
+  // Show each change Tia made with its current state, so Undo only appears while it applies.
+  const actionsOf = (metadata: unknown) => ((metadata as { actions?: TiaAction[] } | null)?.actions ?? []);
+  const actionTaskIds = [...new Set((chats ?? []).flatMap((chat) => actionsOf(chat.metadata).map((action) => action.taskId)))];
+  const { data: actionTasks } = actionTaskIds.length
+    ? await supabase.from("tasks").select("id,status,due_date").in("id", actionTaskIds)
+    : { data: [] };
+  const withState = (metadata: unknown) =>
+    actionsOf(metadata).map((action) => ({
+      ...action,
+      undone: isTiaActionUndone(action, actionTasks?.find((task) => task.id === action.taskId) ?? null),
+    }));
+
   return (
     <div className="space-y-5">
-      <section className="flex items-start justify-between gap-3 px-1">
-        <div>
-          <h1 className="text-2xl font-semibold sm:text-3xl">AI Secretary</h1>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            Answers from your latest GPBM Retail data. Private to your account.
-          </p>
+      <section className="flex items-center gap-3 px-1">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-foreground text-lg font-semibold text-background">
+          T
+        </span>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold sm:text-3xl">
+            {greetingForNow()}, {ownerFirstName(session.profile)}
+          </h1>
+          <p className="mt-0.5 text-sm leading-6 text-muted">I&apos;m Tia, your secretary. Ask me anything about the stores.</p>
         </div>
-        <Bot className="mt-1 size-5 shrink-0 text-muted" />
       </section>
 
       <SecretaryChat action={sendSecretaryMessage} />
@@ -90,20 +109,23 @@ export default async function SecretaryPage() {
                   key={chat.id}
                 >
                   <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
-                    {chat.role === "user" ? "You" : "AI Secretary"}
+                    {chat.role === "user" ? ((chat.metadata as { spoken?: boolean } | null)?.spoken ? "You · 🎤" : "You") : "Tia"}
                   </p>
                   {chat.role === "user" ? (
                     <p className="mt-1 whitespace-pre-wrap text-sm leading-6">{chat.content}</p>
                   ) : (
                     <FormattedAnswer text={chat.content ?? ""} />
                   )}
+                  {chat.role === "assistant" && actionsOf(chat.metadata).length ? (
+                    <TiaActionList actions={withState(chat.metadata)} chatId={chat.id} />
+                  ) : null}
                   {chat.role === "assistant" && !(chat.metadata as { error?: boolean } | null)?.error ? (
-                    <Link
-                      className="mt-3 inline-flex text-xs font-semibold underline"
-                      href={`/app/owner/follow-ups/new?chat=${chat.id}`}
-                    >
-                      Follow up this recommendation
-                    </Link>
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <SpeakButton chatId={chat.id} />
+                      <Link className="text-xs font-semibold underline" href={`/app/owner/follow-ups/new?chat=${chat.id}`}>
+                        Follow up this recommendation
+                      </Link>
+                    </div>
                   ) : null}
                 </article>
               ))}
@@ -115,7 +137,7 @@ export default async function SecretaryPage() {
 
         <aside className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Memories</h2>
+            <h2 className="text-xl font-semibold">What Tia remembers</h2>
             <Brain className="size-5 text-muted" />
           </div>
           {memories.length ? (
@@ -127,7 +149,7 @@ export default async function SecretaryPage() {
                   <form action={deactivateMemory} className="mt-3">
                     <input name="memoryId" type="hidden" value={memory.id} />
                     <button className="text-xs font-semibold text-muted" type="submit">
-                      Hide memory
+                      Forget this
                     </button>
                   </form>
                 </div>
@@ -135,7 +157,7 @@ export default async function SecretaryPage() {
             </div>
           ) : (
             <p className="text-sm leading-6 text-muted">
-              No active memories yet. Say &quot;remember&quot; or &quot;note this&quot; in chat to save a simple note.
+              Nothing yet. Tell Tia about your business — staff, suppliers, plans — and she will remember it.
             </p>
           )}
         </aside>

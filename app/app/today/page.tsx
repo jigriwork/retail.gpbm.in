@@ -140,10 +140,10 @@ const ownerShortcuts = [
     title: "Historical Sales Import",
   },
   {
-    description: "Ask what needs attention today.",
+    description: "Talk to your secretary in English or Hindi.",
     href: "/app/secretary",
     icon: Bot,
-    title: "AI Secretary",
+    title: "Tia",
   },
   {
     description: "Review pending work and follow-ups.",

@@ -10,6 +10,8 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' blob: data: https://*.supabase.co${localDevelopmentSources}`,
   "font-src 'self' data:",
+  // Tia's voice replies are played from in-memory blob: URLs.
+  "media-src 'self' blob:",
   `connect-src 'self' https://*.supabase.co wss://*.supabase.co${localDevelopmentSources}`,
   "object-src 'none'",
   "base-uri 'self'",
@@ -26,7 +28,7 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(), payment=(), usb=()" },
+  { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self), payment=(), usb=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
 ];
 

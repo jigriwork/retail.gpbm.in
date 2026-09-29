@@ -11,7 +11,7 @@ const navItems = [
   { label: "Stores", href: "/app/stores", icon: Store },
   { label: "Reports", href: "/app/reports", icon: BarChart3 },
   { label: "Tasks", href: "/app/tasks", icon: CheckSquare },
-  { label: "Secretary", href: "/app/secretary", icon: MessageCircle, ownerOnly: true },
+  { label: "Tia", href: "/app/secretary", icon: MessageCircle, ownerOnly: true },
 ];
 
 export function BottomNav({ role }: { role?: string }) {

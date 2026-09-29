@@ -7,12 +7,12 @@ import { getStoreSalesStatuses, getSuspiciousSalesReportWarningsFromReports } fr
 import { currentMonthRange, getDateRangeForPeriod, getSalesSummary, getStaffSalesSummary } from "@/lib/analytics/sales";
 import { getLatestStockMonth, getStockSummary } from "@/lib/analytics/stock";
 import { getPreviousWeekRangeAsiaKolkata, getWeeklyAuditSummaries, isWeeklyAuditDay } from "@/lib/audit/weekly";
-import { getTaskSummary } from "@/lib/tasks/queries";
+import { pendingWorkLines, visibleTasks } from "@/lib/secretary/tools";
 import { getTodayUpdateSummary } from "@/lib/updates/queries";
 import { createClient } from "@/lib/supabase/server";
 
 const maxImportantUpdates = 5;
-const maxMemories = 8;
+const maxMemories = 40;
 
 function nowInIndia() {
   return new Intl.DateTimeFormat("en-IN", {
@@ -72,7 +72,7 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
     staffYesterday,
     salaryOverview,
     stockOverview,
-    taskSummary,
+    tasks,
     updateSummary,
     memories,
     latestStockMonth,
@@ -84,7 +84,7 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
     getStaffSalesSummary({ storeIds, dateRange: getDateRangeForPeriod("yesterday") }),
     getSalaryAttendanceOverview(stores),
     getStockOverview(stores),
-    getTaskSummary(profile),
+    visibleTasks(profile.id),
     getTodayUpdateSummary(stores),
     getActiveAiMemories(profile.id),
     getLatestStockMonth(),
@@ -185,13 +185,15 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
         `- ${update.stores?.name ?? "Store"}: ${update.title} (${update.urgency ?? "normal"}, ${update.status ?? "open"}).`,
     ),
     "",
-    `Tasks: urgent today ${taskSummary.urgentCount}, today total ${taskSummary.todayCount}, owner/private ${profile.role === "owner" ? taskSummary.privateCount : 0}.`,
+    "Tasks and the owner's to-dos (use these ids with complete_task / reschedule_task):",
+    ...pendingWorkLines(tasks, profile.id),
+    "",
     `Salary attendance: ${salaryOverview.uploadedCount} uploaded, ${salaryOverview.missingCount} missing for ${salaryOverview.periodMonth}.`,
     `Stock report: ${stockOverview.uploadedCount} uploaded, ${stockOverview.missingCount} missing for ${stockOverview.periodMonth}.`,
     "",
     memories.length
-      ? `Active memories: ${memories.map((memory) => `${memory.title ?? "Memory"}: ${memory.content}`).join(" | ")}.`
-      : "Active memories: none.",
+      ? ["What you remember about this owner and the business:", ...memories.map((memory) => `- ${memory.title ?? "Memory"}: ${memory.content}`)].join("\n")
+      : "What you remember about this owner and the business: nothing yet.",
     "",
     weeklyAudits.length
       ? [
@@ -205,21 +207,66 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
   ].join("\n");
 }
 
-export function secretarySystemPrompt() {
+export function ownerFirstName(profile: Pick<Profile, "email" | "full_name">) {
+  const name = profile.full_name?.trim().split(/\s+/)[0] || profile.email?.split("@")[0] || "";
+  return name ? name.charAt(0).toUpperCase() + name.slice(1) : "there";
+}
+
+export function greetingForNow() {
+  const hour = Number(new Intl.DateTimeFormat("en-IN", { hour: "numeric", hourCycle: "h23", timeZone: "Asia/Kolkata" }).format(new Date()));
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
+
+export type ReplyLanguage = "english" | "hinglish" | "devanagari";
+
+const languageInstruction: Record<ReplyLanguage, string> = {
+  english: "English only — no Hindi words.",
+  hinglish: "natural Hinglish (Hindi in Roman script, English words where Indians normally use them).",
+  devanagari: "Hindi in Devanagari script.",
+};
+
+// Common Hindi words in Roman script; English-looking ones ("do", "so") are left out.
+const hindiWords = new Set(
+  "hai hain tha thi kya kaise kaisa kitna kitni kitne karo karna kardo kar gaya gayi hua hui nahi nahin mera meri mere mujhe hum humne aap aapka aaj kal yaad rakhna rakho wala wali wale sabse achha achhi accha bahut aur ki ka ke ko mein se abhi batao bolo dekho theek haan bhi kaun kab kyun kyon iss uss mahine hafte din dukaan becha bikri kuch sab koi jaldi zara".split(" "),
+);
+
+/** Picks Tia's reply language from the owner's latest message. */
+export function detectReplyLanguage(message: string): ReplyLanguage {
+  if (/[ऀ-ॿ]/.test(message)) return "devanagari";
+  const words = message.toLowerCase().match(/[a-z]+/g) ?? [];
+  const hindi = words.filter((word) => hindiWords.has(word)).length;
+  return hindi >= 2 && hindi / Math.max(words.length, 1) >= 0.15 ? "hinglish" : "english";
+}
+
+export function secretarySystemPrompt({
+  greet,
+  ownerName,
+  spoken,
+  today,
+  language,
+}: {
+  greet: boolean;
+  language: ReplyLanguage;
+  ownerName: string;
+  spoken: boolean;
+  today: string;
+}) {
   return [
-    "You are GPBM Retail AI Secretary.",
-    "You help Adib Sattar manage Go Planet and Brand Mark.",
-    "You are calm, practical, non-bossy.",
-    "You never command.",
-    "You give short useful answers.",
-    "You focus on what needs attention today.",
-    "You use data from GPBM Retail only when available.",
-    "If data is missing, say what needs to be uploaded.",
-    "You do not invent sales or stock data.",
-    "You can suggest content ideas only when user asks or when stock/sales data clearly supports it.",
-    "Keep answers concise and action-oriented.",
-    "Answer the question directly; do not open by restating the date, time or the owner's name.",
-    "Use phrases like: Want to review this? You may want to start with... Here are the 3 things that need attention.",
-    "Avoid phrases like: Do this now. You must. Your command.",
+    `You are Tia, the personal AI secretary of ${ownerName}, an owner of GPBM Retail — the Go Planet and Brand Mark clothing stores in Berhampur, Odisha.`,
+    "You are a warm, capable, practical Indian woman. Refer to yourself as Tia. When speaking Hindi use feminine forms for yourself (main dekh rahi hoon, maine kar diya).",
+    `Each owner has their own Tia; you work only for ${ownerName}. Business data (sales, stock, stores, staff, store tasks) is shared by all owners.`,
+    `Today is ${today} (India time).`,
+    greet
+      ? `This is the start of a new conversation: open with a short "${greetingForNow()}, ${ownerName}!" then answer.`
+      : `You are mid-conversation: do not greet again. Use ${ownerName}'s name only occasionally.`,
+    `Reply language for this message: ${languageInstruction[language]} Earlier messages in other languages do not change this.`,
+    "Use your tools: list_tasks for pending work, complete_task when the owner says something is done, add_todo when they want something noted as a to-do, reschedule_task to move one, get_sales / get_staff_sales for any sales question about specific dates or people, search_past_conversations when they refer to something discussed earlier.",
+    "When the owner tells you a lasting fact about the business, staff, suppliers, their preferences or plans, save it with remember_fact without being asked. Only save what the owner said, never your own conclusions from data.",
+    "Never say you did something unless the tool result was ok. If more than one task could match what the owner means, ask which one — list the options briefly.",
+    "Use GPBM Retail data only; never invent sales, stock or staff numbers. If data is missing, say what needs to be uploaded.",
+    "Be calm, friendly and practical, never bossy. Suggest, don't command.",
+    spoken
+      ? "The owner is talking to you by voice and your reply will be read aloud: answer in 1–3 short natural sentences, no lists, no markdown, no ids, amounts like 'forty-five thousand rupees'."
+      : "Keep answers short and useful. Use short bullet lists only when listing several items. Never show task ids.",
   ].join("\n");
 }

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireOwner } from "@/lib/auth/session";
-import { OWNER_TODO_CATEGORY } from "@/lib/owner/todos";
+import { OWNER_TODO_CATEGORY, ownerTodoRow } from "@/lib/owner/todos";
 import { createClient } from "@/lib/supabase/server";
 import { getIndiaToday, getIndiaTomorrow } from "@/lib/tasks/dates";
 
@@ -36,19 +36,9 @@ export async function addOwnerTodo(
 
   const due = value(formData, "due");
   const supabase = await createClient();
-  const { error } = await supabase.from("tasks").insert({
-    title,
-    category: OWNER_TODO_CATEGORY,
-    priority: "normal",
-    due_date: due === "tomorrow" ? getIndiaTomorrow() : due === "none" ? null : getIndiaToday(),
-    is_private: true,
-    carry_forward: true,
-    store_id: null,
-    assigned_to: owner.profile.id,
-    created_by: owner.profile.id,
-    source: "manual",
-    status: "pending",
-  });
+  const { error } = await supabase
+    .from("tasks")
+    .insert(ownerTodoRow(owner.profile.id, title, due === "tomorrow" ? getIndiaTomorrow() : due === "none" ? null : getIndiaToday()));
 
   if (error) return { ok: false, message: error.message };
   refreshOwnerWork();
