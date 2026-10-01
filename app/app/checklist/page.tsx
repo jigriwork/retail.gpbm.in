@@ -41,19 +41,19 @@ export default async function ChecklistPage() {
 
       <section className="grid gap-3 sm:grid-cols-3">
         <Link
-          className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
+          className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-primary"
           href="/app/tasks/new"
         >
           Add task
         </Link>
         <Link
-          className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
+          className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-primary"
           href="/app/updates/new"
         >
           Add store issue
         </Link>
         <Link
-          className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-foreground"
+          className="rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-primary"
           href="/app/updates/new?category=No+issues+today"
         >
           No issues today

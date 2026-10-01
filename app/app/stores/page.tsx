@@ -17,7 +17,7 @@ export default async function StoresPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {stores.map((store) => (
             <Link
-              className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+              className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
               href={`/app/stores/${store.id}`}
               key={store.id}
             >

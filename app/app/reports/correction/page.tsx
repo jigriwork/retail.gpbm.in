@@ -133,7 +133,7 @@ export default async function SalesCorrectionPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Store</span>
             <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={selectedStoreId}
               name="storeId"
             >
@@ -148,7 +148,7 @@ export default async function SalesCorrectionPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Start</span>
             <input
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={start}
               name="start"
               type="date"
@@ -157,7 +157,7 @@ export default async function SalesCorrectionPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">End</span>
             <input
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={end}
               name="end"
               type="date"
@@ -166,13 +166,13 @@ export default async function SalesCorrectionPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">File search</span>
             <input
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={search}
               name="search"
               placeholder="file name"
             />
           </label>
-          <button className="mt-7 h-12 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85">
+          <button className="mt-7 h-12 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep">
             Apply
           </button>
         </form>
@@ -274,7 +274,7 @@ export default async function SalesCorrectionPage({
                     </div>
                     {report.store_id ? (
                       <Link
-                        className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+                        className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
                         href={`/app/reports/staff-aliases?storeId=${report.store_id}`}
                       >
                         Fix Staff Names
@@ -302,7 +302,7 @@ export default async function SalesCorrectionPage({
                     </span>
                     {unmatchedStaffCount > 0 && report.store_id ? (
                       <Link
-                        className="inline-flex h-10 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+                        className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
                         href={`/app/reports/staff-aliases?storeId=${report.store_id}`}
                       >
                         Fix Staff Names

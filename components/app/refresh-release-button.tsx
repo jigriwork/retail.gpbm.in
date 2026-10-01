@@ -21,7 +21,7 @@ export function RefreshReleaseButton() {
 
   return (
     <button
-      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85 disabled:opacity-60"
+      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep disabled:opacity-60"
       disabled={isRefreshing}
       onClick={refreshApp}
       type="button"

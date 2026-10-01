@@ -10,7 +10,7 @@ import { decisionKinds, decisionResults, labelFor, shortDate } from "@/lib/owner
 function DecisionRow({ decision }: { decision: BusinessDecision }) {
   const responsible = decision.responsible?.full_name ?? decision.responsible?.email ?? decision.responsible_name;
   return (
-    <Link className="block rounded-2xl border border-border bg-background p-4 transition hover:border-foreground" href={`/app/owner/decisions/${decision.id}`}>
+    <Link className="block rounded-2xl border border-border bg-background p-4 transition hover:border-primary" href={`/app/owner/decisions/${decision.id}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="font-semibold">{decision.title}</p>
         {decision.result ? (
@@ -65,7 +65,7 @@ export default async function DecisionsPage() {
         <p className="rounded-2xl border border-warning/40 bg-warning/5 p-4 text-sm">Apply the Phase 2 migration to use the decision log.</p>
       ) : (
         <>
-          <Link className="inline-flex h-11 items-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background" href="/app/owner/decisions/new">
+          <Link className="inline-flex h-11 items-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white" href="/app/owner/decisions/new">
             <Plus className="size-4" /> New decision
           </Link>
           <Group decisions={groups.dueForReview} empty="Nothing is due for review." title="Due for review" />

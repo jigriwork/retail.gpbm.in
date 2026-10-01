@@ -70,7 +70,7 @@ export default async function ReportsPage() {
               </p>
             </div>
             <Link
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
               href="/app/reports/sales"
             >
               <UploadCloud className="size-4" />
@@ -136,7 +136,7 @@ export default async function ReportsPage() {
 
         <div className="space-y-3">
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
             href="/app/reports/business"
           >
             <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
@@ -148,7 +148,7 @@ export default async function ReportsPage() {
             </p>
           </Link>
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
             href="/app/reports/sales/analytics"
           >
             <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
@@ -160,7 +160,7 @@ export default async function ReportsPage() {
             </p>
           </Link>
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
             href="/app/reports/staff"
           >
             <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
@@ -172,7 +172,7 @@ export default async function ReportsPage() {
             </p>
           </Link>
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
             href="/app/reports/staff-aliases"
           >
             <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
@@ -184,7 +184,7 @@ export default async function ReportsPage() {
             </p>
           </Link>
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
             href="/app/reports/stock"
           >
             <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
@@ -212,7 +212,7 @@ export default async function ReportsPage() {
             </div>
           </Link>
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
             href="/app/reports/stock/analytics"
           >
             <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
@@ -224,7 +224,7 @@ export default async function ReportsPage() {
             </p>
           </Link>
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
             href="/app/reports/salary-attendance"
           >
             <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
@@ -252,7 +252,7 @@ export default async function ReportsPage() {
             </div>
           </Link>
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
             href="/app/employees"
           >
             <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
@@ -266,7 +266,7 @@ export default async function ReportsPage() {
           {profile?.role === "owner" ? (
             <>
               <Link
-                className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+                className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
                 href="/app/reports/correction"
               >
                 <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
@@ -278,7 +278,7 @@ export default async function ReportsPage() {
                 </p>
               </Link>
               <Link
-                className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+                className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
                 href="/app/payslips"
               >
                 <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">

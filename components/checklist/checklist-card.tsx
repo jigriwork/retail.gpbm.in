@@ -8,7 +8,7 @@ export function ChecklistCard({ checklist }: { checklist: StoreChecklist }) {
 
   return (
     <Link
-      className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+      className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
       href={`/app/checklist/${checklist.store.id}`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -37,7 +37,7 @@ export function ChecklistCard({ checklist }: { checklist: StoreChecklist }) {
         </div>
         <div className="mt-3 h-2 rounded-full bg-background">
           <div
-            className="h-2 rounded-full bg-foreground"
+            className="h-2 rounded-full bg-primary"
             style={{ width: `${checklist.completionPercent}%` }}
           />
         </div>

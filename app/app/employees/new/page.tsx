@@ -37,7 +37,7 @@ export default async function NewEmployeePage({
         ) : null}
         <label className="block">
           <span className="text-sm font-semibold">Store</span>
-          <select className="mt-2 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-foreground" defaultValue={singleStore?.id ?? ""} name="storeId" required>
+          <select className="mt-2 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" defaultValue={singleStore?.id ?? ""} name="storeId" required>
             <option value="">Select store</option>
             {stores.map((store) => (
               <option key={store.id} value={store.id}>{store.name}</option>
@@ -46,22 +46,22 @@ export default async function NewEmployeePage({
         </label>
         <label className="block">
           <span className="text-sm font-semibold">Staff Name</span>
-          <input className="mt-2 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-foreground" name="staffName" required />
+          <input className="mt-2 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" name="staffName" required />
         </label>
         <label className="block">
           <span className="text-sm font-semibold">Phone Number</span>
-          <input className="mt-2 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-foreground" name="phone" inputMode="tel" />
+          <input className="mt-2 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" name="phone" inputMode="tel" />
         </label>
         <label className="block">
           <span className="text-sm font-semibold">Notes</span>
-          <textarea className="mt-2 min-h-28 w-full rounded-2xl border border-border bg-background px-3 py-3 text-sm outline-none focus:border-foreground" name="notes" />
+          <textarea className="mt-2 min-h-28 w-full rounded-2xl border border-border bg-background px-3 py-3 text-sm outline-none focus:border-primary" name="notes" />
         </label>
         <label className="flex items-center gap-3 text-sm font-semibold">
           <input className="size-4 accent-black" defaultChecked name="isActive" type="checkbox" />
           Active
         </label>
         <div className="flex flex-wrap gap-2">
-          <button className="h-11 rounded-2xl bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50" disabled={!stores.length} type="submit">
+          <button className="h-11 rounded-2xl bg-primary px-5 text-sm font-semibold text-white disabled:opacity-50" disabled={!stores.length} type="submit">
             Save and Back
           </button>
           <Link className="inline-flex h-11 items-center justify-center rounded-2xl border border-border px-5 text-sm font-semibold transition hover:bg-black/[0.03]" href={backHref}>

@@ -125,7 +125,7 @@ export default async function ReceivablesPage({
                   <Link
                     className={
                       selectedMonth === month
-                        ? "inline-flex h-9 items-center rounded-xl bg-foreground px-3 text-xs font-semibold text-background"
+                        ? "inline-flex h-9 items-center rounded-xl bg-primary px-3 text-xs font-semibold text-white"
                         : "inline-flex h-9 items-center rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
                     }
                     href={filterUrl({ month, store: undefined, status: undefined, search: undefined })}
@@ -148,7 +148,7 @@ export default async function ReceivablesPage({
               <Link
                 className={
                   !params.store
-                    ? "inline-flex h-9 items-center rounded-xl bg-foreground px-3 text-xs font-semibold text-background"
+                    ? "inline-flex h-9 items-center rounded-xl bg-primary px-3 text-xs font-semibold text-white"
                     : "inline-flex h-9 items-center rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
                 }
                 href={filterUrl({ store: undefined })}
@@ -159,7 +159,7 @@ export default async function ReceivablesPage({
                 <Link
                   className={
                     params.store === store.id
-                      ? "inline-flex h-9 items-center rounded-xl bg-foreground px-3 text-xs font-semibold text-background"
+                      ? "inline-flex h-9 items-center rounded-xl bg-primary px-3 text-xs font-semibold text-white"
                       : "inline-flex h-9 items-center rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
                   }
                   href={filterUrl({ store: store.id })}
@@ -176,7 +176,7 @@ export default async function ReceivablesPage({
                 <Link
                   className={
                     (params.status ?? "") === opt.value
-                      ? "inline-flex h-9 items-center rounded-xl bg-foreground px-3 text-xs font-semibold text-background"
+                      ? "inline-flex h-9 items-center rounded-xl bg-primary px-3 text-xs font-semibold text-white"
                       : "inline-flex h-9 items-center rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
                   }
                   href={filterUrl({ status: opt.value || undefined })}

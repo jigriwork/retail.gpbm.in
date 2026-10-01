@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import {
   Check,
   Clock,
@@ -11,6 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { celebrateFrom } from "@/components/app/celebrate";
 import {
   moveTaskToTomorrow,
   setTaskStatus,
@@ -40,8 +41,13 @@ function ActionButton({
   icon: React.ComponentType<{ className?: string }>;
   variant?: "dark" | "light";
 }) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const action = status
-    ? async (_state: ActionState, formData: FormData) => setTaskStatus(formData)
+    ? async (_state: ActionState, formData: FormData) => {
+        const result = await setTaskStatus(formData);
+        if (status === "done" && result.ok) celebrateFrom(buttonRef.current);
+        return result;
+      }
     : async (_state: ActionState, formData: FormData) => moveTaskToTomorrow(formData);
   const [, formAction, pending] = useActionState(action, initialState);
 
@@ -51,10 +57,11 @@ function ActionButton({
       {status ? <input name="status" type="hidden" value={status} /> : null}
       <button
         aria-label={label}
+        ref={buttonRef}
         className={cn(
           "inline-flex size-10 items-center justify-center rounded-2xl border border-border text-sm font-semibold transition disabled:opacity-50",
           variant === "dark"
-            ? "bg-foreground text-background hover:bg-black/85"
+            ? "bg-primary text-white hover:bg-primary-deep"
             : "bg-card text-foreground hover:bg-black/[0.03]",
         )}
         disabled={pending}

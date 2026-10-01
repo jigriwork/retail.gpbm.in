@@ -20,7 +20,7 @@ function formatMoney(value?: number) {
 function AuditCard({ audit }: { audit: StoreWeeklyAuditSummary }) {
   return (
     <Link
-      className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+      className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
       href={`/app/audit/${audit.store.id}?week=${audit.weekRange.startDate}`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -126,7 +126,7 @@ export default async function AuditPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Store</span>
             <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={storeId ?? "all"}
               name="storeId"
             >
@@ -141,7 +141,7 @@ export default async function AuditPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Week</span>
             <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={mode ?? "previous"}
               name="mode"
             >
@@ -152,13 +152,13 @@ export default async function AuditPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Pick week</span>
             <input
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={week ?? weekRange.startDate}
               name="week"
               type="date"
             />
           </label>
-          <button className="mt-7 h-12 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85">
+          <button className="mt-7 h-12 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep">
             Apply
           </button>
         </form>

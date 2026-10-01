@@ -85,7 +85,7 @@ export function ReviewForm({
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Store</span>
           <select
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue={defaultStoreId ?? stores[0]?.id ?? ""}
             name="storeId"
             required
@@ -101,7 +101,7 @@ export function ReviewForm({
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Review date</span>
           <input
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue={reviewDate}
             name="reviewDate"
             required
@@ -153,7 +153,7 @@ export function ReviewForm({
       <label className="block">
         <span className="mb-2 block text-sm font-medium text-muted">Remarks</span>
         <textarea
-          className="min-h-28 w-full rounded-2xl border border-border bg-card px-4 py-3 text-base outline-none focus:border-foreground"
+          className="min-h-28 w-full rounded-2xl border border-border bg-card px-4 py-3 text-base outline-none focus:border-primary"
           defaultValue={existingReview?.remarks ?? ""}
           name="remarks"
           placeholder="Optional store note"
@@ -167,7 +167,7 @@ export function ReviewForm({
         </span>
         <input
           accept=".jpg,.jpeg,.png,.webp"
-          className="block w-full text-sm text-muted file:mr-4 file:h-10 file:rounded-xl file:border-0 file:bg-foreground file:px-4 file:text-sm file:font-semibold file:text-background"
+          className="block w-full text-sm text-muted file:mr-4 file:h-10 file:rounded-xl file:border-0 file:bg-primary file:px-4 file:text-sm file:font-semibold file:text-white"
           name="photo"
           type="file"
         />

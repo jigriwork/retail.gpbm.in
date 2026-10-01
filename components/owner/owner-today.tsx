@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, ChevronRight, Clock3, ListTodo, Mic, UploadCloud } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, ChevronRight, Clock3, ListTodo, Mic, PartyPopper, UploadCloud } from "lucide-react";
 
 import { PriorityFollowup, type TaskChoice } from "@/components/owner/priority-followup";
 import type { AssessedPriority } from "@/lib/owner/followups";
@@ -50,7 +50,7 @@ export function DailyPriorities({
                 open={index === 0}
               >
                 <summary className="flex cursor-pointer list-none items-start gap-3 [&::-webkit-details-marker]:hidden">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background sm:size-8">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white sm:size-8">
                     {index + 1}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -88,9 +88,15 @@ export function DailyPriorities({
           })}
         </div>
       ) : (
-        <div className="mt-5 rounded-2xl border border-border bg-background p-4">
-          <p className="font-semibold">{handled.length ? "Every current exception is already being handled." : "No urgent exception found."}</p>
-          <p className="mt-1 text-sm leading-6 text-muted">Keep daily uploads and manager routines current.</p>
+        <div className="mt-5 flex items-start gap-3 rounded-2xl bg-success/10 p-4">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-success text-white">
+            <PartyPopper className="size-5" />
+          </span>
+          <div>
+            <p className="font-display text-lg font-bold text-success">All clear!</p>
+            <p className="font-semibold">{handled.length ? "Every current exception is already being handled." : "No urgent exception found."}</p>
+            <p className="mt-1 text-sm leading-6 text-muted">Keep daily uploads and manager routines current.</p>
+          </div>
         </div>
       )}
 
@@ -202,17 +208,17 @@ export function OwnerTaskWorkboard({
 export function SecretaryShortcut() {
   return (
     <Link
-      className="flex items-center gap-3 rounded-[1.35rem] border border-border bg-foreground p-4 text-background shadow-sm"
+      className="flex items-center gap-3 rounded-[1.35rem] border border-primary-deep bg-primary-deep p-4 text-white shadow-sm"
       href="/app/secretary"
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-background text-foreground">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-primary-deep">
         <Mic className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block font-semibold">Talk to Tia</span>
-        <span className="block text-sm leading-5 text-background/70">Your secretary — ask, tick off to-dos, in English or Hindi.</span>
+        <span className="block text-sm leading-5 text-white/70">Your secretary — ask, tick off to-dos, in English or Hindi.</span>
       </span>
-      <ChevronRight className="size-5 shrink-0 text-background/70" />
+      <ChevronRight className="size-5 shrink-0 text-white/70" />
     </Link>
   );
 }

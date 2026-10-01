@@ -107,7 +107,7 @@ export default async function EmployeesPage({
             className={
               isBulkMode
                 ? "inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
-                : "inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-xs font-semibold text-background"
+                : "inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-white"
             }
             href={listHref}
           >
@@ -117,7 +117,7 @@ export default async function EmployeesPage({
           <Link
             className={
               isBulkMode
-                ? "inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-xs font-semibold text-background"
+                ? "inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-white"
                 : "inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
             }
             href={bulkHref}
@@ -131,14 +131,14 @@ export default async function EmployeesPage({
         <label className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
           <input
-            className="h-11 w-full rounded-2xl border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-foreground"
+            className="h-11 w-full rounded-2xl border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-primary"
             defaultValue={q}
             name="q"
             placeholder="Search staff or phone"
           />
         </label>
         <select
-          className="h-11 rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-foreground"
+          className="h-11 rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-primary"
           defaultValue={selectedStore}
           name="store"
         >
@@ -150,7 +150,7 @@ export default async function EmployeesPage({
           ))}
         </select>
         <select
-          className="h-11 rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-foreground"
+          className="h-11 rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-primary"
           defaultValue={selectedStatus}
           name="status"
         >
@@ -162,7 +162,7 @@ export default async function EmployeesPage({
           <input className="size-4 accent-black" defaultChecked={missing === "1"} name="missing" type="checkbox" value="1" />
           Missing phones
         </label>
-        <button className="h-11 rounded-2xl bg-foreground px-5 text-sm font-semibold text-background" type="submit">
+        <button className="h-11 rounded-2xl bg-primary px-5 text-sm font-semibold text-white" type="submit">
           Filter
         </button>
         </form>

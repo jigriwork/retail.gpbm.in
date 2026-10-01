@@ -49,7 +49,7 @@ export function ManagerUpdateForm({
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Store</span>
           <select
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue={update?.store_id ?? defaultStoreId ?? stores[0]?.id ?? ""}
             disabled={!creating}
             name="storeId"
@@ -69,7 +69,7 @@ export function ManagerUpdateForm({
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Category</span>
           <select
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue={update?.category ?? defaultCategory ?? "Owner attention needed"}
             name="category"
             required
@@ -85,7 +85,7 @@ export function ManagerUpdateForm({
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Urgency</span>
           <select
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm capitalize outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm capitalize outline-none focus:border-primary"
             defaultValue={update?.urgency ?? defaultUrgency ?? "normal"}
             name="urgency"
           >
@@ -101,7 +101,7 @@ export function ManagerUpdateForm({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Status</span>
             <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm capitalize outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm capitalize outline-none focus:border-primary"
               defaultValue={update?.status ?? "open"}
               name="status"
             >
@@ -118,7 +118,7 @@ export function ManagerUpdateForm({
       <label className="block">
         <span className="mb-2 block text-sm font-medium text-muted">Title</span>
         <input
-          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-base outline-none focus:border-foreground"
+          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-base outline-none focus:border-primary"
           defaultValue={update?.title ?? defaultTitle ?? ""}
           name="title"
           placeholder="What needs attention?"
@@ -129,7 +129,7 @@ export function ManagerUpdateForm({
       <label className="block">
         <span className="mb-2 block text-sm font-medium text-muted">Details</span>
         <textarea
-          className="min-h-32 w-full rounded-2xl border border-border bg-card px-4 py-3 text-base outline-none focus:border-foreground"
+          className="min-h-32 w-full rounded-2xl border border-border bg-card px-4 py-3 text-base outline-none focus:border-primary"
           defaultValue={update?.details ?? defaultDetails ?? ""}
           name="details"
           placeholder="Add the full store update, issue, customer follow-up, stock note, or pending work."
@@ -146,7 +146,7 @@ export function ManagerUpdateForm({
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-muted">Assign to</span>
               <select
-                className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+                className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
                 name="assignedTo"
               >
                 <option value="">Unassigned</option>
@@ -160,7 +160,7 @@ export function ManagerUpdateForm({
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-muted">Due</span>
               <select
-                className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+                className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
                 defaultValue="today"
                 name="taskDueMode"
               >
@@ -173,7 +173,7 @@ export function ManagerUpdateForm({
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-muted">Custom date</span>
               <input
-                className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+                className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
                 name="taskDueDate"
                 type="date"
               />
@@ -189,7 +189,7 @@ export function ManagerUpdateForm({
         </span>
         <input
           accept=".jpg,.jpeg,.png,.webp"
-          className="block w-full text-sm text-muted file:mr-4 file:h-10 file:rounded-xl file:border-0 file:bg-foreground file:px-4 file:text-sm file:font-semibold file:text-background"
+          className="block w-full text-sm text-muted file:mr-4 file:h-10 file:rounded-xl file:border-0 file:bg-primary file:px-4 file:text-sm file:font-semibold file:text-white"
           name="photo"
           type="file"
         />

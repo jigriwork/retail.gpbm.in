@@ -11,13 +11,16 @@ const chatFallbackModels = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3
 // instructions aloud, so it is deliberately not used.
 const speechModels = ["gemini-3.8-flash-tts", "gemini-2.5-flash-preview-tts"];
 const maxToolRounds = 5;
+// A hung model call moves on to the next model instead of using up the whole
+// request time; long enough for a full answer or a spoken reply.
+const requestTimeoutMs = 25_000;
 
 export type GeminiPart = {
   text?: string;
   thought?: boolean;
   inlineData?: { mimeType: string; data: string };
-  functionCall?: { name: string; args?: Record<string, unknown> };
-  functionResponse?: { name: string; response: Record<string, unknown> };
+  functionCall?: { id?: string; name: string; args?: Record<string, unknown> };
+  functionResponse?: { id?: string; name: string; response: Record<string, unknown> };
 };
 
 export type GeminiContent = { role: "user" | "model"; parts: GeminiPart[] };
@@ -48,13 +51,22 @@ function isRetryableStatus(status: number) {
 }
 
 async function post(model: string, body: object) {
-  const response = await fetch(`${apiBase}/${model}:generateContent?key=${apiKey()}`, {
-    body: JSON.stringify(body),
-    headers: { "Content-Type": "application/json" },
-    method: "POST",
-  });
-  if (!response.ok) return { ok: false as const, status: response.status };
-  const data = (await response.json()) as { candidates?: Candidate[] };
+  const key = apiKey();
+  let response: Response;
+  let data: { candidates?: Candidate[] };
+  try {
+    response = await fetch(`${apiBase}/${model}:generateContent?key=${key}`, {
+      body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+      signal: AbortSignal.timeout(requestTimeoutMs),
+    });
+    if (!response.ok) return { ok: false as const, status: response.status };
+    data = (await response.json()) as { candidates?: Candidate[] };
+  } catch {
+    // Timeout or network failure: treat like an empty reply so the next model is tried.
+    return { ok: false as const, status: 0 };
+  }
   const candidate = data.candidates?.[0];
   if (!candidate?.content?.parts?.length) return { ok: false as const, status: 0 };
   return { ok: true as const, candidate, model };
@@ -130,14 +142,15 @@ export async function runChatWithTools({
     contents.push({ role: "model", parts });
     const responses = await Promise.all(
       calls.map(async ({ functionCall }) => {
-        const name = functionCall!.name;
+        const { id, name } = functionCall!;
         let response: Record<string, unknown>;
         try {
           response = await execute(name, functionCall!.args ?? {});
         } catch (error) {
           response = { ok: false, error: error instanceof Error ? error.message : "Tool failed." };
         }
-        return { functionResponse: { name, response } };
+        // Newer models tag each call with an id and expect it echoed back.
+        return { functionResponse: { ...(id ? { id } : {}), name, response } };
       }),
     );
     contents.push({ role: "user", parts: responses });

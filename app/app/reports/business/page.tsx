@@ -320,7 +320,7 @@ function BusinessFilterPanel({
       <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Store</span>
-          <select className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={selectedStoreId} name="storeId">
+          <select className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary" defaultValue={selectedStoreId} name="storeId">
             <option value="all">All accessible stores - show separately</option>
             {stores.map((store) => (
               <option key={store.id} value={store.id}>
@@ -331,7 +331,7 @@ function BusinessFilterPanel({
         </label>
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Period</span>
-          <select className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={period} name="period">
+          <select className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary" defaultValue={period} name="period">
             {periodOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -341,15 +341,15 @@ function BusinessFilterPanel({
         </label>
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Start</span>
-          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={range.startDate} name="start" type="date" />
+          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary" defaultValue={range.startDate} name="start" type="date" />
         </label>
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">End</span>
-          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={range.endDate} name="end" type="date" />
+          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary" defaultValue={range.endDate} name="end" type="date" />
         </label>
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Brand</span>
-          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.brand} list="business-brands" name="brand" placeholder="All brands" />
+          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary" defaultValue={query.brand} list="business-brands" name="brand" placeholder="All brands" />
           <datalist id="business-brands">
             {report.options.brands.map((brand) => (
               <option key={brand} value={brand} />
@@ -358,7 +358,7 @@ function BusinessFilterPanel({
         </label>
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Category</span>
-          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.category} list="business-categories" name="category" placeholder="All categories" />
+          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary" defaultValue={query.category} list="business-categories" name="category" placeholder="All categories" />
           <datalist id="business-categories">
             {report.options.categories.map((category) => (
               <option key={category} value={category} />
@@ -367,21 +367,21 @@ function BusinessFilterPanel({
         </label>
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Item/Product</span>
-          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.item} name="item" placeholder="Name, barcode, SKU" />
+          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary" defaultValue={query.item} name="item" placeholder="Name, barcode, SKU" />
           <span className="mt-2 block text-xs leading-5 text-muted">
             Searches within the selected store, period, brand and category.
           </span>
         </label>
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Size</span>
-          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground" defaultValue={query.size} list="business-sizes" name="size" placeholder="All sizes" />
+          <input className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary" defaultValue={query.size} list="business-sizes" name="size" placeholder="All sizes" />
           <datalist id="business-sizes">
             {report.options.sizes.map((size) => (
               <option key={size} value={size} />
             ))}
           </datalist>
         </label>
-        <button className="h-12 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85 lg:col-span-4">
+        <button className="h-12 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep lg:col-span-4">
           <Search className="mr-2 inline size-4" />
           Apply filters
         </button>

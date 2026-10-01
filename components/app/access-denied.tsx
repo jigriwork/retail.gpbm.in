@@ -4,7 +4,7 @@ import { LockKeyhole } from "lucide-react";
 export function AccessDenied({ message }: { message?: string }) {
   return (
     <div className="rounded-[1.35rem] border border-border bg-card p-6 shadow-sm">
-      <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-foreground text-background">
+      <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-primary text-white">
         <LockKeyhole className="size-5" />
       </div>
       <h1 className="text-2xl font-semibold">Access denied</h1>

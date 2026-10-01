@@ -7,7 +7,7 @@ import { ActionMessage } from "@/components/owner/action-message";
 import { saveWeeklyReview, type WeeklyReviewActionState } from "@/lib/owner/weekly-review-actions";
 
 const initialState: WeeklyReviewActionState = { ok: false, message: "" };
-const area = "w-full rounded-xl border border-border bg-card p-3 text-sm leading-6 outline-none focus:border-foreground";
+const area = "w-full rounded-xl border border-border bg-card p-3 text-sm leading-6 outline-none focus:border-primary";
 
 export function WeeklyReviewForm({
   canComplete,
@@ -54,7 +54,7 @@ export function WeeklyReviewForm({
           {completed ? "Update conclusion" : "Save draft"}
         </button>
         {!completed && canComplete ? (
-          <button className={`${button} bg-foreground text-background`} disabled={pending} name="intent" value="complete">
+          <button className={`${button} bg-primary text-white`} disabled={pending} name="intent" value="complete">
             <CheckCircle2 className="size-4" /> Complete review
           </button>
         ) : null}

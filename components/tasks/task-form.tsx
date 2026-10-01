@@ -55,7 +55,7 @@ export function TaskForm({
       <label className="block">
         <span className="mb-2 block text-sm font-medium text-muted">Title</span>
         <input
-          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-base outline-none focus:border-foreground"
+          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-base outline-none focus:border-primary"
           defaultValue={task?.title ?? ""}
           name="title"
           placeholder="Call vendor"
@@ -68,7 +68,7 @@ export function TaskForm({
           Description
         </span>
         <textarea
-          className="min-h-28 w-full rounded-2xl border border-border bg-card px-4 py-3 text-base outline-none focus:border-foreground"
+          className="min-h-28 w-full rounded-2xl border border-border bg-card px-4 py-3 text-base outline-none focus:border-primary"
           defaultValue={task?.description ?? ""}
           name="description"
           placeholder="Optional notes"
@@ -79,7 +79,7 @@ export function TaskForm({
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Store</span>
           <select
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue={task?.store_id ?? ""}
             name="storeId"
           >
@@ -97,7 +97,7 @@ export function TaskForm({
             Category
           </span>
           <input
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue={task?.category ?? ""}
             name="category"
             placeholder="sales, salary, personal"
@@ -109,7 +109,7 @@ export function TaskForm({
             Priority
           </span>
           <select
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue={task?.priority ?? "normal"}
             name="priority"
           >
@@ -125,7 +125,7 @@ export function TaskForm({
             Due date
           </span>
           <select
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue={dateMode(task)}
             name="dueDateMode"
           >
@@ -141,7 +141,7 @@ export function TaskForm({
             Custom date
           </span>
           <input
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue={task?.due_date ?? ""}
             name="dueDate"
             type="date"
@@ -153,7 +153,7 @@ export function TaskForm({
             Due time
           </span>
           <input
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue={task?.due_time?.slice(0, 5) ?? ""}
             name="dueTime"
             type="time"
@@ -166,7 +166,7 @@ export function TaskForm({
               Status
             </span>
             <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={task.status ?? "pending"}
               name="status"
             >
@@ -185,7 +185,7 @@ export function TaskForm({
               Assign to
             </span>
             <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={task?.assigned_to ?? ""}
               name="assignedTo"
             >
@@ -202,7 +202,7 @@ export function TaskForm({
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Assign to staff employee</span>
           <select
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue={task?.assigned_employee_id ?? ""}
             name="assignedEmployeeId"
           >

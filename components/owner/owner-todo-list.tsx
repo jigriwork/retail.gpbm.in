@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useOptimistic, useTransition } from "react";
 import { Check, ListChecks, Loader2, Plus, RotateCcw, X } from "lucide-react";
 
+import { celebrate } from "@/components/app/celebrate";
 import { addOwnerTodo, setOwnerTodoStatus, type OwnerTodoActionState } from "@/lib/owner/todo-actions";
 import type { OwnerTodo } from "@/lib/owner/todos";
 import { cn } from "@/lib/utils/cn";
@@ -50,6 +51,7 @@ export function OwnerTodoList({
     const formData = new FormData();
     formData.set("todoId", todoId);
     formData.set("status", status);
+    if (status === "done") celebrate();
     startTransition(async () => {
       hide(todoId);
       await setOwnerTodoStatus(formData);
@@ -75,7 +77,7 @@ export function OwnerTodoList({
       <form action={addAction} className="mt-3 flex flex-wrap gap-2">
         <input
           aria-label="New to-do"
-          className="h-11 min-w-0 flex-1 basis-48 rounded-xl border border-border bg-background px-3 text-base outline-none focus:border-foreground sm:text-sm"
+          className="h-11 min-w-0 flex-1 basis-48 rounded-xl border border-border bg-background px-3 text-base outline-none focus:border-primary sm:text-sm"
           maxLength={200}
           name="title"
           placeholder="Add something to do…"
@@ -93,7 +95,7 @@ export function OwnerTodoList({
             <option value="none">No date</option>
           </select>
           <button
-            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50"
+            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-white disabled:opacity-50"
             disabled={adding}
             type="submit"
           >
@@ -114,7 +116,7 @@ export function OwnerTodoList({
               <li className="flex items-center gap-3 py-2" key={todo.id}>
                 <button
                   aria-label={`Mark "${todo.title}" done`}
-                  className="flex size-9 shrink-0 items-center justify-center rounded-full border-2 border-border text-transparent transition hover:border-foreground hover:text-foreground"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full border-2 border-border text-transparent transition hover:border-primary hover:text-foreground"
                   onClick={() => change(todo.id, "done")}
                   type="button"
                 >

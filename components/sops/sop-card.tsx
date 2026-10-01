@@ -43,7 +43,7 @@ export function SopCard({ canEdit, sop, storeId }: { canEdit: boolean; sop: Sop;
       <ol className="mt-4 space-y-2">
         {steps.map((step, index) => (
           <li className="flex gap-3 rounded-xl border border-border bg-background p-3" key={`${sop.id}-${index}`}>
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-[0.7rem] font-bold text-background">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[0.7rem] font-bold text-white">
               {index + 1}
             </span>
             <p className="min-w-0 flex-1 text-sm leading-6">{step.text}</p>
@@ -71,7 +71,7 @@ export function SopCard({ canEdit, sop, storeId }: { canEdit: boolean; sop: Sop;
           <AlertTriangle className="size-4" /> Record an exception
         </Link>
         <Link
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-foreground px-3 text-sm font-semibold text-background"
+          className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-white"
           href={updateHref({
             category: "Owner attention needed",
             details,

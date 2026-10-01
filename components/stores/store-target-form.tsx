@@ -56,7 +56,7 @@ export function StoreTargetForm({
       <label className="block">
         <span className="mb-2 block text-sm font-medium text-muted">Target amount (₹)</span>
         <input
-          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-base outline-none focus:border-foreground"
+          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-base outline-none focus:border-primary"
           defaultValue={formatMoney(target)}
           name="target"
           placeholder="500000"

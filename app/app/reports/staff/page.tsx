@@ -109,7 +109,7 @@ export default async function StaffSalesPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Store</span>
             <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={storeId ?? "all"}
               name="storeId"
             >
@@ -124,7 +124,7 @@ export default async function StaffSalesPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Period</span>
             <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={period}
               name="period"
             >
@@ -135,7 +135,7 @@ export default async function StaffSalesPage({
               ))}
             </select>
           </label>
-          <button className="mt-7 h-12 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85">
+          <button className="mt-7 h-12 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep">
             Apply
           </button>
           {period === "custom" ? (
@@ -143,7 +143,7 @@ export default async function StaffSalesPage({
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-muted">Start date</span>
                 <input
-                  className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+                  className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
                   defaultValue={dateRange.startDate}
                   name="start"
                   type="date"
@@ -152,7 +152,7 @@ export default async function StaffSalesPage({
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-muted">End date</span>
                 <input
-                  className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+                  className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
                   defaultValue={dateRange.endDate}
                   name="end"
                   type="date"

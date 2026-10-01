@@ -79,7 +79,7 @@ export default async function StaffAccountsPage() {
                 <p className="mt-1 text-xs text-muted">The manager has already issued the temporary code. Approval activates the blocked account.</p>
                 <form action={decideStaffRequest} className="mt-3 flex flex-wrap gap-2">
                   <input name="requestId" type="hidden" value={request.id} />
-                  <button className="rounded-xl bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-50" disabled={!credentialActionsUnlocked} name="decision" value="approved">Approve</button>
+                  <button className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white disabled:opacity-50" disabled={!credentialActionsUnlocked} name="decision" value="approved">Approve</button>
                   <button className="rounded-xl border border-border px-4 py-2 text-xs font-semibold disabled:opacity-50" disabled={!credentialActionsUnlocked} name="decision" value="rejected">Reject</button>
                 </form>
               </div>
@@ -151,7 +151,7 @@ export default async function StaffAccountsPage() {
               <form action={verifySalesAlias} className="grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" key={alias.id}>
                 <div><p className="text-xs text-muted">Source sales name</p><p className="font-semibold">{alias.source_name}</p></div>
                 <label className="grid gap-1 text-xs font-semibold text-muted">Exact employee<select className="h-11 rounded-xl border border-border bg-background px-3 text-sm" defaultValue={alias.employee_contact_id ?? ""} name="employeeId" required><option value="">Select exact employee</option>{data.employees.filter((employee) => employee.store_id === alias.store_id).map((employee) => <option key={employee.id} value={employee.id}>{employee.staff_name}</option>)}</select></label>
-                <input name="aliasId" type="hidden" value={alias.id} /><button className="h-11 rounded-xl bg-foreground px-4 text-sm font-semibold text-background">Owner verify</button>
+                <input name="aliasId" type="hidden" value={alias.id} /><button className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white">Owner verify</button>
               </form>
             ))}
           </section>
@@ -162,7 +162,7 @@ export default async function StaffAccountsPage() {
               <form action={linkPayrollRow} className="grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" key={row.id}>
                 <div><p className="font-semibold">{row.staff_name ?? "Unnamed"}</p><p className="text-xs text-muted">{row.salary_month}</p></div>
                 <select className="h-11 rounded-xl border border-border bg-background px-3 text-sm" name="employeeId" required><option value="">Select exact employee</option>{data.employees.filter((employee) => employee.store_id === row.store_id).map((employee) => <option key={employee.id} value={employee.id}>{employee.staff_name}</option>)}</select>
-                <input name="payslipRowId" type="hidden" value={row.id} /><button className="h-11 rounded-xl bg-foreground px-4 text-sm font-semibold text-background">Link payroll</button>
+                <input name="payslipRowId" type="hidden" value={row.id} /><button className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white">Link payroll</button>
               </form>
             ))}
           </section>

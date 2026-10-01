@@ -54,19 +54,19 @@ function NoteCard({ archived, note }: { archived: boolean; note: OwnerNote }) {
         <form action={editAction} className="mt-3 space-y-3">
           <input name="noteId" type="hidden" value={note.id} />
           <input
-            className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-foreground"
+            className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-primary"
             defaultValue={note.title}
             maxLength={120}
             name="title"
             required
           />
           <textarea
-            className="min-h-24 w-full rounded-xl border border-border bg-card p-3 text-sm leading-6 outline-none focus:border-foreground"
+            className="min-h-24 w-full rounded-xl border border-border bg-card p-3 text-sm leading-6 outline-none focus:border-primary"
             defaultValue={note.content}
             maxLength={4000}
             name="content"
           />
-          <button className="inline-flex h-9 items-center gap-2 rounded-xl bg-foreground px-3 text-xs font-semibold text-background" disabled={editing}>
+          <button className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-white" disabled={editing}>
             {editing ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
             Save changes
           </button>
@@ -138,19 +138,19 @@ export function OwnerNotesPanel({
           {!archived ? (
             <form action={createAction} className="mt-5 grid gap-3 rounded-2xl border border-border bg-background p-4">
               <input
-                className="h-11 rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-foreground"
+                className="h-11 rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-primary"
                 maxLength={120}
                 name="title"
                 placeholder="Short note title"
                 required
               />
               <textarea
-                className="min-h-24 rounded-xl border border-border bg-card p-3 text-sm leading-6 outline-none focus:border-foreground"
+                className="min-h-24 rounded-xl border border-border bg-card p-3 text-sm leading-6 outline-none focus:border-primary"
                 maxLength={4000}
                 name="content"
                 placeholder="Idea, follow-up, buying thought, or manager point…"
               />
-              <button className="inline-flex h-10 w-fit items-center gap-2 rounded-xl bg-foreground px-4 text-sm font-semibold text-background" disabled={creating}>
+              <button className="inline-flex h-10 w-fit items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white" disabled={creating}>
                 {creating ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                 Save note
               </button>
@@ -162,7 +162,7 @@ export function OwnerNotesPanel({
             <form className="flex min-w-0 flex-1 gap-2" method="get">
               <input name="notesView" type="hidden" value={archived ? "archived" : "active"} />
               <input
-                className="h-10 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-foreground"
+                className="h-10 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-primary"
                 defaultValue={search}
                 maxLength={80}
                 name="notesQuery"

@@ -35,7 +35,7 @@ export function SalaryAttendanceUploadForm({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Store</span>
             <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={defaultStoreId ?? stores[0]?.id ?? ""}
               name="storeId"
               required
@@ -51,7 +51,7 @@ export function SalaryAttendanceUploadForm({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Period month</span>
             <input
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={getIndiaMonthInputValue()}
               name="periodMonth"
               required
@@ -67,7 +67,7 @@ export function SalaryAttendanceUploadForm({
           </span>
           <input
             accept=".xlsx,.xls,.csv,.pdf"
-            className="block w-full text-sm text-muted file:mr-4 file:h-10 file:rounded-xl file:border-0 file:bg-foreground file:px-4 file:text-sm file:font-semibold file:text-background"
+            className="block w-full text-sm text-muted file:mr-4 file:h-10 file:rounded-xl file:border-0 file:bg-primary file:px-4 file:text-sm file:font-semibold file:text-white"
             name="file"
             required
             type="file"

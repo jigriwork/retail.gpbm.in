@@ -63,7 +63,7 @@ export default async function SettingsPage() {
           Change your own password securely. Passwords are handled by Supabase Auth and are not stored in app tables.
         </p>
         <Link
-          className="mt-4 inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+          className="mt-4 inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
           href="/app/settings/account"
         >
           Change My Password
@@ -110,7 +110,7 @@ export default async function SettingsPage() {
       </div>
       <section>
         <Link
-          className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+          className="inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
           href="/app/employees"
         >
           Staff Phone Directory

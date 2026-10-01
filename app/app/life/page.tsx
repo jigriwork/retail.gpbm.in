@@ -46,7 +46,7 @@ function ChoiceGroup({
         <label
           className={
             value === option
-              ? "cursor-pointer rounded-2xl border border-foreground bg-foreground px-4 py-3 text-sm font-semibold text-background"
+              ? "cursor-pointer rounded-2xl border border-primary bg-primary px-4 py-3 text-sm font-semibold text-white"
               : "cursor-pointer rounded-2xl border border-border px-4 py-3 text-sm font-semibold transition hover:bg-black/[0.03]"
           }
           key={option}
@@ -73,7 +73,7 @@ function ToggleForm({
   return (
     <form action={action}>
       <input name="next" type="hidden" value={done ? "false" : "true"} />
-      <button className="flex min-h-24 w-full items-center gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-left shadow-sm transition hover:border-foreground">
+      <button className="flex min-h-24 w-full items-center gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-border">
           <Icon className="size-5" />
         </span>
@@ -156,7 +156,7 @@ export default async function LifePage() {
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <form action={markWakeNow}>
-          <button className="flex min-h-24 w-full items-center gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-left shadow-sm transition hover:border-foreground">
+          <button className="flex min-h-24 w-full items-center gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary">
             <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-border">
               <Sun className="size-5" />
             </span>
@@ -167,7 +167,7 @@ export default async function LifePage() {
           </button>
         </form>
         <form action={markSleepNow}>
-          <button className="flex min-h-24 w-full items-center gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-left shadow-sm transition hover:border-foreground">
+          <button className="flex min-h-24 w-full items-center gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary">
             <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-border">
               <Moon className="size-5" />
             </span>
@@ -204,7 +204,7 @@ export default async function LifePage() {
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Notes</span>
             <textarea
-              className="min-h-24 w-full resize-y rounded-2xl border border-border bg-card p-4 text-sm leading-6 outline-none focus:border-foreground"
+              className="min-h-24 w-full resize-y rounded-2xl border border-border bg-card p-4 text-sm leading-6 outline-none focus:border-primary"
               defaultValue={todayLog?.notes ?? ""}
               name="notes"
               placeholder="Tiny note for the day..."

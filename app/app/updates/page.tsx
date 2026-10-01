@@ -38,7 +38,7 @@ export default async function UpdatesPage({
             </p>
           </div>
           <Link
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
             href="/app/updates/new"
           >
             <Plus className="size-4" />
@@ -54,7 +54,7 @@ export default async function UpdatesPage({
         </div>
         <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <select
-            className="h-11 rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-foreground"
+            className="h-11 rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-primary"
             defaultValue={filters.storeId ?? "all"}
             name="storeId"
           >
@@ -66,7 +66,7 @@ export default async function UpdatesPage({
             ))}
           </select>
           <select
-            className="h-11 rounded-2xl border border-border bg-card px-3 text-sm capitalize outline-none focus:border-foreground"
+            className="h-11 rounded-2xl border border-border bg-card px-3 text-sm capitalize outline-none focus:border-primary"
             defaultValue={activeFilters.status}
             name="status"
           >
@@ -78,7 +78,7 @@ export default async function UpdatesPage({
             ))}
           </select>
           <select
-            className="h-11 rounded-2xl border border-border bg-card px-3 text-sm capitalize outline-none focus:border-foreground"
+            className="h-11 rounded-2xl border border-border bg-card px-3 text-sm capitalize outline-none focus:border-primary"
             defaultValue={filters.urgency ?? "all"}
             name="urgency"
           >
@@ -90,7 +90,7 @@ export default async function UpdatesPage({
             ))}
           </select>
           <select
-            className="h-11 rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-foreground"
+            className="h-11 rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-primary"
             defaultValue={filters.category ?? "all"}
             name="category"
           >
@@ -102,7 +102,7 @@ export default async function UpdatesPage({
             ))}
           </select>
           <select
-            className="h-11 rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-foreground"
+            className="h-11 rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-primary"
             defaultValue={filters.period ?? "all"}
             name="period"
           >
@@ -110,7 +110,7 @@ export default async function UpdatesPage({
             <option value="week">This week</option>
             <option value="all">All</option>
           </select>
-          <button className="h-11 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background lg:col-span-5">
+          <button className="h-11 rounded-2xl bg-primary px-4 text-sm font-semibold text-white lg:col-span-5">
             Apply filters
           </button>
         </form>

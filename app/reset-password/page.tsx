@@ -26,7 +26,7 @@ export default function ResetPasswordPage() {
                 Use the reset link from your email, then choose a new password.
               </p>
             </div>
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
               <KeyRound className="size-5" />
             </div>
           </div>

@@ -16,7 +16,7 @@ const sizes: Record<ButtonSize, string> = {
 };
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-foreground text-background hover:bg-black/85",
+  primary: "bg-primary text-white hover:bg-primary-deep",
   secondary: "border border-border bg-card text-foreground hover:bg-black/[0.03]",
 };
 

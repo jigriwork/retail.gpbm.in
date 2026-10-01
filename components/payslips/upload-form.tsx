@@ -44,7 +44,7 @@ export function PayslipUploadForm({
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Salary month</span>
           <input
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue={getIndiaMonthInputValue()}
             name="salaryMonth"
             required
@@ -55,7 +55,7 @@ export function PayslipUploadForm({
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-muted">Fallback store (if auto-detect fails)</span>
           <select
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue=""
             name="fallbackStoreId"
           >
@@ -76,7 +76,7 @@ export function PayslipUploadForm({
         </span>
         <input
           accept=".xlsx,.xls,.csv"
-          className="block w-full text-sm text-muted file:mr-4 file:h-10 file:rounded-xl file:border-0 file:bg-foreground file:px-4 file:text-sm file:font-semibold file:text-background"
+          className="block w-full text-sm text-muted file:mr-4 file:h-10 file:rounded-xl file:border-0 file:bg-primary file:px-4 file:text-sm file:font-semibold file:text-white"
           name="file"
           required
           type="file"

@@ -73,7 +73,7 @@ export function BulkPhoneEditor({
               <p className="mt-1 text-xs text-muted">{contact.whatsappPhone || "No WhatsApp number"}</p>
             </div>
             <input
-              className="h-11 rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-foreground"
+              className="h-11 rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-primary"
               defaultValue={contact.phone ?? ""}
               inputMode="tel"
               name={`phone:${contact.id}`}

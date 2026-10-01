@@ -34,7 +34,10 @@ import {
   SalesFreshness,
   SecretaryShortcut,
 } from "@/components/owner/owner-today";
+import { SalesTrendChart } from "@/components/app/sales-trend-chart";
 import { SyncNowButton } from "@/components/app/sync-now-button";
+import { TodayHero, type HeroStat } from "@/components/app/today-hero";
+import { UploadStreaks } from "@/components/app/upload-streaks";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { getAccessibleStores, requireProfile, type Store as RetailStore } from "@/lib/auth/session";
 import { getAccessibleChecklists } from "@/lib/checklist/queries";
@@ -257,6 +260,55 @@ function summaryNumber(summary: SalesReportSummary | null | undefined, key: keyo
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function compactMoney(value: number) {
+  if (value >= 100000) return `₹${(value / 100000).toFixed(2)}L`;
+  return formatMoney(value);
+}
+
+// Yesterday's sales for the greeting card, compared with the same weekday a
+// week earlier across stores that uploaded both days.
+function heroSalesStats(statuses: StoreSalesStatus[]): HeroStat[] {
+  const uploaded = statuses.filter((status) => status.yesterdayReport);
+  const sale = uploaded.reduce((sum, status) => sum + summaryNumber(status.yesterdayReport?.summary, "totalNetSale"), 0);
+  const bills = uploaded.reduce((sum, status) => sum + summaryNumber(status.yesterdayReport?.summary, "billCount"), 0);
+  let current = 0;
+  let previous = 0;
+  for (const status of uploaded) {
+    const days = status.dailySales ?? [];
+    const weekAgo = days.at(-9)?.sale;
+    if (typeof weekAgo === "number" && weekAgo > 0) {
+      current += summaryNumber(status.yesterdayReport?.summary, "totalNetSale");
+      previous += weekAgo;
+    }
+  }
+  const change = previous > 0 ? Math.round(((current - previous) / previous) * 100) : null;
+  const weekday = statuses[0]
+    ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short" }).format(
+        new Date(`${statuses[0].yesterdayDate}T00:00:00+05:30`),
+      )
+    : "";
+
+  return [
+    {
+      hint: change === null ? undefined : `${change >= 0 ? "▲" : "▼"} ${Math.abs(change)}% vs last ${weekday}`,
+      label: "Yesterday's sales",
+      trend: change === null ? undefined : change >= 0 ? "up" : "down",
+      value: uploaded.length ? compactMoney(sale) : "—",
+    },
+    { label: "Bills", value: uploaded.length ? String(bills) : "—" },
+    { label: "Average bill", value: bills ? formatMoney(sale / bills) : "—" },
+    {
+      hint: uploaded.length === statuses.length ? "All uploaded" : "Some missing",
+      label: "Stores uploaded",
+      value: `${uploaded.length} of ${statuses.length}`,
+    },
+  ];
+}
+
+function trendSeries(statuses: StoreSalesStatus[]) {
+  return statuses.map((status) => ({ name: status.store.name, points: status.dailySales ?? [] }));
+}
+
 function salesUploadBadge(report: StoreSalesStatus["todayReport"]) {
   return report
     ? { className: badgeClass("success"), label: "Uploaded" }
@@ -362,11 +414,13 @@ function ShortcutGrid({
 
         return (
           <Link
-            className="rounded-2xl border border-border bg-card p-3 shadow-sm transition hover:border-foreground hover:bg-black/[0.02] sm:p-4"
+            className="rounded-2xl border border-border bg-card p-3 shadow-sm transition hover:border-primary hover:bg-black/[0.02] sm:p-4"
             href={item.href}
             key={`${item.title}-${item.href}`}
           >
-            <Icon className="mb-2 size-5 text-muted sm:mb-4" />
+            <span className="mb-2 flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary sm:mb-4">
+              <Icon className="size-[18px]" />
+            </span>
             <h3 className="text-sm font-semibold leading-5 sm:text-base">{item.title}</h3>
             <p className="mt-2 hidden text-sm leading-6 text-muted sm:block">{item.description}</p>
           </Link>
@@ -391,7 +445,7 @@ function MetricCard({
 }) {
   const className = [
     "min-w-0 rounded-[1.35rem] border border-border bg-card p-3 shadow-sm sm:p-4",
-    href ? "transition hover:border-foreground" : "",
+    href ? "transition hover:border-primary" : "",
   ].join(" ");
   const valueClass =
     tone === "danger"
@@ -401,9 +455,19 @@ function MetricCard({
         : tone === "success"
           ? "text-success"
           : "";
+  const iconTint =
+    tone === "danger"
+      ? "bg-danger/10 text-danger"
+      : tone === "warning"
+        ? "bg-accent-soft text-accent-ink"
+        : tone === "success"
+          ? "bg-success/10 text-success"
+          : "bg-primary-soft text-primary";
   const content = (
     <>
-      <Icon className="mb-2 size-5 text-muted sm:mb-4" />
+      <span className={`mb-2 flex size-9 items-center justify-center rounded-xl sm:mb-4 ${iconTint}`}>
+        <Icon className="size-[18px]" />
+      </span>
       <p className="text-xs font-medium text-muted">{label}</p>
       <p className={`mt-1 break-words text-lg font-semibold leading-6 sm:text-2xl sm:leading-8 ${valueClass}`}>{value}</p>
     </>
@@ -561,7 +625,7 @@ function StockStatusMini({ stockOverview }: { stockOverview: StockOverview }) {
           <p className="mt-1 text-sm leading-6 text-muted">Monthly stock report due {stockOverview.dueDate}.</p>
         </div>
         <Link
-          className="inline-flex h-10 shrink-0 items-center justify-center rounded-2xl bg-foreground px-3 text-sm font-semibold text-background transition hover:bg-black/85 sm:h-11 sm:px-4"
+          className="inline-flex h-10 shrink-0 items-center justify-center rounded-2xl bg-primary px-3 text-sm font-semibold text-white transition hover:bg-primary-deep sm:h-11 sm:px-4"
           href="/app/reports/stock"
         >
           Upload Stock
@@ -577,7 +641,7 @@ function StockStatusMini({ stockOverview }: { stockOverview: StockOverview }) {
         />
         {stockOverview.statuses.map((status) => (
           <Link
-            className="min-w-0 rounded-2xl border border-border p-3 transition hover:border-foreground"
+            className="min-w-0 rounded-2xl border border-border p-3 transition hover:border-primary"
             href={`/app/reports/stock?storeId=${status.store.id}`}
             key={status.store.id}
           >
@@ -750,7 +814,7 @@ async function MoreDetailsSection({
             </p>
           </div>
           <Link
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
             href="/app/reports/salary-attendance"
           >
             Open upload
@@ -784,7 +848,7 @@ async function MoreDetailsSection({
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {stores.map((store) => (
             <Link
-              className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
+              className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
               href={`/app/stores/${store.id}`}
               key={store.id}
             >
@@ -798,19 +862,8 @@ async function MoreDetailsSection({
   );
 }
 
-function TodayHeader({ subtitle, title }: { subtitle: string; title: string }) {
-  return (
-    <section className="flex items-center justify-between gap-3 px-1">
-      <div className="min-w-0">
-        <h1 className="text-2xl font-semibold sm:text-3xl">{title}</h1>
-        <p className="mt-1 hidden text-sm leading-6 text-muted sm:block">{subtitle}</p>
-      </div>
-      <SyncNowButton />
-    </section>
-  );
-}
-
 function OwnerToday({
+  displayName,
   handledPriorities,
   historicalImport,
   missingPhoneCount,
@@ -826,6 +879,7 @@ function OwnerToday({
   todos,
   toolsSummary,
 }: {
+  displayName: string | null;
   handledPriorities: AssessedPriority[];
   historicalImport: HistoricalImportSummary;
   missingPhoneCount: number;
@@ -850,11 +904,26 @@ function OwnerToday({
 
   return (
     <>
-      <TodayHeader subtitle="Start with exceptions, uploads, staff issues, and buying actions." title="Owner Command Center" />
+      <TodayHero
+        action={<SyncNowButton onDark />}
+        name={displayName}
+        progress={{
+          caption: priorities.length
+            ? `${priorities.length} still need${priorities.length === 1 ? "s" : ""} you today`
+            : "Nothing needs you right now. Enjoy the calm.",
+          done: handledPriorities.length,
+          label: priorities.length ? "Priorities handled" : "All clear for today",
+          total: handledPriorities.length + priorities.length,
+        }}
+        stats={heroSalesStats(salesStatuses)}
+        title="Owner Command Center"
+      />
 
       <DailyPriorities handled={handledPriorities} priorities={priorities} tasks={taskChoices} />
+      <SalesTrendChart series={trendSeries(salesStatuses)} />
       <OwnerTodoList doneToday={todos.doneToday} open={todos.open} today={getIndiaToday()} tomorrow={getIndiaTomorrow()} />
       <SalesFreshness statuses={salesStatuses} />
+      <UploadStreaks statuses={salesStatuses} />
       <OwnerToolsStrip handledCount={handledPriorities.length} summary={toolsSummary} />
       <OwnerTaskWorkboard workboard={taskWorkboard} />
       <SecretaryShortcut />
@@ -916,12 +985,14 @@ function OwnerToday({
 }
 
 function ManagerToday({
+  displayName,
   salesStatuses,
   stockOverview,
   stores,
   taskSummary,
   updateSummary,
 }: {
+  displayName: string | null;
   salesStatuses: StoreSalesStatus[];
   stockOverview: StockOverview;
   stores: TodayStore[];
@@ -937,7 +1008,21 @@ function ManagerToday({
 
   return (
     <>
-      <TodayHeader subtitle="Complete your daily store actions here." title="My Store Command Center" />
+      <TodayHero
+        action={<SyncNowButton onDark />}
+        name={displayName}
+        progress={{
+          caption: `Yesterday's closing sales for ${assignedStoreLabel}`,
+          done: salesStatuses.filter((status) => status.yesterdayReport).length,
+          label:
+            salesStatuses.length && salesStatuses.every((status) => status.yesterdayReport)
+              ? "All uploads done"
+              : "Sales uploads done",
+          total: salesStatuses.length,
+        }}
+        stats={heroSalesStats(salesStatuses)}
+        title="My Store Command Center"
+      />
 
       <section className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm sm:p-5">
         <p className="text-sm font-medium text-muted">My assigned store{stores.length === 1 ? "" : "s"}</p>
@@ -992,6 +1077,8 @@ function ManagerToday({
         <ShortcutGrid shortcuts={managerShortcuts} />
       </section>
 
+      <SalesTrendChart series={trendSeries(salesStatuses)} />
+      <UploadStreaks statuses={salesStatuses} />
       <SalesStatusCards statuses={salesStatuses} />
       <StockStatusMini stockOverview={stockOverview} />
     </>
@@ -1072,11 +1159,13 @@ export default async function TodayPage({
   const showAudit = params.audit === "1";
   const showMore = params.more === "1";
   const weeklyAuditAvailable = isOwner && isWeeklyAuditDay();
+  const displayName = profile?.full_name ?? profile?.email?.split("@")[0] ?? null;
 
   return (
     <div className="space-y-5">
       {isOwner ? (
         <OwnerToday
+          displayName={displayName}
           historicalImport={historicalImport}
           missingPhoneCount={missingPhoneCount}
           notes={notes}
@@ -1094,6 +1183,7 @@ export default async function TodayPage({
         />
       ) : (
         <ManagerToday
+          displayName={displayName}
           salesStatuses={salesStatuses}
           stockOverview={stockOverview}
           stores={stores}
@@ -1126,7 +1216,7 @@ export default async function TodayPage({
           ) : null}
           {!showMore ? (
             <Link
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
               href={queryHref({ ...params, more: "1" })}
             >
               Show More Details

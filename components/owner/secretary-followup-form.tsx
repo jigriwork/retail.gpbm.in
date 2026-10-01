@@ -9,7 +9,7 @@ import type { TaskChoice } from "@/components/owner/priority-followup";
 import { recordSecretaryFollowup, type FollowupActionState } from "@/lib/owner/followup-actions";
 
 const initialState: FollowupActionState = { ok: false, message: "" };
-const field = "h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-foreground";
+const field = "h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-primary";
 const button = "inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-semibold";
 
 export function SecretaryFollowupForm({
@@ -34,7 +34,7 @@ export function SecretaryFollowupForm({
       </label>
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium">Shared excerpt</span>
-        <textarea className="min-h-28 w-full rounded-xl border border-border bg-card p-3 text-sm leading-6 outline-none focus:border-foreground" defaultValue={excerpt} maxLength={1500} name="excerpt" />
+        <textarea className="min-h-28 w-full rounded-xl border border-border bg-card p-3 text-sm leading-6 outline-none focus:border-primary" defaultValue={excerpt} maxLength={1500} name="excerpt" />
         <span className="mt-1 block text-xs leading-5 text-muted">
           Only this excerpt is shared with the other owner. Your Secretary chat history stays private.
         </span>

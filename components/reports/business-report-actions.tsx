@@ -64,7 +64,7 @@ export function BusinessReportActions({
         Print
       </button>
       <button
-        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
         onClick={() => downloadTextFile(fileName, csv)}
         type="button"
       >

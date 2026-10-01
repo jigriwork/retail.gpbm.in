@@ -22,7 +22,7 @@ export default async function ReviewsPage() {
 
       <section className="grid gap-3 sm:grid-cols-2">
         <Link
-          className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+          className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
           href="/app/reviews/rack"
         >
           <Shirt className="mb-5 size-5 text-muted" />
@@ -32,7 +32,7 @@ export default async function ReviewsPage() {
           </p>
         </Link>
         <Link
-          className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-foreground"
+          className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
           href="/app/reviews/cleaning"
         >
           <SprayCan className="mb-5 size-5 text-muted" />

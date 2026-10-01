@@ -108,7 +108,7 @@ export function ResetPasswordForm() {
         <span className="mb-2 block text-sm font-medium text-muted">New password</span>
         <input
           autoComplete="new-password"
-          className="h-[3.25rem] w-full rounded-2xl border border-border bg-card px-4 text-base outline-none transition hover:border-muted/50 focus:border-foreground focus:ring-4 focus:ring-foreground/5"
+          className="h-[3.25rem] w-full rounded-2xl border border-border bg-card px-4 text-base outline-none transition hover:border-muted/50 focus:border-primary focus:ring-4 focus:ring-foreground/5"
           disabled={!isReady || isPending}
           minLength={8}
           onChange={(event) => setNewPassword(event.target.value)}
@@ -121,7 +121,7 @@ export function ResetPasswordForm() {
         <span className="mb-2 block text-sm font-medium text-muted">Confirm new password</span>
         <input
           autoComplete="new-password"
-          className="h-[3.25rem] w-full rounded-2xl border border-border bg-card px-4 text-base outline-none transition hover:border-muted/50 focus:border-foreground focus:ring-4 focus:ring-foreground/5"
+          className="h-[3.25rem] w-full rounded-2xl border border-border bg-card px-4 text-base outline-none transition hover:border-muted/50 focus:border-primary focus:ring-4 focus:ring-foreground/5"
           disabled={!isReady || isPending}
           minLength={8}
           onChange={(event) => setConfirmPassword(event.target.value)}

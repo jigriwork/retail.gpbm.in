@@ -23,8 +23,15 @@ const quickPrompts = [
 ];
 
 // Voice notes are uploaded through a 128 KB request limit; at 16 kbps that is
-// about a minute, so recording stops itself at 45 seconds.
+// about a minute, so recording stops itself at 45 seconds. Some phones (iPhone
+// Safari) ignore the bitrate, so recording also stops once it nears the limit.
 const maxRecordSeconds = 45;
+const maxRecordBytes = 110 * 1024;
+
+const unreachable: SecretaryChatState = {
+  ok: false,
+  message: "Tia couldn't be reached just now. Check your internet and try again.",
+};
 
 function pickRecordingType() {
   if (typeof MediaRecorder === "undefined") return null;
@@ -36,7 +43,14 @@ export function SecretaryChat({
 }: {
   action: (previous: SecretaryChatState, formData: FormData) => Promise<SecretaryChatState>;
 }) {
-  const [state, formAction, pending] = useActionState(action, initialState);
+  // A dropped connection or server timeout must not take down the whole page.
+  const [state, formAction, pending] = useActionState(async (previous: SecretaryChatState, formData: FormData) => {
+    try {
+      return await action(previous, formData);
+    } catch {
+      return unreachable;
+    }
+  }, initialState);
   const [prompt, setPrompt] = useState("");
   const [asked, setAsked] = useState("");
   const [recording, setRecording] = useState(false);
@@ -96,8 +110,12 @@ export function SecretaryChat({
     }
     const recorder = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 16000 });
     const chunks: Blob[] = [];
+    let recordedBytes = 0;
     recorder.ondataavailable = (event) => {
-      if (event.data.size) chunks.push(event.data);
+      if (!event.data.size) return;
+      chunks.push(event.data);
+      recordedBytes += event.data.size;
+      if (recordedBytes >= maxRecordBytes && recorder.state === "recording") stopRecording();
     };
     recorder.onstop = () => {
       stream.getTracks().forEach((track) => track.stop());
@@ -107,13 +125,18 @@ export function SecretaryChat({
         setMicError("That was too short. Tap the mic, speak, then tap again to send.");
         return;
       }
+      if (blob.size > 120 * 1024) {
+        setMicError("That voice note was too long to send. Try a shorter one, or type instead.");
+        return;
+      }
       const formData = new FormData();
       formData.set("audio", new File([blob], "voice-note", { type: mimeType }));
       setAsked("🎤 Voice message");
       startTransition(() => formAction(formData));
     };
     recorderRef.current = recorder;
-    recorder.start();
+    // Deliver audio every second so the size limit can be watched while recording.
+    recorder.start(1000);
     setRecording(true);
     setSeconds(0);
     const startedAt = Date.now();
@@ -134,7 +157,7 @@ export function SecretaryChat({
             className={
               recording
                 ? "flex size-20 items-center justify-center rounded-full bg-danger text-white shadow-lg ring-8 ring-danger/15 transition"
-                : "flex size-20 items-center justify-center rounded-full bg-foreground text-background shadow-lg transition hover:scale-105 disabled:opacity-50"
+                : "flex size-20 items-center justify-center rounded-full bg-primary text-white shadow-lg transition hover:scale-105 disabled:opacity-50"
             }
             disabled={pending && !recording}
             onClick={() => (recording ? stopRecording() : void startRecording())}
@@ -179,7 +202,7 @@ export function SecretaryChat({
         >
           <textarea
             aria-label="Type to Tia"
-            className="max-h-40 min-h-11 min-w-0 flex-1 resize-y rounded-2xl border border-border bg-background px-3 py-2.5 text-base leading-6 outline-none focus:border-foreground sm:text-sm"
+            className="max-h-40 min-h-11 min-w-0 flex-1 resize-y rounded-2xl border border-border bg-background px-3 py-2.5 text-base leading-6 outline-none focus:border-primary sm:text-sm"
             name="prompt"
             onChange={(event) => setPrompt(event.target.value)}
             placeholder="Or type to Tia…"
@@ -195,7 +218,7 @@ export function SecretaryChat({
       <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
         {quickPrompts.map((item) => (
           <button
-            className="inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl border border-border bg-card px-3 text-sm font-semibold shadow-sm transition hover:border-foreground disabled:opacity-50"
+            className="inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl border border-border bg-card px-3 text-sm font-semibold shadow-sm transition hover:border-primary disabled:opacity-50"
             disabled={pending}
             key={item}
             onClick={() => submitText(item)}
@@ -209,7 +232,7 @@ export function SecretaryChat({
 
       {pending && asked ? (
         <section aria-live="polite" className="space-y-2">
-          <p className="ml-auto w-fit max-w-[90%] rounded-[1.1rem] bg-foreground px-4 py-2.5 text-sm leading-6 text-background">
+          <p className="ml-auto w-fit max-w-[90%] rounded-[1.1rem] bg-primary px-4 py-2.5 text-sm leading-6 text-white">
             {asked}
           </p>
           <p className="inline-flex items-center gap-2 rounded-[1.1rem] border border-border bg-card px-4 py-3 text-sm text-muted">

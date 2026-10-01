@@ -8,8 +8,8 @@ import { saveSop, type SopActionState } from "@/lib/sops/actions";
 import { updateCategories } from "@/lib/updates/constants";
 
 const initialState: SopActionState = { ok: false, message: "" };
-const field = "h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-foreground";
-const area = "w-full rounded-xl border border-border bg-card p-3 text-sm leading-6 outline-none focus:border-foreground";
+const field = "h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-primary";
+const area = "w-full rounded-xl border border-border bg-card p-3 text-sm leading-6 outline-none focus:border-primary";
 
 export type SopFormValues = {
   escalate_when?: string;
@@ -84,7 +84,7 @@ export function SopForm({ defaults, stores }: { defaults: SopFormValues; stores:
         </label>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <button className="inline-flex h-11 items-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background" disabled={pending}>
+        <button className="inline-flex h-11 items-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white" disabled={pending}>
           {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           Save SOP
         </button>

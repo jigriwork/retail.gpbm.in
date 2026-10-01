@@ -45,7 +45,32 @@ export type StoreSalesStatus = {
   yesterdayReport: SalesReportWithStore | null;
   latestReport: SalesReportWithStore | null;
   recentReports: SalesReportWithStore[];
+  /** Net sale per day for the last 30 days, oldest first; null where no report was uploaded. */
+  dailySales?: Array<{ date: string; sale: number | null }>;
+  /** Consecutive days with an uploaded report, ending today or yesterday. */
+  uploadStreak?: number;
 };
+
+const salesHistoryDays = 30;
+
+function salesHistory(storeReports: SalesReportWithStore[], todayDate: string) {
+  const byDate = new Map<string, SalesReportWithStore>();
+  for (const report of storeReports) {
+    if (report.report_date && !byDate.has(report.report_date)) byDate.set(report.report_date, report);
+  }
+  const dailySales = Array.from({ length: salesHistoryDays }, (_, index) => {
+    const date = addDays(todayDate, index - salesHistoryDays + 1);
+    const sale = byDate.get(date)?.summary?.totalNetSale;
+    return { date, sale: byDate.has(date) ? (typeof sale === "number" && Number.isFinite(sale) ? sale : 0) : null };
+  });
+  let uploadStreak = 0;
+  let day = byDate.has(todayDate) ? todayDate : addDays(todayDate, -1);
+  while (byDate.has(day)) {
+    uploadStreak += 1;
+    day = addDays(day, -1);
+  }
+  return { dailySales, uploadStreak };
+}
 
 export type UnmatchedStaffReportWarning = {
   storeId: string;
@@ -491,9 +516,8 @@ export async function getStoreSalesStatuses(
   const reports = (data ?? []).map(asSalesReport);
 
   return stores.map((store) => {
-    const recentReports = reports
-      .filter((report) => report.store_id === store.id)
-      .slice(0, 5);
+    const storeReports = reports.filter((report) => report.store_id === store.id);
+    const recentReports = storeReports.slice(0, 5);
 
     return {
       store,
@@ -509,6 +533,7 @@ export async function getStoreSalesStatuses(
         ) ?? null,
       latestReport: recentReports[0] ?? null,
       recentReports,
+      ...salesHistory(storeReports, todayDate),
     } satisfies StoreSalesStatus;
   });
 }

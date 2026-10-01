@@ -33,20 +33,20 @@ export function CreateManagerForm({
     <form action={formAction} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <input
-          className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+          className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
           disabled={disabled}
           name="fullName"
           placeholder="Full name"
           required
         />
         <input
-          className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+          className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
           disabled={disabled}
           name="phone"
           placeholder="Phone optional"
         />
         <input
-          className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+          className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
           disabled={disabled}
           name="email"
           placeholder="Email"
@@ -55,7 +55,7 @@ export function CreateManagerForm({
         />
         <div className="relative">
           <input
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 pr-12 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 pr-12 text-sm outline-none focus:border-primary"
             disabled={disabled}
             minLength={6}
             name="password"
@@ -76,7 +76,7 @@ export function CreateManagerForm({
         <label className="block sm:col-span-2">
           <span className="mb-2 block text-sm font-medium text-muted">Role</span>
           <select
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
             defaultValue="manager"
             disabled={disabled}
             name="role"
@@ -128,7 +128,7 @@ export function AssignStoreForm({
     <form action={formAction} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
         <select
-          className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+          className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
           name="userId"
           required
         >
@@ -140,7 +140,7 @@ export function AssignStoreForm({
           ))}
         </select>
         <select
-          className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+          className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
           name="storeId"
           required
         >
@@ -296,7 +296,7 @@ export function TemporaryPasswordResetForm({
         <div className="relative">
           <input
             autoComplete="new-password"
-            className="h-10 w-full rounded-xl border border-border bg-card px-3 pr-10 text-xs outline-none focus:border-foreground"
+            className="h-10 w-full rounded-xl border border-border bg-card px-3 pr-10 text-xs outline-none focus:border-primary"
             disabled={disabled || pending}
             minLength={8}
             name="temporaryPassword"
@@ -315,7 +315,7 @@ export function TemporaryPasswordResetForm({
         </div>
         <input
           autoComplete="new-password"
-          className="h-10 rounded-xl border border-border bg-card px-3 text-xs outline-none focus:border-foreground"
+          className="h-10 rounded-xl border border-border bg-card px-3 text-xs outline-none focus:border-primary"
           disabled={disabled || pending}
           minLength={8}
           name="confirmPassword"

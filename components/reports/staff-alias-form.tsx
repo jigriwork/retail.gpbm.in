@@ -34,7 +34,7 @@ function ContactSelect({
 
   return (
     <select
-      className="h-11 w-full rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-foreground"
+      className="h-11 w-full rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-primary"
       defaultValue={defaultValue ?? ""}
       name="employeeContactId"
     >
@@ -73,7 +73,7 @@ function AliasForm({
       <label className="block">
         <span className="mb-2 block text-xs font-medium text-muted">Store</span>
         <select
-          className="h-11 w-full rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-foreground"
+          className="h-11 w-full rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-primary"
           defaultValue={storeId}
           name="storeId"
           required
@@ -89,7 +89,7 @@ function AliasForm({
       <label className="block">
         <span className="mb-2 block text-xs font-medium text-muted">Source name</span>
         <input
-          className="h-11 w-full rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-foreground"
+          className="h-11 w-full rounded-2xl border border-border bg-card px-3 text-sm outline-none focus:border-primary"
           defaultValue={sourceName}
           name="sourceName"
           required

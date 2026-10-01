@@ -36,7 +36,7 @@ export default async function StockReportsPage({
 
       <section className="grid gap-3 sm:grid-cols-2">
         <Link
-          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
+          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
           href="/app/reports/stock/analytics"
         >
           <div className="mb-4 flex size-10 items-center justify-center rounded-2xl border border-border">

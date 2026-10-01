@@ -24,7 +24,7 @@ export function ChangePasswordForm({
         <span className="mb-2 block text-sm font-medium text-muted">Current password</span>
         <input
           autoComplete="current-password"
-          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
           name="currentPassword"
           required
           type="password"
@@ -34,7 +34,7 @@ export function ChangePasswordForm({
         <span className="mb-2 block text-sm font-medium text-muted">New password</span>
         <input
           autoComplete="new-password"
-          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
           minLength={8}
           name="newPassword"
           required
@@ -45,7 +45,7 @@ export function ChangePasswordForm({
         <span className="mb-2 block text-sm font-medium text-muted">Confirm new password</span>
         <input
           autoComplete="new-password"
-          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
           minLength={8}
           name="confirmPassword"
           required

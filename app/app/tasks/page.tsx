@@ -38,7 +38,7 @@ export default async function TasksPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
             href="/app/tasks/new"
           >
             <Plus className="size-4" />
@@ -53,7 +53,7 @@ export default async function TasksPage({
           <Link
             className={cn(
               "whitespace-nowrap rounded-2xl border border-border px-3.5 py-2 text-sm font-semibold text-muted",
-              activeTab === item.value && "bg-foreground text-background",
+              activeTab === item.value && "bg-primary text-white",
             )}
             href={`/app/tasks?tab=${item.value}`}
             key={item.value}

@@ -157,7 +157,7 @@ export default async function PayslipBatchPage({
             <Link
               className={
                 sentFilter === filter.value
-                  ? "inline-flex h-9 items-center rounded-xl bg-foreground px-3 text-xs font-semibold text-background"
+                  ? "inline-flex h-9 items-center rounded-xl bg-primary px-3 text-xs font-semibold text-white"
                   : "inline-flex h-9 items-center rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
               }
               href={filter.href}

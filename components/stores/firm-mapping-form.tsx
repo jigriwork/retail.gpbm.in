@@ -36,7 +36,7 @@ export function FirmMappingForm({
       <label className="block">
         <span className="mb-2 block text-sm font-medium text-muted">Firm Name</span>
         <input
-          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-base outline-none focus:border-foreground"
+          className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-base outline-none focus:border-primary"
           defaultValue={firmName ?? ""}
           name="firmName"
           required

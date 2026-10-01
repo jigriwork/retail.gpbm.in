@@ -21,7 +21,7 @@ export function AccountActionForm({
   return (
     <form action={formAction} className="grid gap-3">
       {children}
-      <button className="h-11 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50" disabled={pending}>
+      <button className="h-11 rounded-2xl bg-primary px-4 text-sm font-semibold text-white disabled:opacity-50" disabled={pending}>
         {pending ? "Working…" : submitLabel}
       </button>
       {state.message ? <p className={state.ok ? "text-sm font-semibold text-success" : "text-sm font-semibold text-danger"}>{state.message}</p> : null}

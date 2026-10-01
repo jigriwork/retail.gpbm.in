@@ -35,7 +35,7 @@ function FormattedAnswer({ text }: { text: string }) {
 }
 
 // Tia may transcribe, look things up, act and then speak in one visit.
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export default async function SecretaryPage() {
   const session = await requireOwner();
@@ -78,7 +78,7 @@ export default async function SecretaryPage() {
   return (
     <div className="space-y-5">
       <section className="flex items-center gap-3 px-1">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-foreground text-lg font-semibold text-background">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-semibold text-white">
           T
         </span>
         <div className="min-w-0">
@@ -103,7 +103,7 @@ export default async function SecretaryPage() {
                 <article
                   className={
                     chat.role === "user"
-                      ? "ml-auto w-fit max-w-[90%] rounded-[1.1rem] border border-border bg-foreground px-4 py-2.5 text-background sm:max-w-2xl"
+                      ? "ml-auto w-fit max-w-[90%] rounded-[1.1rem] border border-border bg-primary px-4 py-2.5 text-white sm:max-w-2xl"
                       : "max-w-2xl rounded-[1.1rem] border border-border bg-background p-4"
                   }
                   key={chat.id}

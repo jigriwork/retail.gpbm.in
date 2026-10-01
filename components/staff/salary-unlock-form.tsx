@@ -14,7 +14,7 @@ export function SalaryUnlockForm() {
       <p className="font-semibold">Verify your password</p>
       <p className="text-xs leading-5 text-muted">Salary and payslip access stays unlocked for 10 minutes on this session.</p>
       <input autoComplete="current-password" className="h-12 rounded-2xl border border-border bg-background px-4" name="currentPassword" placeholder="Current password" required type="password" />
-      <button className="h-12 rounded-2xl bg-foreground font-semibold text-background disabled:opacity-50" disabled={pending}>{pending ? "Verifying…" : "Unlock private salary"}</button>
+      <button className="h-12 rounded-2xl bg-primary font-semibold text-white disabled:opacity-50" disabled={pending}>{pending ? "Verifying…" : "Unlock private salary"}</button>
       {state.message ? <p className={state.ok ? "text-sm font-semibold text-success" : "text-sm font-semibold text-danger"}>{state.message}</p> : null}
     </form>
   );

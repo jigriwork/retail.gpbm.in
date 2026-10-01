@@ -12,7 +12,7 @@ function InactiveAccount() {
     <main className="min-h-dvh bg-background px-5 py-6 text-foreground">
       <section className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-md flex-col justify-center">
         <div className="rounded-[1.35rem] border border-border bg-card p-6 shadow-sm">
-          <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-foreground text-background">
+          <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-primary text-white">
             <LockKeyhole className="size-5" />
           </div>
           <h1 className="text-2xl font-semibold">Account inactive</h1>
@@ -72,7 +72,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                 Private access for GPBM Retail users only.
               </p>
             </div>
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
               <LockKeyhole className="size-5" />
             </div>
           </div>

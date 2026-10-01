@@ -21,13 +21,13 @@ export default async function SopsPage({ searchParams }: { searchParams: Promise
         {stores.length > 1 || isOwner ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {isOwner ? (
-              <Link className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${!store ? "bg-foreground text-background" : "border-border"}`} href="/app/sops">
+              <Link className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${!store ? "bg-primary text-white" : "border-border"}`} href="/app/sops">
                 All SOPs
               </Link>
             ) : null}
             {stores.map((item) => (
               <Link
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${store?.id === item.id ? "bg-foreground text-background" : "border-border"}`}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${store?.id === item.id ? "bg-primary text-white" : "border-border"}`}
                 href={`/app/sops?storeId=${item.id}`}
                 key={item.id}
               >
@@ -48,7 +48,7 @@ export default async function SopsPage({ searchParams }: { searchParams: Promise
       </section>
 
       {isOwner ? (
-        <Link className="inline-flex h-11 items-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background" href="/app/sops/new">
+        <Link className="inline-flex h-11 items-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white" href="/app/sops/new">
           <Plus className="size-4" /> New SOP
         </Link>
       ) : null}

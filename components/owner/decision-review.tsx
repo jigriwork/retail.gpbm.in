@@ -13,7 +13,7 @@ import {
 import { decisionResults } from "@/lib/owner/phase2-shared";
 
 const initialState: DecisionActionState = { ok: false, message: "" };
-const area = "min-h-20 w-full rounded-xl border border-border bg-card p-3 text-sm leading-6 outline-none focus:border-foreground";
+const area = "min-h-20 w-full rounded-xl border border-border bg-card p-3 text-sm leading-6 outline-none focus:border-primary";
 
 export function DecisionReviewForm({
   basis,
@@ -69,7 +69,7 @@ export function DecisionReviewForm({
         <textarea className={area} maxLength={1000} name="learned" placeholder="Keep, change or stop — and why." />
       </label>
       <div className="flex flex-wrap items-center gap-3">
-        <button className="inline-flex h-11 items-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background" disabled={pending}>
+        <button className="inline-flex h-11 items-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white" disabled={pending}>
           {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           Record review
         </button>

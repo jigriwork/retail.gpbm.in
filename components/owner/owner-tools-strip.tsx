@@ -50,7 +50,7 @@ export function OwnerToolsStrip({ handledCount, summary }: { handledCount: numbe
     <section aria-label="Owner tools" className="grid grid-cols-2 gap-2 lg:grid-cols-4">
       {items.map(({ href, icon: Icon, label, tone, value }) => (
         <Link
-          className="rounded-2xl border border-border bg-card p-3 shadow-sm transition hover:border-foreground"
+          className="rounded-2xl border border-border bg-card p-3 shadow-sm transition hover:border-primary"
           href={href}
           key={href}
         >

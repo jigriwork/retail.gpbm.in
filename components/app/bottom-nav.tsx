@@ -30,7 +30,7 @@ export function BottomNav({ role }: { role?: string }) {
             <Link
               className={cn(
                 "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[0.7rem] font-semibold text-muted transition",
-                isActive && "bg-foreground text-background",
+                isActive && "bg-primary text-white",
               )}
               href={item.href}
               key={item.href}

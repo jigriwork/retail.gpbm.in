@@ -105,7 +105,7 @@ export function GenerateBatchPayslipsProgress({
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-border">
             <div
-              className="h-full rounded-full bg-foreground transition-all"
+              className="h-full rounded-full bg-primary transition-all"
               style={{ width: `${percent}%` }}
             />
           </div>
@@ -169,7 +169,7 @@ export function PayslipRowPhoneForm({
     <form action={formAction} className="flex flex-wrap items-start gap-2">
       <input name="rowId" type="hidden" value={rowId} />
       <input
-        className="h-10 min-w-52 rounded-xl border border-border bg-card px-3 text-xs outline-none focus:border-foreground"
+        className="h-10 min-w-52 rounded-xl border border-border bg-card px-3 text-xs outline-none focus:border-primary"
         defaultValue={phone ?? ""}
         name="phone"
         placeholder="Employee phone"

@@ -170,7 +170,7 @@ export default async function StoreDetailPage({
             </p>
           </div>
           <Link
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
             href={`/app/audit/${store.id}?week=${previousWeekRange.startDate}`}
           >
             Store audit
@@ -221,7 +221,7 @@ export default async function StoreDetailPage({
               </p>
             </div>
             <Link
-              className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
               href={`/app/reports/sales?storeId=${store.id}`}
             >
               Upload sales
@@ -266,7 +266,7 @@ export default async function StoreDetailPage({
                   ) : null}
                 </div>
                 <Link
-                  className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+                  className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
                   href={`/app/reports/staff-aliases?storeId=${store.id}`}
                 >
                   Fix Staff Names
@@ -296,7 +296,7 @@ export default async function StoreDetailPage({
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
               href={`/app/reports/sales/analytics?storeId=${store.id}&period=week`}
             >
               Full analytics
@@ -346,7 +346,7 @@ export default async function StoreDetailPage({
             </div>
             <div className="mt-4 h-2 rounded-full bg-background">
               <div
-                className="h-2 rounded-full bg-foreground"
+                className="h-2 rounded-full bg-primary"
                 style={{ width: `${Math.min(targetProgress.percentageAchieved, 100)}%` }}
               />
             </div>
@@ -378,7 +378,7 @@ export default async function StoreDetailPage({
               </p>
             </div>
             <Link
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
               href={`/app/reports/salary-attendance?storeId=${store.id}`}
             >
               <CalendarClock className="size-4" />
@@ -439,7 +439,7 @@ export default async function StoreDetailPage({
               </p>
             </div>
             <Link
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
               href={`/app/reports/stock?storeId=${store.id}`}
             >
               <PackageSearch className="size-4" />
@@ -516,7 +516,7 @@ export default async function StoreDetailPage({
             </h2>
           </div>
           <Link
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
             href={`/app/reports/stock/analytics?storeId=${store.id}`}
           >
             Full stock analytics
@@ -601,7 +601,7 @@ export default async function StoreDetailPage({
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              className="inline-flex h-11 items-center justify-center rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85"
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
               href={`/app/updates/new?storeId=${store.id}`}
             >
               Add update
@@ -629,7 +629,7 @@ export default async function StoreDetailPage({
 
       <section className="grid gap-3 sm:grid-cols-2">
         <Link
-          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
+          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
           href={`/app/tasks?storeId=${store.id}`}
         >
           <ClipboardList className="mb-5 size-5 text-muted" />
@@ -641,7 +641,7 @@ export default async function StoreDetailPage({
           </p>
         </Link>
         <Link
-          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-foreground"
+          className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
           href={`/app/reports/staff?storeId=${store.id}&period=week`}
         >
           <UserRoundCheck className="mb-5 size-5 text-muted" />

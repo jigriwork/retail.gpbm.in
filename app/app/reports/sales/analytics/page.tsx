@@ -3,6 +3,7 @@ import { BarChart3, CircleAlert, LineChart, Target, Trophy } from "lucide-react"
 
 import { SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
 import { DataFreshnessBadge } from "@/components/app/data-freshness-badge";
+import { DailySalesBars } from "@/components/reports/daily-sales-bars";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import {
   calculateTargetProgress,
@@ -51,20 +52,33 @@ function RankingList({
     return <p className="text-sm leading-6 text-muted">No sales rows found for this period.</p>;
   }
 
+  const valueOf = (item: (typeof items)[number]) => (valueLabel === "sale" ? item.totalSale : item.quantity);
+  const top = Math.max(...items.map(valueOf), 1);
+  // Gold, silver and bronze for the top three; the rest stay neutral.
+  const medals = ["bg-accent text-primary-deep", "bg-[#D9DAE3] text-[#3A3950]", "bg-[#E8C3A2] text-[#5A3416]"];
+
   return (
     <div className="space-y-2">
       {items.map((item, index) => (
         <div className="rounded-2xl border border-border p-3" key={item.name}>
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="font-semibold">
-                {index + 1}. {item.name}
-              </p>
-              <p className="mt-1 text-xs font-medium text-muted">
-                Qty {formatNumber(item.quantity)}
-              </p>
+            <div className="flex min-w-0 items-start gap-3">
+              <span
+                className={`flex size-7 shrink-0 items-center justify-center rounded-full font-display text-xs font-bold ${medals[index] ?? "bg-background text-muted"}`}
+              >
+                {index + 1}
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold">{item.name}</p>
+                <p className="mt-1 text-xs font-medium text-muted">
+                  Qty {formatNumber(item.quantity)}
+                </p>
+              </div>
             </div>
             <p className="text-sm font-semibold">{valueLabel === "sale" ? formatMoney(item.totalSale) : formatNumber(item.quantity)}</p>
+          </div>
+          <div className="mt-2 h-1.5 rounded-full bg-background">
+            <div className="h-1.5 rounded-full bg-primary" style={{ width: `${Math.max(Math.round((valueOf(item) / top) * 100), 2)}%` }} />
           </div>
         </div>
       ))}
@@ -120,7 +134,7 @@ export default async function SalesAnalyticsPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Store</span>
             <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={storeId ?? "all"}
               name="storeId"
             >
@@ -135,7 +149,7 @@ export default async function SalesAnalyticsPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Period</span>
             <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={period}
               name="period"
             >
@@ -149,7 +163,7 @@ export default async function SalesAnalyticsPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">Start</span>
             <input
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={dateRange.startDate}
               name="start"
               type="date"
@@ -158,13 +172,13 @@ export default async function SalesAnalyticsPage({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-muted">End</span>
             <input
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-foreground"
+              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
               defaultValue={dateRange.endDate}
               name="end"
               type="date"
             />
           </label>
-          <button className="mt-7 h-12 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85">
+          <button className="mt-7 h-12 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep">
             Apply
           </button>
         </form>
@@ -219,7 +233,7 @@ export default async function SalesAnalyticsPage({
           </div>
           <div className="mt-5 h-2 rounded-full bg-background">
             <div
-              className="h-2 rounded-full bg-foreground"
+              className="h-2 rounded-full bg-primary"
               style={{ width: `${Math.min(targetProgress.percentageAchieved, 100)}%` }}
             />
           </div>
@@ -277,13 +291,16 @@ export default async function SalesAnalyticsPage({
             <h2 className="text-xl font-semibold">Daily trend</h2>
             <LineChart className="size-5 text-muted" />
           </div>
-          <div className="space-y-3">
+          <DailySalesBars points={summary.dailyTrend} />
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs font-semibold text-muted">Show daily numbers</summary>
+          <div className="mt-3 space-y-3">
             {summary.dailyTrend.map((point) => (
               <div className="grid grid-cols-[6.5rem_1fr_6rem] items-center gap-3 text-sm" key={point.date}>
                 <span className="font-medium text-muted">{point.date}</span>
                 <div className="h-2 rounded-full bg-background">
                   <div
-                    className="h-2 rounded-full bg-foreground"
+                    className="h-2 rounded-full bg-primary"
                     style={{ width: `${Math.round((point.totalSale / maxTrendSale) * 100)}%` }}
                   />
                 </div>
@@ -291,6 +308,7 @@ export default async function SalesAnalyticsPage({
               </div>
             ))}
           </div>
+          </details>
         </div>
       </section>
 

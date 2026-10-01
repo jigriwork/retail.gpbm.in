@@ -6,7 +6,7 @@ import { useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 
-export function SyncNowButton() {
+export function SyncNowButton({ onDark = false }: { onDark?: boolean }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -15,7 +15,7 @@ export function SyncNowButton() {
       aria-label="Sync latest data"
       disabled={isPending}
       onClick={() => startTransition(() => router.refresh())}
-      className="shrink-0 px-3 sm:px-4"
+      className={onDark ? "h-9 shrink-0 rounded-full border-white/20 bg-white/10 px-3 text-white hover:bg-white/15 sm:px-4" : "shrink-0 px-3 sm:px-4"}
       type="button"
       variant="secondary"
     >

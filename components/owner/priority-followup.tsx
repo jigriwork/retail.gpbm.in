@@ -4,18 +4,23 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { Check, CheckSquare, FlaskConical, Link2, Loader2, MessageSquareOff, NotebookPen } from "lucide-react";
 
+import { celebrate } from "@/components/app/celebrate";
 import { ActionMessage } from "@/components/owner/action-message";
 import { recordPriorityFollowup, type FollowupActionState } from "@/lib/owner/followup-actions";
 
 const initialState: FollowupActionState = { ok: false, message: "" };
 const button =
   "inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-semibold disabled:opacity-50";
-const input = "h-9 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 text-xs outline-none focus:border-foreground";
+const input = "h-9 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 text-xs outline-none focus:border-primary";
 
 export type TaskChoice = { id: string; title: string; store: string; due_date: string | null };
 
 export function PriorityFollowup({ priorityId, tasks }: { priorityId: string; tasks: TaskChoice[] }) {
-  const [state, action, pending] = useActionState(recordPriorityFollowup, initialState);
+  const [state, action, pending] = useActionState(async (previous: FollowupActionState, formData: FormData) => {
+    const result = await recordPriorityFollowup(previous, formData);
+    if (result.ok) celebrate();
+    return result;
+  }, initialState);
   const hidden = <input name="priorityId" type="hidden" value={priorityId} />;
   const icon = (Icon: typeof Check) => (pending ? <Loader2 className="size-3.5 animate-spin" /> : <Icon className="size-3.5" />);
 

@@ -20,7 +20,7 @@ export function SyncNegativePayslipsButton() {
   return (
     <div>
       <button
-        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-black/85 disabled:opacity-50"
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep disabled:opacity-50"
         disabled={isPending}
         onClick={() => {
           startTransition(async () => {
@@ -71,7 +71,7 @@ export function ReceivableStatusActions({ receivableId, currentStatus, receivabl
       <div className="flex flex-wrap gap-2">
         {status !== "received" ? (
           <button
-            className="inline-flex h-9 items-center rounded-xl bg-foreground px-3 text-xs font-semibold text-background transition hover:bg-black/85 disabled:opacity-50"
+            className="inline-flex h-9 items-center rounded-xl bg-primary px-3 text-xs font-semibold text-white transition hover:bg-primary-deep disabled:opacity-50"
             disabled={isPending}
             onClick={() => doAction(() => markReceivableReceived(receivableId))}
             type="button"
@@ -156,7 +156,7 @@ export function ReceivableStatusActions({ receivableId, currentStatus, receivabl
             />
           </div>
           <button
-            className="inline-flex h-9 items-center rounded-xl bg-foreground px-3 text-xs font-semibold text-background transition hover:bg-black/85 disabled:opacity-50"
+            className="inline-flex h-9 items-center rounded-xl bg-primary px-3 text-xs font-semibold text-white transition hover:bg-primary-deep disabled:opacity-50"
             disabled={isPending || !partialAmount}
             onClick={() =>
               doAction(() => addPartialPayment(receivableId, Number(partialAmount), partialNote))
@@ -184,7 +184,7 @@ export function ReceivableStatusActions({ receivableId, currentStatus, receivabl
             />
           </div>
           <button
-            className="inline-flex h-9 items-center rounded-xl bg-foreground px-3 text-xs font-semibold text-background transition hover:bg-black/85 disabled:opacity-50"
+            className="inline-flex h-9 items-center rounded-xl bg-primary px-3 text-xs font-semibold text-white transition hover:bg-primary-deep disabled:opacity-50"
             disabled={isPending}
             onClick={() =>
               doAction(() =>

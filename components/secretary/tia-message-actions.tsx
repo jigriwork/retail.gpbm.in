@@ -12,8 +12,14 @@ type SpeakState = "idle" | "loading" | "speaking";
 /** Fetches a reply as Tia's voice and plays it; falls back to the phone's voice. */
 export async function speakReply(chatId: string, setState: (state: SpeakState) => void) {
   setState("loading");
-  const result = await speakSecretaryReply(chatId);
   const done = () => setState("idle");
+  let result: Awaited<ReturnType<typeof speakSecretaryReply>>;
+  try {
+    result = await speakSecretaryReply(chatId);
+  } catch {
+    done();
+    return;
+  }
   if (result.audio) {
     setState("speaking");
     if (await playWav(result.audio, done)) return;

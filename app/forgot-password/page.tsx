@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
                 Enter your email. If an account exists, a reset link will be sent.
               </p>
             </div>
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
               <LockKeyhole className="size-5" />
             </div>
           </div>

@@ -58,7 +58,7 @@ export default async function StoreChecklistPage({
           <div className="w-full sm:max-w-sm">
             <div className="h-2 rounded-full bg-background">
               <div
-                className="h-2 rounded-full bg-foreground"
+                className="h-2 rounded-full bg-primary"
                 style={{ width: `${checklist.completionPercent}%` }}
               />
             </div>

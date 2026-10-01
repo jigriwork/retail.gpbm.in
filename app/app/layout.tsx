@@ -25,7 +25,7 @@ export default async function ProtectedAppLayout({
     return (
       <main className="min-h-dvh bg-background px-5 py-6 text-foreground">
         <div className="mx-auto max-w-xl rounded-[1.35rem] border border-border bg-card p-6 shadow-sm">
-          <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-foreground text-background">
+          <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-primary text-white">
             <ShieldCheck className="size-5" />
           </div>
           <h1 className="text-2xl font-semibold">Access issue</h1>
@@ -44,7 +44,7 @@ export default async function ProtectedAppLayout({
     return (
       <main className="min-h-dvh bg-background px-5 py-6 text-foreground">
         <div className="mx-auto max-w-xl rounded-[1.35rem] border border-border bg-card p-6 shadow-sm">
-          <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-foreground text-background">
+          <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-primary text-white">
             <LockKeyhole className="size-5" />
           </div>
           <h1 className="text-2xl font-semibold">Account blocked</h1>
