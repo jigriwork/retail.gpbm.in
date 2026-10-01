@@ -1,10 +1,12 @@
 import Link from "next/link";
 
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { isLimitedView } from "@/lib/auth/view";
 
 export default async function StoresPage() {
   const { profile } = await requireProfile();
   const stores = await getAccessibleStores(profile);
+  const limited = await isLimitedView(profile);
 
   return (
     <div className="space-y-5">
@@ -18,7 +20,7 @@ export default async function StoresPage() {
           {stores.map((store) => (
             <Link
               className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-              href={`/app/stores/${store.id}`}
+              href={limited ? `/app/checklist/${store.id}` : `/app/stores/${store.id}`}
               key={store.id}
             >
               <div className="flex items-start justify-between gap-3">
@@ -30,12 +32,14 @@ export default async function StoresPage() {
                   {store.type ?? "store"}
                 </span>
               </div>
-              <p className="mt-8 text-sm font-medium">
-                Target{" "}
-                <span className="text-muted">
-                  {store.monthly_target_enabled ? "enabled" : "disabled"}
-                </span>
-              </p>
+              {!limited ? (
+                <p className="mt-8 text-sm font-medium">
+                  Target{" "}
+                  <span className="text-muted">
+                    {store.monthly_target_enabled ? "enabled" : "disabled"}
+                  </span>
+                </p>
+              ) : null}
             </Link>
           ))}
         </div>

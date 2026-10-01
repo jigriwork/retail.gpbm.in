@@ -38,8 +38,10 @@ import { SalesTrendChart } from "@/components/app/sales-trend-chart";
 import { SyncNowButton } from "@/components/app/sync-now-button";
 import { TodayHero, type HeroStat } from "@/components/app/today-hero";
 import { UploadStreaks } from "@/components/app/upload-streaks";
+import { handheldAllows } from "@/lib/auth/access";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
 import { getAccessibleStores, requireProfile, type Store as RetailStore } from "@/lib/auth/session";
+import { isLimitedView } from "@/lib/auth/view";
 import { getAccessibleChecklists } from "@/lib/checklist/queries";
 import { getMissingEmployeePhoneCount } from "@/lib/employees/queries";
 import { getLatestStockMonth, getStockSummary } from "@/lib/analytics/stock";
@@ -482,7 +484,7 @@ function MetricCard({
   );
 }
 
-function SalesStatusCards({ statuses }: { statuses: StoreSalesStatus[] }) {
+function SalesStatusCards({ hideAmounts = false, statuses }: { hideAmounts?: boolean; statuses: StoreSalesStatus[] }) {
   return (
     <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -542,6 +544,8 @@ function SalesStatusCards({ statuses }: { statuses: StoreSalesStatus[] }) {
                   <p className="text-xs font-medium text-muted">Upload time</p>
                   <p className="mt-1 text-sm font-semibold">{formatDateTime(latestReport?.created_at)}</p>
                 </div>
+                {!hideAmounts ? (
+                  <>
                 <div className="rounded-xl border border-border p-3">
                   <p className="text-xs font-medium text-muted">Actual sale (incl. tax)</p>
                   <p className="mt-1 text-sm font-semibold">{formatMoney(latestReport?.summary?.totalNetSale)}</p>
@@ -567,6 +571,8 @@ function SalesStatusCards({ statuses }: { statuses: StoreSalesStatus[] }) {
                     </p>
                   ) : latestReport?.summary?.mrpRowCount ? <p className="mt-1 text-xs text-muted">Avg not available</p> : null}
                 </div>
+                  </>
+                ) : null}
                 <div className="rounded-xl border border-border p-3">
                   <p className="text-xs font-medium text-muted">Bills</p>
                   <p className="mt-1 text-sm font-semibold">{latestReport?.summary?.billCount ?? 0}</p>
@@ -586,12 +592,14 @@ function SalesStatusCards({ statuses }: { statuses: StoreSalesStatus[] }) {
                 >
                   Fix Staff Names
                 </Link>
-                <Link
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
-                  href={`/app/reports/business?storeId=${status.store.id}`}
-                >
-                  Buying Report
-                </Link>
+                {!hideAmounts ? (
+                  <Link
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold transition hover:bg-black/[0.03]"
+                    href={`/app/reports/business?storeId=${status.store.id}`}
+                  >
+                    Buying Report
+                  </Link>
+                ) : null}
               </div>
 
               {unmatchedStaffCount > 0 || suspicious || missingStaff ? (
@@ -986,6 +994,7 @@ function OwnerToday({
 
 function ManagerToday({
   displayName,
+  limited,
   salesStatuses,
   stockOverview,
   stores,
@@ -993,6 +1002,8 @@ function ManagerToday({
   updateSummary,
 }: {
   displayName: string | null;
+  /** Leave out sales figures and analysis pages. */
+  limited: boolean;
   salesStatuses: StoreSalesStatus[];
   stockOverview: StockOverview;
   stores: TodayStore[];
@@ -1020,7 +1031,20 @@ function ManagerToday({
               : "Sales uploads done",
           total: salesStatuses.length,
         }}
-        stats={heroSalesStats(salesStatuses)}
+        stats={
+          limited
+            ? [
+                { label: "Tasks today", value: String(taskSummary.todayCount) },
+                { label: "Urgent updates", value: String(updateSummary.openUrgentCount) },
+                {
+                  hint: salesStatuses.every((status) => status.yesterdayReport) ? "All uploaded" : "Some missing",
+                  label: "Sales uploads",
+                  value: `${salesStatuses.filter((status) => status.yesterdayReport).length} of ${salesStatuses.length}`,
+                },
+                { label: "Stock upload", value: stockOverview.missingCount ? `${stockOverview.missingCount} pending` : "Done" },
+              ]
+            : heroSalesStats(salesStatuses)
+        }
         title="My Store Command Center"
       />
 
@@ -1058,7 +1082,7 @@ function ManagerToday({
           />
           <MetricCard href="/app/checklist" icon={ClipboardCheck} label="Checklist" value="Open" />
           <MetricCard href="/app/updates/new" icon={MessageSquareText} label="Send update" value="Open" />
-          <MetricCard href="/app/reports/staff" icon={UserRoundCheck} label="Staff Sales" value="Open" />
+          {!limited ? <MetricCard href="/app/reports/staff" icon={UserRoundCheck} label="Staff Sales" value="Open" /> : null}
           <MetricCard
             href="/app/updates?status=open&urgency=urgent"
             icon={TriangleAlert}
@@ -1074,12 +1098,12 @@ function ManagerToday({
           <h2 className="text-xl font-semibold">Manager shortcuts</h2>
           <Store className="size-5 text-muted" />
         </div>
-        <ShortcutGrid shortcuts={managerShortcuts} />
+        <ShortcutGrid shortcuts={limited ? managerShortcuts.filter((item) => handheldAllows(item.href)) : managerShortcuts} />
       </section>
 
-      <SalesTrendChart series={trendSeries(salesStatuses)} />
+      {!limited ? <SalesTrendChart series={trendSeries(salesStatuses)} /> : null}
       <UploadStreaks statuses={salesStatuses} />
-      <SalesStatusCards statuses={salesStatuses} />
+      <SalesStatusCards hideAmounts={limited} statuses={salesStatuses} />
       <StockStatusMini stockOverview={stockOverview} />
     </>
   );
@@ -1160,6 +1184,7 @@ export default async function TodayPage({
   const showMore = params.more === "1";
   const weeklyAuditAvailable = isOwner && isWeeklyAuditDay();
   const displayName = profile?.full_name ?? profile?.email?.split("@")[0] ?? null;
+  const limited = await isLimitedView(profile);
 
   return (
     <div className="space-y-5">
@@ -1184,6 +1209,7 @@ export default async function TodayPage({
       ) : (
         <ManagerToday
           displayName={displayName}
+          limited={limited}
           salesStatuses={salesStatuses}
           stockOverview={stockOverview}
           stores={stores}
@@ -1192,6 +1218,7 @@ export default async function TodayPage({
         />
       )}
 
+      {!limited ? (
       <section className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm sm:p-5">
         <h2 className="text-xl font-semibold sm:text-2xl">More details</h2>
         <p className="mt-1 text-sm leading-6 text-muted">
@@ -1224,10 +1251,11 @@ export default async function TodayPage({
           ) : null}
         </div>
       </section>
+      ) : null}
 
-      {showStock ? <StockPulseSection stores={stores} /> : null}
+      {showStock && !limited ? <StockPulseSection stores={stores} /> : null}
       {isOwner && showAudit ? <WeeklyAuditSection stores={stores} /> : null}
-      {showMore ? <MoreDetailsSection profileRole={profile?.role ?? "manager"} stores={stores} /> : null}
+      {showMore && !limited ? <MoreDetailsSection profileRole={profile?.role ?? "manager"} stores={stores} /> : null}
     </div>
   );
 }

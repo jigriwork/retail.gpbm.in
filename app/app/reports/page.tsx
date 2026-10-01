@@ -18,6 +18,7 @@ import {
 import { SalesReportList } from "@/components/reports/sales-report-list";
 import { MissingStaffSalesWarning, SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { isLimitedView } from "@/lib/auth/view";
 import {
   getRecentSalesReports,
   getStoreSalesStatuses,
@@ -45,6 +46,7 @@ export default async function ReportsPage() {
     getStockOverview(stores),
   ]);
   const missingStores = statuses.filter((status) => !status.yesterdayReport);
+  const limited = await isLimitedView(profile);
 
   return (
     <div className="space-y-5">
@@ -53,7 +55,7 @@ export default async function ReportsPage() {
         <p className="text-sm font-medium text-muted">Reports</p>
         <h1 className="mt-2 text-3xl font-semibold">Business uploads</h1>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Daily sales, stock, salary attendance and practical sales analytics are active.
+          {limited ? "Daily sales and stock uploads." : "Daily sales, stock, salary attendance and practical sales analytics are active."}
         </p>
       </section>
 
@@ -102,6 +104,8 @@ export default async function ReportsPage() {
                     {status.yesterdayReport ? "Uploaded" : "Missing"}
                   </span>
                 </div>
+                {!limited ? (
+                  <>
                 <p className="mt-4 text-xs font-medium text-muted">Actual sale (incl. tax)</p>
                 <p className="mt-1 text-2xl font-semibold">
                   {formatMoney(status.latestReport?.summary?.totalNetSale)}
@@ -116,6 +120,8 @@ export default async function ReportsPage() {
                     ? `${formatMoney(status.latestReport.summary.totalDiscountValue)} · ${Number(status.latestReport.summary.totalMrpValue ?? 0) > 0 ? `Avg ${Number(status.latestReport.summary.averageDiscountPercent ?? 0).toFixed(1)}%` : "Avg not available"}`
                     : "Not available"}
                 </p>
+                  </>
+                ) : null}
                 <p className="mt-1 text-xs font-medium text-muted">
                   Latest: {status.latestReport?.report_date ?? "No upload yet"}
                 </p>
@@ -135,42 +141,48 @@ export default async function ReportsPage() {
         </div>
 
         <div className="space-y-3">
+          {!limited ? (
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-            href="/app/reports/business"
-          >
-            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-              <ChartNoAxesCombined className="size-5" />
-            </div>
-            <h2 className="text-2xl font-semibold">Buying & Restock Report</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Search brand/product/category/size, compare stock vs sales, and find what to reorder or avoid buying.
-            </p>
-          </Link>
+              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
+              href="/app/reports/business"
+            >
+              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+                <ChartNoAxesCombined className="size-5" />
+              </div>
+              <h2 className="text-2xl font-semibold">Buying & Restock Report</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Search brand/product/category/size, compare stock vs sales, and find what to reorder or avoid buying.
+              </p>
+            </Link>
+          ) : null}
+          {!limited ? (
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-            href="/app/reports/sales/analytics"
-          >
-            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-              <LineChart className="size-5" />
-            </div>
-            <h2 className="text-2xl font-semibold">Sales Analytics</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Track sales trends, targets, daily movement, brands and categories from uploaded sales rows.
-            </p>
-          </Link>
+              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
+              href="/app/reports/sales/analytics"
+            >
+              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+                <LineChart className="size-5" />
+              </div>
+              <h2 className="text-2xl font-semibold">Sales Analytics</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Track sales trends, targets, daily movement, brands and categories from uploaded sales rows.
+              </p>
+            </Link>
+          ) : null}
+          {!limited ? (
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-            href="/app/reports/staff"
-          >
-            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-              <UserRoundCheck className="size-5" />
-            </div>
-            <h2 className="text-2xl font-semibold">Staff Sales Report</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Check staff performance for daily, weekly and monthly sales.
-            </p>
-          </Link>
+              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
+              href="/app/reports/staff"
+            >
+              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+                <UserRoundCheck className="size-5" />
+              </div>
+              <h2 className="text-2xl font-semibold">Staff Sales Report</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Check staff performance for daily, weekly and monthly sales.
+              </p>
+            </Link>
+          ) : null}
           <Link
             className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
             href="/app/reports/staff-aliases"
@@ -211,58 +223,64 @@ export default async function ReportsPage() {
               ))}
             </div>
           </Link>
+          {!limited ? (
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-            href="/app/reports/stock/analytics"
-          >
-            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-              <PackageSearch className="size-5" />
-            </div>
-            <h2 className="text-2xl font-semibold">Stock Analytics</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Review stock movement, possible dead stock, high-stock low-sale items and reorder signals.
-            </p>
-          </Link>
+              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
+              href="/app/reports/stock/analytics"
+            >
+              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+                <PackageSearch className="size-5" />
+              </div>
+              <h2 className="text-2xl font-semibold">Stock Analytics</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Review stock movement, possible dead stock, high-stock low-sale items and reorder signals.
+              </p>
+            </Link>
+          ) : null}
+          {!limited ? (
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-            href="/app/reports/salary-attendance"
-          >
-            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-              <CalendarClock className="size-5" />
-            </div>
-            <h2 className="text-2xl font-semibold">Salary Attendance</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Due day 1. Salary day 3. Current month: {salaryOverview.periodMonth}.
-            </p>
-            <div className="mt-4 space-y-2">
-              {salaryOverview.statuses.map((status) => (
-                <div className="flex items-center justify-between gap-3 text-sm" key={status.store.id}>
-                  <span className="font-medium">{status.store.name}</span>
-                  <span
-                    className={
-                      status.report
-                        ? "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success"
-                        : "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger"
-                    }
-                  >
-                    {status.report ? "Uploaded" : "Missing"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Link>
+              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
+              href="/app/reports/salary-attendance"
+            >
+              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+                <CalendarClock className="size-5" />
+              </div>
+              <h2 className="text-2xl font-semibold">Salary Attendance</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Due day 1. Salary day 3. Current month: {salaryOverview.periodMonth}.
+              </p>
+              <div className="mt-4 space-y-2">
+                {salaryOverview.statuses.map((status) => (
+                  <div className="flex items-center justify-between gap-3 text-sm" key={status.store.id}>
+                    <span className="font-medium">{status.store.name}</span>
+                    <span
+                      className={
+                        status.report
+                          ? "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success"
+                          : "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger"
+                      }
+                    >
+                      {status.report ? "Uploaded" : "Missing"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Link>
+          ) : null}
+          {!limited ? (
           <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-            href="/app/employees"
-          >
-            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-              <Phone className="size-5" />
-            </div>
-            <h2 className="text-2xl font-semibold">Staff Phone Directory</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Phone numbers for assigned store staff.
-            </p>
-          </Link>
+              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
+              href="/app/employees"
+            >
+              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+                <Phone className="size-5" />
+              </div>
+              <h2 className="text-2xl font-semibold">Staff Phone Directory</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Phone numbers for assigned store staff.
+              </p>
+            </Link>
+          ) : null}
           {profile?.role === "owner" ? (
             <>
               <Link
@@ -296,7 +314,7 @@ export default async function ReportsPage() {
 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Recent sales uploads</h2>
-        <SalesReportList reports={recentReports} />
+        <SalesReportList hideAmounts={limited} reports={recentReports} />
       </section>
     </div>
   );

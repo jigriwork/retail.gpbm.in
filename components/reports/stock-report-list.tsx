@@ -21,9 +21,12 @@ function formatMoney(value?: number | null) {
 }
 
 export function StockReportList({
+  hideAmounts = false,
   reports,
   emptyText = "No stock reports uploaded yet.",
 }: {
+  /** Leave out the stock value; rows, quantity and items still show. */
+  hideAmounts?: boolean;
   reports: StockReportWithStore[];
   emptyText?: string;
 }) {
@@ -64,10 +67,12 @@ export function StockReportList({
               <p className="text-xs font-medium text-muted">Quantity</p>
               <p className="mt-1 font-semibold">{formatNumber(report.summary?.totalQuantity)}</p>
             </div>
-            <div className="rounded-2xl border border-border p-3">
-              <p className="text-xs font-medium text-muted">MRP value</p>
-              <p className="mt-1 font-semibold">{formatMoney(report.summary?.totalStockValueMrp)}</p>
-            </div>
+            {!hideAmounts ? (
+              <div className="rounded-2xl border border-border p-3">
+                <p className="text-xs font-medium text-muted">MRP value</p>
+                <p className="mt-1 font-semibold">{formatMoney(report.summary?.totalStockValueMrp)}</p>
+              </div>
+            ) : null}
             <div className="rounded-2xl border border-border p-3">
               <p className="text-xs font-medium text-muted">Items</p>
               <p className="mt-1 font-semibold">{report.summary?.itemCount ?? 0}</p>

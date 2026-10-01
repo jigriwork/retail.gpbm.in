@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { LockKeyhole } from "lucide-react";
 
 import { LoginForm } from "@/components/auth/login-form";
+import { managerHoursLabel } from "@/lib/auth/access";
 import { signOut } from "@/lib/auth/actions";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
 import packageJson from "@/package.json";
@@ -76,6 +77,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <LockKeyhole className="size-5" />
             </div>
           </div>
+          {error === "hours" ? (
+            <p className="mb-5 rounded-2xl border border-accent/40 bg-accent-soft px-4 py-3 text-sm font-medium leading-6 text-accent-ink">
+              Store manager access is open from {managerHoursLabel}. Please log in again during store hours.
+            </p>
+          ) : null}
           <LoginForm />
         </div>
       </section>

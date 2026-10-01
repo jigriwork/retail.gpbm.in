@@ -5,6 +5,7 @@ import { PackageSearch } from "lucide-react";
 import { StockReportList } from "@/components/reports/stock-report-list";
 import { StockUploadForm } from "@/components/reports/stock-upload-form";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { isLimitedView } from "@/lib/auth/view";
 import { uploadStockReport } from "@/lib/reports/stock-actions";
 import { getRecentStockReports, getStockOverview } from "@/lib/reports/stock-queries";
 
@@ -15,6 +16,7 @@ export default async function StockReportsPage({
 }) {
   const { storeId } = await searchParams;
   const { profile } = await requireProfile();
+  const limited = await isLimitedView(profile);
   const stores = await getAccessibleStores(profile);
   const [recentReports, overview] = await Promise.all([
     getRecentStockReports(8),
@@ -35,6 +37,7 @@ export default async function StockReportsPage({
       </div>
 
       <section className="grid gap-3 sm:grid-cols-2">
+        {!limited ? (
         <Link
           className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
           href="/app/reports/stock/analytics"
@@ -47,6 +50,7 @@ export default async function StockReportsPage({
             Open all stores as separate store-wise stock reports, or use each store card below.
           </p>
         </Link>
+        ) : null}
         {overview.statuses.map((status) => (
           <div className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm" key={status.store.id}>
             <div className="flex items-start justify-between gap-3">
@@ -71,12 +75,14 @@ export default async function StockReportsPage({
                 ? `${status.report.row_count ?? 0} rows processed.`
                 : "Upload the current month stock report."}
             </p>
-            <Link
-              className="mt-4 inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
-              href={`/app/reports/stock/analytics?storeId=${status.store.id}`}
-            >
-              Open {status.store.name} Stock Analytics
-            </Link>
+            {!limited ? (
+              <Link
+                className="mt-4 inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
+                href={`/app/reports/stock/analytics?storeId=${status.store.id}`}
+              >
+                Open {status.store.name} Stock Analytics
+              </Link>
+            ) : null}
           </div>
         ))}
       </section>
@@ -93,7 +99,7 @@ export default async function StockReportsPage({
 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Recent stock reports</h2>
-        <StockReportList reports={recentReports} />
+        <StockReportList hideAmounts={limited} reports={recentReports} />
       </section>
     </div>
   );

@@ -23,11 +23,14 @@ function formatDate(date: string | null) {
 
 export function SalesReportList({
   canRepair = false,
+  hideAmounts = false,
   repairAction,
   reports,
   emptyText = "No sales reports uploaded yet.",
 }: {
   canRepair?: boolean;
+  /** Leave out sale, MRP and discount amounts; rows and status still show. */
+  hideAmounts?: boolean;
   repairAction?: (previous: SalesRepairState, formData: FormData) => Promise<SalesRepairState>;
   reports: SalesReportWithStore[];
   emptyText?: string;
@@ -60,6 +63,8 @@ export function SalesReportList({
             </span>
           </div>
           <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
+            {!hideAmounts ? (
+              <>
             <div className="rounded-2xl border border-border p-3">
               <p className="text-xs font-medium text-muted">Actual sale (incl. tax)</p>
               <p className="mt-1 font-semibold">
@@ -83,6 +88,8 @@ export function SalesReportList({
                 </p>
               ) : report.summary?.mrpRowCount ? <p className="mt-1 text-xs text-muted">Avg not available</p> : null}
             </div>
+              </>
+            ) : null}
             <div className="rounded-2xl border border-border p-3">
               <p className="text-xs font-medium text-muted">Rows</p>
               <p className="mt-1 font-semibold">{report.row_count ?? 0}</p>

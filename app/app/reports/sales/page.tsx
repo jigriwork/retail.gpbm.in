@@ -5,6 +5,7 @@ import { SalesReportList } from "@/components/reports/sales-report-list";
 import { SalesUploadForm } from "@/components/reports/sales-upload-form";
 import { repairSalesReportTotals, uploadSalesReport } from "@/lib/reports/sales-actions";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { isLimitedView } from "@/lib/auth/view";
 import { getRecentSalesReports } from "@/lib/reports/sales-queries";
 
 export default async function SalesReportsPage({
@@ -14,6 +15,7 @@ export default async function SalesReportsPage({
 }) {
   const { storeId } = await searchParams;
   const { profile } = await requireProfile();
+  const limited = await isLimitedView(profile);
   const stores = await getAccessibleStores(profile);
   const recentReports = await getRecentSalesReports(8);
   const defaultStoreId = stores.some((store) => store.id === storeId) ? storeId : stores[0]?.id;
@@ -56,6 +58,7 @@ export default async function SalesReportsPage({
         <h2 className="text-xl font-semibold">Recent sales reports</h2>
         <SalesReportList
           canRepair={profile?.role === "owner"}
+          hideAmounts={limited}
           repairAction={repairSalesReportTotals}
           reports={recentReports}
         />

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { RefreshReleaseButton } from "@/components/app/refresh-release-button";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { isLimitedView } from "@/lib/auth/view";
 import { FirmMappingForm } from "@/components/stores/firm-mapping-form";
 import { StoreTargetForm } from "@/components/stores/store-target-form";
 import { updateStoreFirmName } from "@/lib/stores/firm-actions";
@@ -43,6 +44,7 @@ export default async function SettingsPage() {
   const supabase = await createClient();
   const { profile } = await requireProfile();
   const stores = await getAccessibleStores(profile);
+  const limited = await isLimitedView(profile);
   const { data: settings } = await supabase
     .from("app_settings")
     .select("key,value")
@@ -102,20 +104,24 @@ export default async function SettingsPage() {
         </Link>
       </section>
 
-      <div className="pt-2">
-        <h2 className="text-2xl font-semibold">Staff</h2>
-        <p className="mt-2 text-sm leading-6 text-muted">
-          Maintain staff phone numbers for assigned stores.
-        </p>
-      </div>
-      <section>
-        <Link
-          className="inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
-          href="/app/employees"
-        >
-          Staff Phone Directory
-        </Link>
-      </section>
+      {!limited ? (
+        <>
+          <div className="pt-2">
+            <h2 className="text-2xl font-semibold">Staff</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Maintain staff phone numbers for assigned stores.
+            </p>
+          </div>
+          <section>
+            <Link
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
+              href="/app/employees"
+            >
+              Staff Phone Directory
+            </Link>
+          </section>
+        </>
+      ) : null}
 
       {profile?.role === "owner" ? (
         <>
@@ -180,7 +186,7 @@ export default async function SettingsPage() {
           </section>
         </>
       ) : (
-        stores.some((store) => store.monthly_target_enabled) ? (
+        !limited && stores.some((store) => store.monthly_target_enabled) ? (
           <>
             <div className="pt-2">
               <h2 className="text-2xl font-semibold">Store targets</h2>
