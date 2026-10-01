@@ -95,26 +95,26 @@ export const tiaTools: FunctionDeclaration[] = [
   },
   {
     name: "get_sales",
-    description: "Sales totals, bills, top staff, brands, categories and daily trend for a date range.",
+    description: "Sales totals, bills, top staff, brands, categories and daily trend for any date range. Use for sales over any period, best or worst days, what is selling, and comparisons (call once per period).",
     parameters: {
       type: "OBJECT",
       properties: {
         start_date: { type: "STRING", description: "YYYY-MM-DD" },
         end_date: { type: "STRING", description: "YYYY-MM-DD" },
-        store: { type: "STRING", description: "'all', 'Go Planet' or 'Brand Mark'. Default all." },
+        store: { type: "STRING", description: "'all' or a store name. Default all." },
       },
       required: ["start_date", "end_date"],
     },
   },
   {
     name: "get_staff_sales",
-    description: "Staff-wise sales (total, bills, quantity, average bill) for a date range.",
+    description: "Staff-wise sales (total, bills, quantity, average bill) for any date range. Use for 'who performed best', staff rankings, or one person's sales over a day, week, month or custom period.",
     parameters: {
       type: "OBJECT",
       properties: {
         start_date: { type: "STRING", description: "YYYY-MM-DD" },
         end_date: { type: "STRING", description: "YYYY-MM-DD" },
-        store: { type: "STRING", description: "'all', 'Go Planet' or 'Brand Mark'. Default all." },
+        store: { type: "STRING", description: "'all' or a store name. Default all." },
       },
       required: ["start_date", "end_date"],
     },

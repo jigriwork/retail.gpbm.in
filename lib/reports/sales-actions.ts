@@ -285,7 +285,7 @@ export async function uploadSalesReport(
   const store = stores.find((item) => item.id === storeId);
 
   if (!store || store.is_active === false) {
-    return { ok: false, message: "Choose an active Go Planet or Brand Mark store." };
+    return { ok: false, message: "Choose an active store." };
   }
 
   const parseResult = await parseSalesFileDetailed(file);

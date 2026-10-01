@@ -18,7 +18,7 @@ export default async function PayslipUploadPage({
     return <AccessDenied message="Managers do not have payslip access in v1." />;
   }
 
-  const stores = (await getAccessibleStores(profile)).filter((store) => ["GP", "BM"].includes(store.code));
+  const stores = (await getAccessibleStores(profile)).filter((store) => store.is_active);
   const errorMessage =
     error === "missing"
       ? "Choose a salary month and upload a salary sheet."

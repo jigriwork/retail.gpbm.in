@@ -24,14 +24,14 @@ export type TaskWithRelations = {
   store_id: string | null;
   title: string;
   updated_at: string | null;
-  stores: { id: string; name: string; code: string } | null;
+  stores: { id: string; name: string; code: string; is_active?: boolean | null } | null;
   assigned_profile: { id: string; full_name: string | null; email: string | null } | null;
   assigned_employee: { id: string; staff_name: string; store_id: string | null } | null;
 };
 
 const taskSelect = `
   *,
-  stores(id,name,code),
+  stores(id,name,code,is_active),
   assigned_profile:profiles!tasks_assigned_to_fkey(id,full_name,email),
   assigned_employee:employee_contacts!tasks_assigned_employee_id_fkey(id,staff_name,store_id)
 `;
@@ -45,7 +45,8 @@ export async function getTasksForProfile() {
     .order("due_time", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false }));
 
-  return (data ?? []) as TaskWithRelations[];
+  // Tasks of a switched-off store stay in the database but leave daily work.
+  return ((data ?? []) as TaskWithRelations[]).filter((task) => task.stores?.is_active !== false);
 }
 
 export function filterTasksByTab(tasks: TaskWithRelations[], tab: string) {

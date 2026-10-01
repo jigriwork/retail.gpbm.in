@@ -183,7 +183,7 @@ export async function parsePayslipWorkbook({
         warningMessage = "Missing salary amount.";
       } else if (!rowStore || !rowStore.firm_name) {
         status = "failed";
-        warningMessage = "Missing store/firm mapping. Choose Go Planet or Brand Mark, then upload again.";
+        warningMessage = "Missing store/firm mapping. Choose the store (and set its billing firm name), then upload again.";
       } else if (uploadedTotalAmount !== null && Math.abs(uploadedTotalAmount - calculatedTotalAmount) > 1) {
         status = "total_mismatch";
         warningMessage = `Uploaded Total Amount does not match calculated salary. Uploaded Total: Rs ${uploadedTotalAmount.toFixed(2)}, Calculated Total: Rs ${calculatedTotalAmount.toFixed(2)}. Please review before sharing.`;

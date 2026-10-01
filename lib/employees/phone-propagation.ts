@@ -20,7 +20,7 @@ export async function requirePhoneActor() {
 export async function requirePhoneStore(storeId: string, actor: Awaited<ReturnType<typeof requirePhoneActor>>) {
   const { data: store, error } = await actor.client.from("stores").select("id,code,is_active")
     .eq("id", storeId).maybeSingle();
-  if (error || !store || store.is_active !== true || !["GP", "BM"].includes(store.code)) {
+  if (error || !store || store.is_active !== true) {
     throw new Error("Employee store is unavailable.");
   }
   if (actor.profile.role !== "owner") {

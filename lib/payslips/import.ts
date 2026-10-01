@@ -31,7 +31,7 @@ export async function processPayrollUpload(form: FormData): Promise<PayrollUploa
     const month = String(form.get("salaryMonth") ?? "");
     const file = form.get("file");
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || !(file instanceof File)) throw new Error("Invalid input");
-    const stores = (await getAccessibleStores()).filter(store => ["GP", "BM"].includes(store.code));
+    const stores = (await getAccessibleStores()).filter(store => store.is_active);
     if (file.size > 15 * 1024 * 1024) throw new Error("File too large");
     const buffer = await file.arrayBuffer();
     const rows = await parsePayslipWorkbook({ buffer, fileName: file.name, mimeType: file.type, salaryMonth: `${month}-01`,

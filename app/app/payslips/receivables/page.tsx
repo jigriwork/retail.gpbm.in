@@ -49,7 +49,6 @@ export default async function ReceivablesPage({
     .from("stores")
     .select("id,name,code")
     .eq("is_active", true)
-    .in("code", ["GP", "BM"])
     .order("name");
 
   const activeStores = stores ?? [];

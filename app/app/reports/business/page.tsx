@@ -878,7 +878,7 @@ export default async function BusinessReportingPage({
 }) {
   const params = await searchParams;
   const { profile } = await requireProfile();
-  const stores = (await getAccessibleStores(profile)).filter((store) => ["GP", "BM"].includes(store.code));
+  const stores = (await getAccessibleStores(profile)).filter((store) => store.is_active);
   const selectedStoreId = params.storeId && stores.some((store) => store.id === params.storeId) ? params.storeId : "all";
   const selectedStores = selectedStoreId === "all" ? stores : stores.filter((store) => store.id === selectedStoreId);
   const period = safePeriod(params.period);

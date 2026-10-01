@@ -60,7 +60,7 @@ async function requireContactUserOrRedirect(): Promise<ContactSession> {
 
 async function getWritableEmployeeStores(profile: Profile) {
   return (await getAccessibleStores(profile)).filter(
-    (store) => store.is_active && ["GP", "BM"].includes(store.code),
+    (store) => store.is_active,
   );
 }
 

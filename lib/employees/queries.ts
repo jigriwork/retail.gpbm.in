@@ -3,7 +3,7 @@ import { getAccessibleStores, type Profile } from "@/lib/auth/session";
 
 export async function getActiveEmployeeStores(profile?: Profile | null) {
   const stores = await getAccessibleStores(profile);
-  return stores.filter((store) => store.is_active && ["GP", "BM"].includes(store.code));
+  return stores.filter((store) => store.is_active);
 }
 
 export async function getEmployeeContacts({

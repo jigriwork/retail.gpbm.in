@@ -58,7 +58,7 @@ async function validateStoreAccess(storeId: string) {
   if (!store || store.is_active === false) {
     return {
       ok: false as const,
-      message: "Choose an active Go Planet or Brand Mark store.",
+      message: "Choose an active store.",
       profile,
       store: null,
     };

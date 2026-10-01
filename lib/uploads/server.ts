@@ -28,7 +28,7 @@ export async function authorizeUpload(kind: UploadKind, form: FormData) {
     if (error || !data?.store_id || data.report_type !== "sales") throw new Error("Replacement report unavailable.");
     storeId = data.store_id;
   }
-  if (kind === "payroll" && !storeId) storeId = (await getAccessibleStores(profile)).find(store => store.code === "GP")?.id ?? "";
+  if (kind === "payroll" && !storeId) { const stores = await getAccessibleStores(profile); storeId = (stores.find(store => store.code === "GP") ?? stores[0])?.id ?? ""; }
   if (!storeId || !(await canAccessStore(storeId, profile))) throw new Error("This store is not assigned and active.");
   return { profile, storeId, client };
 }

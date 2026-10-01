@@ -272,8 +272,7 @@ export async function updateManagerStoreAssignments(formData: FormData) {
   const { data: activeStores } = await supabase
     .from("stores")
     .select("id")
-    .eq("is_active", true)
-    .in("code", ["GP", "BM"]);
+    .eq("is_active", true);
   const activeStoreIds = new Set((activeStores ?? []).map((store) => store.id));
   const validSelectedStoreIds = [...new Set(selectedStoreIds)].filter((storeId) =>
     activeStoreIds.has(storeId),
