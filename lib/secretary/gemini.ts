@@ -339,10 +339,15 @@ export async function speakAsTia(text: string) {
       {
         parts: [
           {
+            // TTS models accept no separate instructions, and a plain "Speak as…"
+            // line was sometimes read aloud. This profile/transcript layout keeps
+            // the style out of the spoken words.
             text: [
-              "Speak as Tia, a warm, friendly young Indian woman from Odisha working as a personal secretary.",
-              "Use a natural Indian English accent, and natural Hindi pronunciation for Hindi words, like a real Indian speaker — not American or British. Calm, pleasant pace:",
-              text,
+              "# AUDIO PROFILE: Tia",
+              "A warm, friendly young Indian woman. Natural Indian English accent, natural Hindi pronunciation, calm pleasant pace.",
+              "",
+              "# TRANSCRIPT",
+              `Tia: ${text}`,
             ].join("\n"),
           },
         ],

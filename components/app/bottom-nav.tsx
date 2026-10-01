@@ -19,7 +19,7 @@ export function BottomNav({ role }: { role?: string }) {
   const visibleItems = role === "owner" ? navItems : navItems.filter((item) => !item.ownerOnly);
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 backdrop-blur">
+    <nav id="app-bottom-nav" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 backdrop-blur">
       <div className={cn("mx-auto grid max-w-3xl gap-1", visibleItems.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
         {visibleItems.map((item) => {
           const Icon = item.icon;

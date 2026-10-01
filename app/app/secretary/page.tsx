@@ -44,6 +44,7 @@ export default async function SecretaryPage() {
   // Oldest first, like any chat; the newest answer sits just above the message box.
   const messages: ChatMessage[] = [...(chats ?? [])].reverse().map((chat) => ({
     actions: withState(chat.metadata),
+    at: chat.created_at ?? undefined,
     content: chat.content ?? "",
     error: Boolean((chat.metadata as Metadata)?.error),
     id: chat.id,
@@ -51,50 +52,38 @@ export default async function SecretaryPage() {
     spoken: Boolean((chat.metadata as Metadata)?.spoken),
   }));
 
-  return (
-    <div className="space-y-4">
-      <section className="flex items-center gap-3 px-1">
-        <span className="relative flex size-11 shrink-0 items-center justify-center rounded-full bg-primary-deep font-display text-lg font-bold text-accent">
-          T
-          <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-background bg-success" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold leading-tight sm:text-2xl">Tia</h1>
-          <p className="text-xs font-medium text-muted sm:text-sm">Your AI secretary · English or Hindi</p>
-        </div>
-        <details className="group relative">
-          <summary className="flex h-10 cursor-pointer list-none items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-semibold shadow-sm [&::-webkit-details-marker]:hidden">
-            <Brain className="size-4 text-primary" />
-            <span className="hidden sm:inline">Memory</span>
-            <span className="rounded-full bg-primary-soft px-1.5 text-primary">{memories.length}</span>
-          </summary>
-          <div className="absolute right-0 z-30 mt-2 max-h-[60vh] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-xl">
-            <h2 className="text-base font-semibold">What Tia remembers</h2>
-            {memories.length ? (
-              <div className="mt-3 space-y-2">
-                {memories.map((memory) => (
-                  <div className="rounded-xl border border-border p-3" key={memory.id}>
-                    <p className="text-sm font-semibold">{memory.title ?? "Memory"}</p>
-                    <p className="mt-1 text-sm leading-6 text-muted">{memory.content}</p>
-                    <form action={deactivateMemory} className="mt-2">
-                      <input name="memoryId" type="hidden" value={memory.id} />
-                      <button className="text-xs font-semibold text-muted underline" type="submit">
-                        Forget this
-                      </button>
-                    </form>
-                  </div>
-                ))}
+  const memory = (
+    <details className="group relative">
+      <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 text-xs font-semibold shadow-sm [&::-webkit-details-marker]:hidden">
+        <Brain className="size-4 text-primary" />
+        <span className="hidden sm:inline">Memory</span>
+        <span className="rounded-full bg-primary-soft px-1.5 text-primary">{memories.length}</span>
+      </summary>
+      <div className="absolute right-0 z-30 mt-2 max-h-[60vh] w-[min(22rem,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-xl">
+        <h2 className="text-base font-semibold">What Tia remembers</h2>
+        {memories.length ? (
+          <div className="mt-3 space-y-2">
+            {memories.map((memory) => (
+              <div className="rounded-xl border border-border p-3" key={memory.id}>
+                <p className="text-sm font-semibold">{memory.title ?? "Memory"}</p>
+                <p className="mt-1 text-sm leading-6 text-muted">{memory.content}</p>
+                <form action={deactivateMemory} className="mt-2">
+                  <input name="memoryId" type="hidden" value={memory.id} />
+                  <button className="text-xs font-semibold text-muted underline" type="submit">
+                    Forget this
+                  </button>
+                </form>
               </div>
-            ) : (
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Nothing yet. Tell Tia about your business — staff, suppliers, plans — and she will remember it.
-              </p>
-            )}
+            ))}
           </div>
-        </details>
-      </section>
-
-      <TiaChat initialMessages={messages} ownerName={ownerFirstName(session.profile)} />
-    </div>
+        ) : (
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Nothing yet. Tell Tia about your business — staff, suppliers, plans — and she will remember it.
+          </p>
+        )}
+      </div>
+    </details>
   );
+
+  return <TiaChat initialMessages={messages} memory={memory} ownerName={ownerFirstName(session.profile)} />;
 }

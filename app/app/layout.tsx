@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LockKeyhole, LogOut, Settings, ShieldCheck, UsersRound } from "lucide-react";
 
 import { BottomNav } from "@/components/app/bottom-nav";
+import { ChromeMeasure } from "@/components/app/chrome-measure";
 import { LiveClock } from "@/components/app/live-clock";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth/actions";
@@ -61,7 +62,7 @@ export default async function ProtectedAppLayout({
 
   return (
     <div className="min-h-dvh bg-background pb-24 text-foreground">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 pb-2 pt-[max(env(safe-area-inset-top),0.5rem)] backdrop-blur sm:px-4 sm:py-3">
+      <header id="app-header" className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 pb-2 pt-[max(env(safe-area-inset-top),0.5rem)] backdrop-blur sm:px-4 sm:py-3">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 sm:gap-3">
           <div className="min-w-0 flex-1">
             <Link
@@ -114,6 +115,7 @@ export default async function ProtectedAppLayout({
 
       <main className="mx-auto w-full max-w-5xl px-3 py-4 sm:px-4 sm:py-5">{children}</main>
       <BottomNav role={profile.role} />
+      <ChromeMeasure />
     </div>
   );
 }
