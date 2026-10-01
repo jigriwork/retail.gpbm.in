@@ -25,7 +25,7 @@ export function DailySalesBars({ points }: { points: Array<{ date: string; total
 
   return (
     <div className="h-52">
-      <ResponsiveContainer height="100%" width="100%">
+      <ResponsiveContainer height="100%" initialDimension={{ height: 220, width: 600 }} width="100%">
         <BarChart data={points} margin={{ bottom: 0, left: 0, right: 4, top: 8 }}>
           <CartesianGrid stroke="#ECEBF3" strokeDasharray="3 4" vertical={false} />
           <XAxis

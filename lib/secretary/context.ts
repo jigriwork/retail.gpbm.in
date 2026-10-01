@@ -1,5 +1,5 @@
 import { checkedQuery } from "@/lib/supabase/complete-query";
-import { getAccessibleStores, type Profile } from "@/lib/auth/session";
+import { getAccessibleStores, type Profile, type Store } from "@/lib/auth/session";
 import { getAccessibleChecklists } from "@/lib/checklist/queries";
 import { getSalaryAttendanceOverview } from "@/lib/reports/salary-queries";
 import { getStockOverview } from "@/lib/reports/stock-queries";
@@ -59,8 +59,58 @@ export async function getActiveAiMemories(userId: string) {
   return data ?? [];
 }
 
+// The business snapshot (sales, stock, checklists, salary, audits) takes a
+// dozen queries, so it is kept for a few minutes per owner and reused across
+// messages. Tasks, memories and the clock are read fresh on every message.
+const snapshotTtlMs = 5 * 60 * 1000;
+const maxSnapshots = 50;
+const snapshots = new Map<string, { at: number; text: Promise<string> }>();
+
+function cachedBusinessSnapshot(profile: Profile, stores: Store[], includeAudit: boolean) {
+  const key = `${profile.id}:${includeAudit ? "audit" : "daily"}`;
+  const hit = snapshots.get(key);
+  if (hit && Date.now() - hit.at < snapshotTtlMs) return hit.text;
+  const text = businessSnapshot(stores, includeAudit).catch((error) => {
+    snapshots.delete(key);
+    throw error;
+  });
+  snapshots.delete(key);
+  snapshots.set(key, { at: Date.now(), text });
+  while (snapshots.size > maxSnapshots) snapshots.delete(snapshots.keys().next().value!);
+  return text;
+}
+
+/** Starts building the snapshot so the owner's first message does not wait for it. */
+export async function warmSecretaryContext(profile: Profile) {
+  const stores = await getAccessibleStores(profile);
+  await cachedBusinessSnapshot(profile, stores, isWeeklyAuditDay());
+}
+
 export async function buildSecretaryContext(profile: Profile, prompt: string) {
   const stores = await getAccessibleStores(profile);
+  const [snapshot, tasks, memories] = await Promise.all([
+    cachedBusinessSnapshot(profile, stores, shouldIncludeWeeklyAudit(prompt)),
+    visibleTasks(profile.id),
+    getActiveAiMemories(profile.id),
+  ]);
+
+  return [
+    `Current India time: ${nowInIndia()}.`,
+    `User: ${profile.full_name ?? "GPBM user"} (${profile.role}).`,
+    `Active accessible stores: ${stores.map((store) => `${store.name} (${store.code})`).join(", ") || "none"}.`,
+    "",
+    snapshot,
+    "",
+    "Tasks and the owner's to-dos (use these ids with complete_task / reschedule_task):",
+    ...pendingWorkLines(tasks, profile.id),
+    "",
+    memories.length
+      ? ["What you remember about this owner and the business:", ...memories.map((memory) => `- ${memory.title ?? "Memory"}: ${memory.content}`)].join("\n")
+      : "What you remember about this owner and the business: nothing yet.",
+  ].join("\n");
+}
+
+async function businessSnapshot(stores: Store[], includeAudit: boolean) {
   const storeIds = stores.map((store) => store.id);
   const supabase = await createClient();
   const monthRange = currentMonthRange();
@@ -72,21 +122,17 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
     staffYesterday,
     salaryOverview,
     stockOverview,
-    tasks,
     updateSummary,
-    memories,
     latestStockMonth,
     suspiciousSalesReports,
   ] = await Promise.all([
-    getAccessibleChecklists(profile),
+    getAccessibleChecklists(null, stores),
     getStoreSalesStatuses(stores),
     getSalesSummary({ storeIds, dateRange: monthRange }, stores),
     getStaffSalesSummary({ storeIds, dateRange: getDateRangeForPeriod("yesterday") }),
     getSalaryAttendanceOverview(stores),
     getStockOverview(stores),
-    visibleTasks(profile.id),
     getTodayUpdateSummary(stores),
-    getActiveAiMemories(profile.id),
     getLatestStockMonth(),
     getSuspiciousSalesReportWarningsFromReports({
       endDate: monthRange.endDate,
@@ -105,7 +151,7 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
           stores,
         })
       : null,
-    shouldIncludeWeeklyAudit(prompt) ? getWeeklyAuditSummaries(stores, weeklyRange) : [],
+    includeAudit ? getWeeklyAuditSummaries(stores, weeklyRange) : [],
     checkedQuery(supabase
       .from("manager_updates")
       .select("title,details,urgency,status,created_at,stores(name,code)")
@@ -122,10 +168,6 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
   ]);
 
   return [
-    `Current India time: ${nowInIndia()}.`,
-    `User: ${profile.full_name ?? "GPBM user"} (${profile.role}).`,
-    `Active accessible stores: ${stores.map((store) => `${store.name} (${store.code})`).join(", ") || "none"}.`,
-    "",
     "Today checklist status:",
     ...checklists.map(
       (item) =>
@@ -185,15 +227,8 @@ export async function buildSecretaryContext(profile: Profile, prompt: string) {
         `- ${update.stores?.name ?? "Store"}: ${update.title} (${update.urgency ?? "normal"}, ${update.status ?? "open"}).`,
     ),
     "",
-    "Tasks and the owner's to-dos (use these ids with complete_task / reschedule_task):",
-    ...pendingWorkLines(tasks, profile.id),
-    "",
     `Salary attendance: ${salaryOverview.uploadedCount} uploaded, ${salaryOverview.missingCount} missing for ${salaryOverview.periodMonth}.`,
     `Stock report: ${stockOverview.uploadedCount} uploaded, ${stockOverview.missingCount} missing for ${stockOverview.periodMonth}.`,
-    "",
-    memories.length
-      ? ["What you remember about this owner and the business:", ...memories.map((memory) => `- ${memory.title ?? "Memory"}: ${memory.content}`)].join("\n")
-      : "What you remember about this owner and the business: nothing yet.",
     "",
     weeklyAudits.length
       ? [

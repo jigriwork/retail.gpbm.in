@@ -159,6 +159,134 @@ export async function runChatWithTools({
   throw new Error("Gemini returned an empty response.");
 }
 
+async function openStream(models: string[], body: object, signal?: AbortSignal) {
+  let lastStatus = 0;
+  for (const model of [...new Set(models)]) {
+    try {
+      const response = await fetch(`${apiBase}/${model}:streamGenerateContent?alt=sse&key=${apiKey()}`, {
+        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(requestTimeoutMs * 2)]) : AbortSignal.timeout(requestTimeoutMs * 2),
+      });
+      if (response.ok && response.body) return { model, response };
+      lastStatus = response.status;
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      lastStatus = 0;
+    }
+    if (!isRetryableStatus(lastStatus)) break;
+  }
+  if (lastStatus === 400 || lastStatus === 401 || lastStatus === 403) {
+    throw new Error(`Gemini request failed (${lastStatus}). Check API key and account permissions.`);
+  }
+  if (lastStatus === 429 || lastStatus >= 500) throw new Error(`Gemini is busy right now (${lastStatus}).`);
+  throw new Error("Gemini model is unavailable.");
+}
+
+/** Reads Gemini's server-sent events, calling `onPart` for each content part as it arrives. */
+async function readStream(response: Response, onPart: (part: GeminiPart) => void) {
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finishReason: string | undefined;
+  const handle = (line: string) => {
+    if (!line.startsWith("data:")) return;
+    const chunk = JSON.parse(line.slice(5).trim()) as { candidates?: Candidate[] };
+    const candidate = chunk.candidates?.[0];
+    for (const part of candidate?.content?.parts ?? []) onPart(part);
+    if (candidate?.finishReason) finishReason = candidate.finishReason;
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let newline = buffer.indexOf("\n");
+    while (newline >= 0) {
+      handle(buffer.slice(0, newline).trim());
+      buffer = buffer.slice(newline + 1);
+      newline = buffer.indexOf("\n");
+    }
+  }
+  if (buffer.trim()) handle(buffer.trim());
+  return finishReason;
+}
+
+/**
+ * Same turn as runChatWithTools, but each piece of Tia's answer is passed to
+ * `onText` as Gemini writes it, so the owner sees words within a second.
+ * Tool rounds run in between exactly as before.
+ */
+export async function streamChatWithTools({
+  execute,
+  history,
+  message,
+  onText,
+  signal,
+  system,
+  tools,
+}: {
+  execute: (name: string, args: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  history: GeminiContent[];
+  message: string;
+  onText: (text: string) => void;
+  signal?: AbortSignal;
+  system: string;
+  tools: FunctionDeclaration[];
+}) {
+  const models = [process.env.GEMINI_MODEL || defaultChatModel, ...chatFallbackModels];
+  const contents: GeminiContent[] = [...history, { role: "user", parts: [{ text: message }] }];
+  let answer = "";
+  let model = models[0];
+
+  for (let round = 0; round <= maxToolRounds; round += 1) {
+    // Once the first model answers, later tool rounds stay on it.
+    const opened = await openStream(round ? [model, ...models] : models, {
+      contents,
+      systemInstruction: { parts: [{ text: system }] },
+      tools: [{ functionDeclarations: tools }],
+      generationConfig: { maxOutputTokens: 1500, temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } },
+    }, signal);
+    model = opened.model;
+    const parts: GeminiPart[] = [];
+    const finishReason = await readStream(opened.response, (part) => {
+      parts.push(part);
+      if (!part.thought && typeof part.text === "string" && part.text) {
+        answer += part.text;
+        onText(part.text);
+      }
+    });
+    const calls = parts.filter((part) => part.functionCall);
+
+    if (!calls.length || round === maxToolRounds) {
+      if (!answer.trim()) throw new Error("Gemini returned an empty response.");
+      if (finishReason === "MAX_TOKENS") {
+        const note = "…\n\n(Answer was cut short — ask a narrower question for more detail.)";
+        answer += note;
+        onText(note);
+      }
+      return { model, text: answer.trim() };
+    }
+
+    contents.push({ role: "model", parts });
+    const responses = await Promise.all(
+      calls.map(async ({ functionCall }) => {
+        const { id, name } = functionCall!;
+        let response: Record<string, unknown>;
+        try {
+          response = await execute(name, functionCall!.args ?? {});
+        } catch (error) {
+          response = { ok: false, error: error instanceof Error ? error.message : "Tool failed." };
+        }
+        return { functionResponse: { ...(id ? { id } : {}), name, response } };
+      }),
+    );
+    contents.push({ role: "user", parts: responses });
+  }
+
+  throw new Error("Gemini returned an empty response.");
+}
+
 export async function transcribeVoiceNote(audio: { data: string; mimeType: string }, hints: string) {
   const { candidate } = await postWithFallback([process.env.GEMINI_MODEL || defaultChatModel, ...chatFallbackModels], {
     contents: [

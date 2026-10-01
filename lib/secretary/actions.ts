@@ -3,12 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import { getAccessibleStores, requireOwner } from "@/lib/auth/session";
-import { buildSecretaryContext, detectReplyLanguage, ownerFirstName, secretarySystemPrompt } from "@/lib/secretary/context";
-import { runChatWithTools, speakAsTia, transcribeVoiceNote, type GeminiContent } from "@/lib/secretary/gemini";
-import { createTiaExecutor, isTiaActionUndone, tiaTools, type TiaAction } from "@/lib/secretary/tools";
+import { speakAsTia } from "@/lib/secretary/gemini";
+import { isTiaActionUndone, type TiaAction } from "@/lib/secretary/tools";
+import { readTiaQuestion, runTiaTurn } from "@/lib/secretary/turn";
 import { createClient } from "@/lib/supabase/server";
-import type { Json } from "@/lib/supabase/database.types";
-import { getIndiaToday } from "@/lib/tasks/dates";
 
 export type SecretaryChatState = {
   ok: boolean;
@@ -18,28 +16,11 @@ export type SecretaryChatState = {
   transcript?: string;
 };
 
-const maxPromptLength = 1000;
-const maxContextLength = 16000;
-const historyMessages = 24;
-// A pause this long starts a new conversation, so Tia greets again.
-const newConversationGapMs = 3 * 60 * 60 * 1000;
-const maxAudioBytes = 120 * 1024;
-const audioTypes = new Set(["audio/webm", "audio/mp4", "audio/aac", "audio/ogg", "audio/mpeg", "audio/wav", "audio/x-m4a"]);
-
-type ChatMetadata = { source?: string; error?: boolean; spoken?: boolean; model?: string; actions?: TiaAction[] };
+type ChatMetadata = { actions?: TiaAction[] };
 
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
-}
-
-async function readVoiceNote(formData: FormData) {
-  const file = formData.get("audio");
-  if (!(file instanceof Blob) || file.size === 0) return null;
-  const mimeType = file.type.split(";")[0].toLowerCase();
-  if (!audioTypes.has(mimeType)) throw new Error("That recording format is not supported.");
-  if (file.size > maxAudioBytes) throw new Error("That voice note is too long. Keep it under 45 seconds.");
-  return { data: Buffer.from(await file.arrayBuffer()).toString("base64"), mimeType };
 }
 
 export async function sendSecretaryMessage(
@@ -53,112 +34,23 @@ export async function sendSecretaryMessage(
   }
 
   const profile = session.profile;
-  const supabase = await createClient();
   const stores = await getAccessibleStores(profile);
-  let prompt = readString(formData, "prompt").slice(0, maxPromptLength);
-  let spoken = false;
+  const question = await readTiaQuestion(formData, stores);
+  if (!question.ok) return { ok: false, message: question.message };
 
-  try {
-    const voiceNote = await readVoiceNote(formData);
-    if (voiceNote) {
-      prompt = (await transcribeVoiceNote(voiceNote, stores.map((store) => store.name).join(", "))).slice(0, maxPromptLength);
-      spoken = true;
-      if (!prompt) return { ok: false, message: "I couldn't hear anything. Try again a little closer to the phone." };
-    }
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : "Could not read the voice note." };
+  const result = await runTiaTurn({ profile, prompt: question.prompt, spoken: question.spoken, stores });
+  revalidatePath("/app/secretary");
+  if (result.actions.length) {
+    revalidatePath("/app/today");
+    revalidatePath("/app/tasks");
   }
-
-  if (!prompt) {
-    return { ok: false, message: "Type or say something for Tia." };
-  }
-
-  // Earlier conversation, oldest first; failed replies are left out so Tia
-  // does not repeat old error text.
-  const { data: recent } = await supabase
-    .from("ai_chats")
-    .select("role,content,created_at,metadata")
-    .eq("user_id", profile.id)
-    .order("created_at", { ascending: false })
-    .limit(historyMessages);
-  const earlier = [...(recent ?? [])].reverse();
-  const lastAt = earlier.at(-1)?.created_at;
-  const greet = !lastAt || Date.now() - Date.parse(lastAt) > newConversationGapMs;
-  const history: GeminiContent[] = [];
-  for (const chat of earlier) {
-    if (!chat.content || (chat.metadata as ChatMetadata | null)?.error) continue;
-    const role = chat.role === "user" ? "user" : "model";
-    // Gemini needs alternating turns; merge any repeats.
-    if (history.at(-1)?.role === role) history.at(-1)!.parts[0].text += `\n${chat.content}`;
-    else history.push({ role, parts: [{ text: chat.content }] });
-  }
-  if (history[0]?.role === "model") history.shift();
-  if (history.at(-1)?.role === "user") history.pop();
-
-  await supabase.from("ai_chats").insert({
-    user_id: profile.id,
-    role: "user",
-    content: prompt,
-    metadata: { source: "secretary", spoken } satisfies Json,
-  });
-
-  const executor = createTiaExecutor({ profile, stores });
-  try {
-    const context = await buildSecretaryContext(profile, prompt);
-    const system = [
-      secretarySystemPrompt({
-        greet,
-        language: detectReplyLanguage(prompt),
-        ownerName: ownerFirstName(profile),
-        spoken,
-        today: getIndiaToday(),
-      }),
-      "",
-      "Current GPBM Retail snapshot:",
-      context.slice(0, maxContextLength),
-    ].join("\n");
-    // Repeated on the message itself: a long Hinglish history otherwise
-    // outweighs the system instruction. Only the owner's words are stored.
-    const languageNote = { devanagari: "[हिंदी में जवाब दें]", english: "[Reply in English]", hinglish: "[Reply in Hinglish]" }[
-      detectReplyLanguage(prompt)
-    ];
-    const { model, text } = await runChatWithTools({
-      execute: executor.execute,
-      history,
-      message: `${prompt}\n\n${languageNote}`,
-      system,
-      tools: tiaTools,
-    });
-
-    const { data: saved } = await supabase
-      .from("ai_chats")
-      .insert({
-        user_id: profile.id,
-        role: "assistant",
-        content: text,
-        metadata: { source: "secretary", model, spoken, actions: executor.actions } as unknown as Json,
-      })
-      .select("id")
-      .single();
-
-    revalidatePath("/app/secretary");
-    if (executor.actions.length) {
-      revalidatePath("/app/today");
-      revalidatePath("/app/tasks");
-    }
-    return { ok: true, message: "Tia replied.", speakChatId: spoken ? saved?.id : undefined, transcript: spoken ? prompt : undefined };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unexpected error contacting Gemini.";
-    const userMessage = errorMessage.includes("unavailable") ? errorMessage : `I could not reach Gemini just now. ${errorMessage}`;
-    await supabase.from("ai_chats").insert({
-      user_id: profile.id,
-      role: "assistant",
-      content: `${userMessage}\n\nWant to try again in a minute?`,
-      metadata: { source: "secretary", error: true, actions: executor.actions } as unknown as Json,
-    });
-    revalidatePath("/app/secretary");
-    return { ok: false, message: userMessage };
-  }
+  if (!result.ok) return { ok: false, message: result.message };
+  return {
+    ok: true,
+    message: "Tia replied.",
+    speakChatId: question.spoken ? (result.chatId ?? undefined) : undefined,
+    transcript: question.spoken ? question.prompt : undefined,
+  };
 }
 
 function speakableText(text: string) {

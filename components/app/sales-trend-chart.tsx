@@ -81,7 +81,7 @@ export function SalesTrendChart({ series }: { series: TrendSeries[] }) {
 
       {hasData ? (
         <div className="mt-3 h-48 sm:h-56">
-          <ResponsiveContainer height="100%" width="100%">
+          <ResponsiveContainer height="100%" initialDimension={{ height: 220, width: 600 }} width="100%">
             <AreaChart data={rows} margin={{ bottom: 0, left: 0, right: 8, top: 8 }}>
               <defs>
                 {series.map((item, index) => (
