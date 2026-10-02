@@ -85,3 +85,39 @@ test("discount is weighted from MRP to actual price and returns reverse it", asy
   assert.equal(summary.totalDiscountValue, 300);
   assert.equal(summary.averageDiscountPercent, 20);
 });
+
+async function parseMany(header, rows) {
+  const parser = fixture().load("@/lib/reports/sales-parser");
+  const csv = [header, ...rows].map((values) => values.join(",")).join("\n");
+  const result = await parser.parseSalesFileDetailed(new File([`${csv}\n`], "daily-sales.csv", { type: "text/csv" }));
+  return { parser, result, summary: parser.summarizeSalesRows(result.rows) };
+}
+
+test("unnamed subtotal lines in an item report are not counted as sales", async () => {
+  // Brand Mark's export prints category and grand subtotals with no label,
+  // which counted the day three times (₹69,624 instead of ₹23,208).
+  const { result, summary } = await parseMany(
+    ["BILL DATE", "ITEM NAME", "BRAND", "CATEGORY", "SALE QTY", "MRP", "NET AMOUNT"],
+    [
+      ["2026-10-01", "Shirt", "MUFTI", "TOP WEAR", "1", "3499", "3099"],
+      ["2026-10-01", "Jeans", "ARROW", "BOTTOM WEAR", "2", "2999", "5578"],
+      ["", "", "", "", "3", "", "8677"],
+      ["", "", "", "", "3", "", "8677"],
+    ],
+  );
+  assert.equal(result.rows.length, 2);
+  assert.equal(result.skippedTotalRows, 2);
+  assert.equal(summary.totalNetSale, 8677);
+});
+
+test("a file of day totals only still imports", async () => {
+  const { result, summary } = await parseMany(
+    ["BILL DATE", "SALE QTY", "MRP", "DISCOUNT", "NET AMOUNT"],
+    [
+      ["2026-09-01", "12", "1000", "100", "10800"],
+      ["2026-09-02", "9", "1000", "50", "8550"],
+    ],
+  );
+  assert.equal(result.rows.length, 2);
+  assert.equal(summary.totalNetSale, 19350);
+});

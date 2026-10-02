@@ -152,6 +152,20 @@ function isFooterSalesRow(row: {
   return identityFields.every((value) => !value || totalRowPattern.test(value));
 }
 
+// Same rule as the parser: an unnamed line is a subtotal when the report also
+// has named item lines.
+function hasPersistedSalesIdentity(row: {
+  bill_no: string | null;
+  item_name: string | null;
+  sku?: string | null;
+  barcode?: string | null;
+  brand: string | null;
+  category: string | null;
+  staff_name: string | null;
+}) {
+  return [row.bill_no, row.item_name, row.sku, row.barcode, row.brand, row.category, row.staff_name].some(Boolean);
+}
+
 function uniqueBillKey(row: { store_id: string | null; sale_date: string | null; bill_no: string | null }) {
   if (!row.bill_no) {
     return null;
@@ -448,11 +462,12 @@ export async function repairSalesReportTotals(
 
   const { data: rows } = await completeQuery(supabase
     .from("sales_rows")
-    .select("id,store_id,sale_date,bill_no,item_name,brand,category,staff_name,quantity,net_sale", { count: "exact" })
+    .select("id,store_id,sale_date,bill_no,item_name,sku,barcode,brand,category,staff_name,quantity,net_sale", { count: "exact" })
     .eq("report_id", reportId));
 
   const salesRows = rows ?? [];
-  const footerRows = salesRows.filter(isFooterSalesRow);
+  const hasItemRows = salesRows.some(hasPersistedSalesIdentity);
+  const footerRows = salesRows.filter((row) => isFooterSalesRow(row) || (hasItemRows && !hasPersistedSalesIdentity(row)));
 
   if (!footerRows.length) {
     return { ok: true, message: "No footer rows found." };

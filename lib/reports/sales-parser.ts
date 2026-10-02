@@ -302,6 +302,15 @@ function isClearTotalRow(row: ParsedSalesRow) {
   });
 }
 
+// A line that names no bill, item, code, brand, category or staff can only be
+// a subtotal. Some billing exports (Brand Mark since Sept 2026) print category
+// and grand subtotals without the word "Total", which tripled the day's sale.
+// Such lines are dropped only when the same file also has real item lines, so
+// a file of plain day totals still imports.
+function hasSalesIdentity(row: ParsedSalesRow) {
+  return [row.billNo, row.itemName, row.sku, row.barcode, row.brand, row.category, row.staffName].some(Boolean);
+}
+
 function parseSalesRow(
   row: Record<string, unknown>,
   columnMap: Map<keyof Omit<ParsedSalesRow, "rawData">, string>,
@@ -391,6 +400,12 @@ export async function parseSalesFileDetailed(file: File): Promise<SalesParseResu
     }
 
     parsedRows.push(row);
+  }
+
+  const itemRows = parsedRows.filter(hasSalesIdentity);
+  if (itemRows.length && itemRows.length < parsedRows.length) {
+    skippedTotalRows += parsedRows.length - itemRows.length;
+    parsedRows.splice(0, parsedRows.length, ...itemRows);
   }
 
   return {
