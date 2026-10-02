@@ -27,6 +27,13 @@ import {
   salesReportMayBeMissingStaff,
 } from "@/lib/reports/sales-queries";
 
+const correctionTabs = [
+  { label: "Sales reports", value: "sales" },
+  { label: "Stock reports", value: "stock" },
+  { label: "Import past sales", value: "import" },
+  { label: "Activity log", value: "log" },
+];
+
 function formatMoney(value: unknown) {
   return new Intl.NumberFormat("en-IN", {
     currency: "INR",
@@ -79,7 +86,7 @@ function metadataSummary(metadata: unknown) {
 export default async function SalesCorrectionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ storeId?: string; start?: string; end?: string; search?: string; page?: string }>;
+  searchParams: Promise<{ storeId?: string; start?: string; end?: string; search?: string; page?: string; tab?: string }>;
 }) {
   const { profile } = await requireProfile();
   const owner = await requireOwner();
@@ -88,7 +95,8 @@ export default async function SalesCorrectionPage({
     return <AccessDenied message="Data Correction Center is reserved for the owner account." />;
   }
 
-  const { storeId = "all", start = "", end = "", search = "", page: rawPage = "1" } = await searchParams;
+  const { storeId = "all", start = "", end = "", search = "", page: rawPage = "1", tab: rawTab = "sales" } = await searchParams;
+  const tab = correctionTabs.some((item) => item.value === rawTab) ? rawTab : "sales";
   const page = Math.max(Number(rawPage) || 1, 1);
   const stores = await getAccessibleStores(profile);
   const selectedStoreId = storeId !== "all" && stores.some((store) => store.id === storeId) ? storeId : "all";
@@ -125,6 +133,25 @@ export default async function SalesCorrectionPage({
         </div>
       </div>
 
+      <nav aria-label="Correction sections" className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
+        {correctionTabs.map((item) => (
+          <Link
+            aria-current={tab === item.value ? "page" : undefined}
+            className={
+              tab === item.value
+                ? "inline-flex h-10 shrink-0 items-center rounded-full bg-primary px-4 text-sm font-semibold text-white"
+                : "inline-flex h-10 shrink-0 items-center rounded-full border border-border bg-card px-4 text-sm font-semibold text-muted transition hover:border-primary hover:text-foreground"
+            }
+            href={`/app/reports/correction?tab=${item.value}${selectedStoreId !== "all" ? `&storeId=${selectedStoreId}` : ""}`}
+            key={item.value}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+
+      {tab === "sales" ? (
+        <>
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
@@ -364,6 +391,32 @@ export default async function SalesCorrectionPage({
           </Link>
         </div>
       </section>
+        </>
+      ) : null}
+
+      {tab === "stock" ? (
+        <>
+      <form className="flex flex-wrap items-end gap-3 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm">
+        <input name="tab" type="hidden" value="stock" />
+        <label className="block min-w-48 flex-1">
+          <span className="mb-2 block text-sm font-medium text-muted">Store</span>
+          <select
+            className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
+            defaultValue={selectedStoreId}
+            name="storeId"
+          >
+            <option value="all">All active stores</option>
+            {stores.map((store) => (
+              <option key={store.id} value={store.id}>
+                {store.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button className="h-12 rounded-2xl bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-deep">
+          Show
+        </button>
+      </form>
 
       <section className="scroll-mt-24 rounded-[1.35rem] border border-border bg-card p-5 shadow-sm" id="stock">
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -372,7 +425,7 @@ export default async function SalesCorrectionPage({
             <h2 className="mt-2 text-2xl font-semibold">Find wrong stock upload</h2>
             <p className="mt-1 text-sm leading-6 text-muted">
               Delete a wrong monthly stock report; the store manager can then upload the correct file for that month.
-              Uses the store filter above.
+
             </p>
           </div>
           <ClipboardList className="size-5 text-muted" />
@@ -416,7 +469,10 @@ export default async function SalesCorrectionPage({
           <p className="rounded-2xl border border-border p-4 text-sm text-muted">No stock reports for this store yet.</p>
         )}
       </section>
+        </>
+      ) : null}
 
+      {tab === "import" ? (
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
@@ -427,7 +483,9 @@ export default async function SalesCorrectionPage({
         </div>
         <BulkSalesUploadForm action={bulkHistoricalSalesUpload} stores={stores} />
       </section>
+      ) : null}
 
+      {tab === "log" ? (
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
@@ -467,6 +525,7 @@ export default async function SalesCorrectionPage({
           <p className="text-sm leading-6 text-muted">No audit logs found yet.</p>
         )}
       </section>
+      ) : null}
     </div>
   );
 }

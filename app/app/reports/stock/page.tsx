@@ -37,7 +37,7 @@ export default async function StockReportsPage({
         {profile?.role === "owner" ? (
           <p className="mt-2 text-sm leading-6 text-muted">
             Wrong stock file uploaded?{" "}
-            <Link className="font-semibold text-primary underline" href="/app/reports/correction#stock">
+            <Link className="font-semibold text-primary underline" href="/app/reports/correction?tab=stock">
               Delete it in Data Correction Center
             </Link>
             , then the manager can upload the correct one.
