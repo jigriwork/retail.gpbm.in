@@ -229,3 +229,23 @@ test('H02 bulk publication retains exact batch totals and daily traceability',()
  ${check("exists(select 1 from sales_upload_batches where id=(:'committed'::jsonb->>'batch_id')::uuid and total_rows=2 and total_net_sale=350 and total_quantity=5 and total_bills=2 and replaced_dates=1 and imported_dates=1)","Incorrect batch totals")}
  ${check("(select count(*) from reports where import_id=:'run_id'::uuid and file_path=:'path' and sales_upload_batch_id=(:'committed'::jsonb->>'batch_id')::uuid)=2","Lost daily traceability")} rollback;`);
 });
+
+const stockReport = "10000000-0000-0000-0000-0000000000a1";
+const stockSeed = `insert into reports(id,store_id,report_type,period_month,file_path,status,row_count) values
+ (${quote(stockReport)},${quote(bm)},'stock','2026-10-01','stock/bm/wrong.xlsx','processed',2);
+ insert into stock_rows(report_id,store_id,stock_month,item_name,quantity) values(${quote(stockReport)},${quote(bm)},'2026-10-01','Shirt',3),(${quote(stockReport)},${quote(bm)},'2026-10-01','Jeans',4);`;
+
+test("owner archives a wrong stock report: rows kept, audited, repeat is harmless", () => {
+ sql(`begin; ${stockSeed} ${as(owner)} select archive_stock_report(${quote(stockReport)}) as first \\gset
+ ${check(`(:'first'::jsonb->>'ok')::boolean`,"Archive failed")}
+ ${check(`not(select is_current from reports where id=${quote(stockReport)})`,"Stock report still current")}
+ ${check(`(select count(*) from stock_rows where report_id=${quote(stockReport)})=2`,"Stock rows removed")}
+ ${check(`exists(select 1 from audit_logs where action='delete_stock_report' and entity_id=${quote(stockReport)})`,"Audit missing")}
+ select archive_stock_report(${quote(stockReport)}) as second \\gset
+ ${check(`(:'second'::jsonb->>'ok')::boolean`,"Repeat archive failed")} rollback;`);
+});
+
+test("managers cannot archive stock, and nobody can change published reports directly", () => {
+ assert.throws(() => sql(`begin; ${stockSeed} ${as(bmManager)} select archive_stock_report(${quote(stockReport)}); rollback;`), /Owner required/);
+ assert.throws(() => sql(`begin; ${stockSeed} ${as(owner)} update reports set is_current=false where id=${quote(stockReport)}; rollback;`), /permission denied/);
+});

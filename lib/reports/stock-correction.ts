@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 import { requireOwner } from "@/lib/auth/session";
 import type { CorrectionActionState } from "@/lib/reports/sales-correction";
 import { createClient } from "@/lib/supabase/server";
-import type { Json } from "@/lib/supabase/database.types";
 
 function stockMonthLabel(periodMonth: string | null) {
   return periodMonth ? periodMonth.slice(0, 7) : "NO-MONTH";
@@ -41,31 +40,19 @@ export async function deleteStockReport(
     return { ok: false, expectedPhrase, message: `Type ${expectedPhrase} to delete this stock report.` };
   }
 
-  const { data: archived, error } = await supabase
-    .from("reports")
-    .update({ is_current: false })
-    .eq("id", report.id)
-    .eq("is_current", true)
-    .select("id");
-  if (error || !archived?.length) return { ok: false, message: "The stock report could not be deleted; nothing was changed." };
-
-  await supabase.from("audit_logs").insert({
-    action: "delete_stock_report",
-    actor_id: session.profile.id,
-    actor_role: "owner",
-    entity_id: report.id,
-    entity_type: "report",
-    metadata: {
-      file_name: report.file_name,
-      file_path: report.file_path,
-      period_month: report.period_month,
-      row_count: report.row_count,
-      source_retained: true,
-      summary: report.summary,
-      version_retained: true,
-    } as Json,
-    store_id: report.store_id,
-  });
+  // Published reports can only change through database routines (direct
+  // updates are revoked); archive_stock_report also writes the audit entry.
+  const { data, error } = await supabase.rpc("archive_stock_report", { p_report: report.id });
+  if (error) {
+    const missing = error.code === "PGRST202" || error.code === "42883" || /archive_stock_report/i.test(error.message ?? "");
+    return {
+      ok: false,
+      message: missing
+        ? "Stock delete needs a one-time database update that is not installed yet. Nothing was changed."
+        : "The stock report could not be deleted; nothing was changed.",
+    };
+  }
+  if (!(data as { ok?: boolean } | null)?.ok) return { ok: false, message: "The stock report could not be deleted; nothing was changed." };
 
   for (const path of ["/app/reports", "/app/reports/stock", "/app/reports/stock/analytics", "/app/reports/correction", "/app/today", "/app/checklist"]) {
     revalidatePath(path);

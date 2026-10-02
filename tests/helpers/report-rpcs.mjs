@@ -14,6 +14,14 @@ export function reportRpcs(db, client) {
         report.is_current=false;
         return {data:{ok:true,message:'Report archived'},error:null};
       }
+      if(name==='archive_stock_report') {
+        const report=db.reports.find(r=>r.id===args.p_report&&r.report_type==='stock');
+        if(!report) return {data:null,error:{message:'Report unavailable'}};
+        if(!report.is_current) return {data:{ok:true,message:'Stock report already deleted.'},error:null};
+        report.is_current=false;
+        await checked(client.from('audit_logs').insert({action:'delete_stock_report',entity_id:report.id,store_id:report.store_id,metadata:{file_path:report.file_path,source_retained:true,version_retained:true}}));
+        return {data:{ok:true,message:'Stock report deleted.'},error:null};
+      }
       if(name==='begin_report_import') {
         let run=db.report_imports.find(r=>r.fingerprint===args.p_fingerprint);
         if(run){if(run.status==='failed')run.status='processing';return {data:clone(run),error:null};}

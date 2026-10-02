@@ -2938,6 +2938,10 @@ export type Database = {
         Args: { p_report: string }
         Returns: Json
       }
+      archive_stock_report: {
+        Args: { p_report: string }
+        Returns: Json
+      }
       begin_report_import: {
         Args: {
           p_store: string
