@@ -59,6 +59,23 @@ export default async function ReportsPage() {
         </p>
       </section>
 
+      {profile?.role === "owner" ? (
+        <Link
+          className="flex items-center gap-4 rounded-[1.35rem] border border-accent/40 bg-accent-soft p-4 shadow-sm transition hover:border-accent"
+          href="/app/reports/correction"
+        >
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-primary-deep">
+            <ShieldAlert className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Wrong file uploaded?</span>
+            <span className="block text-sm leading-5 text-accent-ink">
+              Open Data Correction Center to delete or replace a sales or stock report.
+            </span>
+          </span>
+        </Link>
+      ) : null}
+
       <section className="grid gap-3 lg:grid-cols-3">
         <div className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm lg:col-span-2">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -290,9 +307,9 @@ export default async function ReportsPage() {
                 <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
                   <ShieldAlert className="size-5" />
                 </div>
-                <h2 className="text-2xl font-semibold">Historical Sales Import</h2>
+                <h2 className="text-2xl font-semibold">Data Correction Center</h2>
                 <p className="mt-2 text-sm leading-6 text-muted">
-                  Import current month or financial-year sales, preview missing dates, and fix wrong uploads. Owner only.
+                  Delete or replace a wrong sales or stock upload, and import past sales. Owner only.
                 </p>
               </Link>
               <Link

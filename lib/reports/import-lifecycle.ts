@@ -50,7 +50,13 @@ export async function importReportFile(input: {
     console.info("report_import_completed", { importId: run.id, type: input.type, rows: input.rows.length,
       ok: (committed.data as unknown as ImportResult).ok, stagedMs: Math.round(stagedMs), commitMs: Math.round(Date.now() - phaseStarted),
       elapsedMs: Math.round(Date.now() - started), rssMiB: Math.round(process.memoryUsage().rss / 1048576) });
-    return committed.data as unknown as ImportResult;
+    const result = committed.data as unknown as ImportResult;
+    // The database refuses a second current report for the same day or month.
+    if (!result.ok && /already exists/i.test(String(result.message ?? ""))) {
+      const what = input.type === "stock" ? "This month's stock report" : input.type === "sales" ? "This day's sales report" : "This report";
+      return { ...result, message: `${what} is already uploaded for this store. If it is wrong, ask the owner to delete it in Data Correction Center, then upload the correct file.` };
+    }
+    return result;
   } catch {
     // Codes and timings only: database messages/details can contain uploaded data.
     console.error("report_import_failed", { importId: run.id, type: input.type, phase,

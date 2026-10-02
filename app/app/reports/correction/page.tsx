@@ -6,6 +6,7 @@ import { AccessDenied } from "@/components/app/access-denied";
 import {
   BulkSalesUploadForm,
   DeleteSalesReportForm,
+  DeleteStockReportForm,
   ReplaceSalesReportForm,
 } from "@/components/reports/sales-correction-forms";
 import { MissingStaffSalesWarning, SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
@@ -18,6 +19,8 @@ import {
   replaceSalesReport,
   type CorrectionSalesReport,
 } from "@/lib/reports/sales-correction";
+import { deleteStockReport } from "@/lib/reports/stock-correction";
+import { getCorrectionStockReports } from "@/lib/reports/stock-queries";
 import {
   getSuspiciousSalesReportWarningsForReportIds,
   isSalesReportSummarySuspicious,
@@ -89,7 +92,7 @@ export default async function SalesCorrectionPage({
   const page = Math.max(Number(rawPage) || 1, 1);
   const stores = await getAccessibleStores(profile);
   const selectedStoreId = storeId !== "all" && stores.some((store) => store.id === storeId) ? storeId : "all";
-  const [{ reports, count, pageSize }, auditLogs] = await Promise.all([
+  const [{ reports, count, pageSize }, auditLogs, stockReports] = await Promise.all([
     getCorrectionSalesReports({
       endDate: end,
       page,
@@ -98,6 +101,7 @@ export default async function SalesCorrectionPage({
       storeId: selectedStoreId,
     }),
     getRecentCorrectionAuditLogs(25),
+    getCorrectionStockReports(selectedStoreId),
   ]);
   const suspiciousWarnings = await getSuspiciousSalesReportWarningsForReportIds(reports.map((report) => report.id));
   const suspiciousWarningByReportId = new Map(suspiciousWarnings.map((warning) => [warning.reportId, warning]));
@@ -114,7 +118,7 @@ export default async function SalesCorrectionPage({
             <p className="text-sm font-medium text-muted">Owner only</p>
             <h1 className="mt-2 text-3xl font-semibold">Data Correction Center</h1>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Delete, replace, or import historical sales reports with audit logs for every sensitive action.
+              Delete or replace a wrong sales or stock upload, or import past sales. Every action is logged and old versions are kept.
             </p>
           </div>
           <ShieldAlert className="size-5 text-muted" />
@@ -359,6 +363,58 @@ export default async function SalesCorrectionPage({
             Next
           </Link>
         </div>
+      </section>
+
+      <section className="scroll-mt-24 rounded-[1.35rem] border border-border bg-card p-5 shadow-sm" id="stock">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-muted">Stock Report Correction</p>
+            <h2 className="mt-2 text-2xl font-semibold">Find wrong stock upload</h2>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              Delete a wrong monthly stock report; the store manager can then upload the correct file for that month.
+              Uses the store filter above.
+            </p>
+          </div>
+          <ClipboardList className="size-5 text-muted" />
+        </div>
+        {stockReports.length ? (
+          <div className="space-y-3">
+            {stockReports.map((report) => (
+              <article className="grid gap-3 rounded-2xl border border-border p-4 lg:grid-cols-[1fr_20rem]" key={report.id}>
+                <div>
+                  <p className="text-lg font-semibold">
+                    {report.stores?.name ?? "Store"} · {report.period_month ? report.period_month.slice(0, 7) : "No month"}
+                  </p>
+                  <p className="mt-1 break-words text-sm text-muted">{report.file_name ?? "No file name"}</p>
+                  <p className="mt-2 text-xs font-medium text-muted">
+                    Uploaded by {report.profiles?.full_name ?? report.profiles?.email ?? "Unknown"} · {formatDateTime(report.created_at)}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                    <div className="rounded-xl border border-border p-2">
+                      <p className="text-xs text-muted">Rows</p>
+                      <p className="font-semibold">{report.row_count ?? 0}</p>
+                    </div>
+                    <div className="rounded-xl border border-border p-2">
+                      <p className="text-xs text-muted">Items</p>
+                      <p className="font-semibold">{report.summary?.itemCount ?? 0}</p>
+                    </div>
+                    <div className="rounded-xl border border-border p-2">
+                      <p className="text-xs text-muted">Quantity</p>
+                      <p className="font-semibold">{Number(report.summary?.totalQuantity ?? 0).toLocaleString("en-IN")}</p>
+                    </div>
+                    <div className="rounded-xl border border-border p-2">
+                      <p className="text-xs text-muted">MRP value</p>
+                      <p className="font-semibold">{formatMoney(report.summary?.totalStockValueMrp)}</p>
+                    </div>
+                  </div>
+                </div>
+                <DeleteStockReportForm action={deleteStockReport} periodMonth={report.period_month} reportId={report.id} />
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-2xl border border-border p-4 text-sm text-muted">No stock reports for this store yet.</p>
+        )}
       </section>
 
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">

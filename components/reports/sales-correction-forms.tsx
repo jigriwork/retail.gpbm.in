@@ -91,6 +91,42 @@ export function DeleteSalesReportForm({
   );
 }
 
+export function DeleteStockReportForm({
+  action,
+  periodMonth,
+  reportId,
+}: {
+  action: (previous: CorrectionActionState, formData: FormData) => Promise<CorrectionActionState>;
+  periodMonth: string | null;
+  reportId: string;
+}) {
+  const [state, formAction, pending] = useActionState(action, initialState);
+  const phrase = `DELETE STOCK ${periodMonth ? periodMonth.slice(0, 7) : "NO-MONTH"}`;
+
+  return (
+    <form action={formAction} className="space-y-2 rounded-2xl border border-border p-3">
+      <input name="reportId" type="hidden" value={reportId} />
+      <p className="flex items-center gap-2 text-sm font-semibold">
+        <Trash2 className="size-4" />
+        Delete
+      </p>
+      <p className="text-xs leading-5 text-muted">
+        Type the phrase to delete. The manager can then upload the correct file for this month.
+      </p>
+      <input
+        className="h-10 w-full rounded-xl border border-border bg-card px-3 text-xs outline-none focus:border-primary"
+        name="confirmation"
+        placeholder={phrase}
+      />
+      <Button className="h-10 rounded-xl px-3 text-xs" disabled={pending || state.ok} type="submit" variant="secondary">
+        {pending ? <Loader2 className="size-3 animate-spin" /> : <AlertTriangle className="size-3" />}
+        Delete stock report
+      </Button>
+      <ActionResult state={state} />
+    </form>
+  );
+}
+
 export function ReplaceSalesReportForm({
   action,
   report,

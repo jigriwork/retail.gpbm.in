@@ -74,6 +74,21 @@ function asStockReport(report: unknown) {
   return report as StockReportWithStore;
 }
 
+/** Current stock reports for the owner's correction list, newest month first. */
+export async function getCorrectionStockReports(storeId: string | "all", limit = 24) {
+  const supabase = await createClient();
+  let query = supabase
+    .from("reports")
+    .select(stockReportSelect, { count: "exact" })
+    .eq("report_type", "stock").eq("is_current", true).eq("status", "processed");
+  if (storeId !== "all") query = query.eq("store_id", storeId);
+  const { data } = await checkedQuery(query
+    .order("period_month", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(limit));
+  return (data ?? []).map(asStockReport);
+}
+
 export async function getRecentStockReports(limit = 8) {
   const supabase = await createClient();
   const { data } = await checkedQuery(supabase
