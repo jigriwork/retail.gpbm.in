@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { canAccessStore, getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { staffNameKey } from "@/lib/employees/utils";
 import {
+  effectiveDiscount,
   parseSalesFileDetailed,
   matchesStoreName,
   missingStaffColumnWarning,
@@ -183,6 +184,7 @@ function summarizePersistedSalesRows(
     brand: string | null;
     category: string | null;
     quantity: number | null;
+    mrp?: number | null;
     net_sale: number | null;
   }>,
   removedFooterRows: number,
@@ -195,12 +197,23 @@ function summarizePersistedSalesRows(
   let totalNetSale = 0;
   let totalQuantity = 0;
   let returnsCount = 0;
+  // MRP and discount are recalculated the same way as on upload, so a repaired
+  // report does not keep figures from the rows it removed.
+  let totalMrpValue = 0;
+  let totalDiscountValue = 0;
+  let mrpRowCount = 0;
 
   for (const row of rows) {
     const sale = Number(row.net_sale ?? 0);
     const quantity = Number(row.quantity ?? 0);
     totalNetSale += sale;
     totalQuantity += quantity;
+
+    if (row.mrp !== null && row.mrp !== undefined && row.quantity !== null) {
+      totalMrpValue += Number(row.mrp) * quantity;
+      if (row.net_sale !== null) totalDiscountValue += effectiveDiscount(Number(row.mrp), quantity, sale);
+      mrpRowCount += 1;
+    }
 
     if (quantity < 0 || sale < 0) {
       returnsCount += 1;
@@ -222,6 +235,10 @@ function summarizePersistedSalesRows(
 
   return {
     totalNetSale: roundMoney(totalNetSale),
+    totalMrpValue: roundMoney(totalMrpValue),
+    totalDiscountValue: roundMoney(totalDiscountValue),
+    averageDiscountPercent: totalMrpValue > 0 ? (totalDiscountValue / totalMrpValue) * 100 : 0,
+    mrpRowCount,
     totalQuantity,
     rowCount: rows.length,
     billCount: bills.size,
@@ -462,20 +479,26 @@ export async function repairSalesReportTotals(
 
   const { data: rows } = await completeQuery(supabase
     .from("sales_rows")
-    .select("id,store_id,sale_date,bill_no,item_name,sku,barcode,brand,category,staff_name,quantity,net_sale", { count: "exact" })
+    .select("id,store_id,sale_date,bill_no,item_name,sku,barcode,brand,category,staff_name,quantity,mrp,net_sale", { count: "exact" })
     .eq("report_id", reportId));
 
   const salesRows = rows ?? [];
   const hasItemRows = salesRows.some(hasPersistedSalesIdentity);
   const footerRows = salesRows.filter((row) => isFooterSalesRow(row) || (hasItemRows && !hasPersistedSalesIdentity(row)));
 
-  if (!footerRows.length) {
-    return { ok: true, message: "No footer rows found." };
-  }
-
   const footerIds = footerRows.map((row) => row.id);
   const remainingRows = salesRows.filter(row => !footerIds.includes(row.id));
   const summary = summarizePersistedSalesRows(remainingRows, footerRows.length);
+  // With nothing to remove, still refresh a summary that no longer matches its
+  // rows (e.g. MRP left over from an earlier repair); otherwise leave it alone.
+  const stored = (report.summary ?? {}) as { totalNetSale?: number; totalMrpValue?: number };
+  const stale =
+    Math.abs(Number(stored.totalNetSale ?? 0) - summary.totalNetSale) > 1 ||
+    Math.abs(Number(stored.totalMrpValue ?? 0) - summary.totalMrpValue) > 1;
+  if (!footerRows.length && !stale) {
+    return { ok: true, message: "No footer rows found." };
+  }
+
   const { data: repaired, error: repairError } = await supabase.rpc("repair_sales_report", {
     p_report: reportId, p_footer_ids: footerIds, p_summary: summary as Json,
   });

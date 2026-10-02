@@ -439,7 +439,7 @@ function topFromBucket(bucket: Map<string, number>) {
     .map(([name, sale]) => ({ name, sale }));
 }
 
-function effectiveDiscount(mrp: number, quantity: number, actualPrice: number) {
+export function effectiveDiscount(mrp: number, quantity: number, actualPrice: number) {
   const mrpValue = mrp * quantity;
   const discount = Math.max(Math.abs(mrpValue) - Math.abs(actualPrice), 0);
   return quantity < 0 || actualPrice < 0 ? -discount : discount;
