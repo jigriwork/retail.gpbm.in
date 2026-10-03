@@ -137,3 +137,21 @@ test("a store manager cannot attribute sales or move stock", () => {
   assert.throws(() => sql(`begin; ${as(manager)} select transfer_stock_between_stores(${quote(gp)},'2026-09-01','[]',null,null); rollback;`), /cannot receive/);
   assert.throws(() => sql(`begin; ${as(manager)} select create_supplier_return(${quote(goPlanet)},${quote(gp)},gen_random_uuid(),'2026-09-01','[{"qty":1}]',null,null); rollback;`), /cannot create returns/);
 });
+
+test("sales carrying the supplier invoice no. as LOT NUMBER (real PJ-26 case) attribute to that invoice, item by barcode", () => {
+  sql(`begin; ${setup}
+  -- Vikash PJ-26 entered from the supplier PDF + item sheet: no Logic lot codes, barcodes known.
+  insert into purchase_invoices(firm_id,store_id,party_id,supplier_invoice_no,invoice_date,total_qty,taxable_amount,cgst_amount,sgst_amount,invoice_total,created_by)
+  values(${quote(goPlanet)},${quote(gp)},:'new','PJ -26','2026-09-25',2,3687.60,92.19,92.19,3871.98,${quote(owner)}) returning id as pj \\gset
+  insert into purchase_invoice_lines(invoice_id,line_no,brand_id,barcode,mrp,quantity,taxable_amount,cgst_amount,sgst_amount) values
+   (:'pj',1,:'brand','8905875747536',2625,1,1843.80,46.10,46.10),(:'pj',2,:'brand','8905875781202',2625,1,1843.80,46.09,46.09);
+  select post_purchase_invoice(:'pj');
+  insert into reports(id,store_id,report_type,report_date,status,row_count,is_current) values('e0000000-0000-0000-0000-000000000077',${quote(gp)},'sales','2026-10-02','processed',1,true);
+  insert into sales_rows(report_id,store_id,sale_date,bill_no,item_name,brand,quantity,mrp,net_sale,raw_data) values
+   ('e0000000-0000-0000-0000-000000000077',${quote(gp)},'2026-10-02','GP-9380','GERARDEY LS IP 501LIGHT BLUE','PEPE',1,2625,2625,'{"LOT CODE":"747575","LOT NUMBER":"PJ-26","ADDITIONAL ITEM CODE":"8905875747536"}');
+  select allocate_store_sales(${quote(gp)},'2026-10-02','2026-10-02') as res \\gset
+  ${check("(select a.method from stock_allocations a join sales_rows s on s.id=a.sales_row_id where s.bill_no='GP-9380' and a.status='active')='invoice_ref'", "Must match by purchase reference")}
+  ${check("(select b.barcode from stock_allocations a join purchase_batches b on b.id=a.batch_id join sales_rows s on s.id=a.sales_row_id where s.bill_no='GP-9380' and a.status='active')='8905875747536'", "Must pick the same item within the invoice")}
+  ${check("(select b.party_id from stock_allocations a join purchase_batches b on b.id=a.batch_id join sales_rows s on s.id=a.sales_row_id where s.bill_no='GP-9380' and a.status='active')=:'new'", "Supplier must be Vikash")}
+  rollback;`);
+});

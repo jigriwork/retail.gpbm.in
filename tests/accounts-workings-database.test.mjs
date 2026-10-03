@@ -154,3 +154,18 @@ test("pieces not attributed to this supplier keep the working incomplete", () =>
   ${check("not (select complete from calculation_runs where id=:'run') and (select (inputs->>'unattributed_pieces')::numeric from calculation_runs where id=:'run')=1", "Unattributed piece must block")}
   rollback;`);
 });
+
+test("September at Brand Mark (firm to confirm) blocks workings of BOTH firms instead of being left out silently", () => {
+  const bm = value("select id from stores where code='BM'");
+  const gpFashion = value("select id from billing_firms where name='GP Fashion'");
+  for (const firm of [goPlanet, gpFashion]) {
+    sql(`begin; ${claims}
+    insert into parties(legal_name) values('S Square') returning id as party \\gset
+    insert into brands(name) values('TURTLE') returning id as brand \\gset
+    insert into supply_arrangements(party_id,brand_id,firm_id,store_id,valid_from,settlement_basis,status) values(:'party',:'brand',${quote(firm)},${quote(bm)},'2026-04-01','sales','confirmed') returning id as arr \\gset
+    insert into company_terms(arrangement_id,version,effective_from,status,rules) values(:'arr',1,'2026-04-01','confirmed','{"formula":"sales_margin","margin":{"fresh":28}}');
+    select prepare_working(:'arr','2026-09-10','2026-09-12','agreed_terms',null,null) as run \\gset
+    ${check("not (select complete from calculation_runs where id=:'run') and (select (inputs->>'firm_unconfirmed_days')::int from calculation_runs where id=:'run')=3", "Unconfirmed September days must block")}
+    rollback;`);
+  }
+});

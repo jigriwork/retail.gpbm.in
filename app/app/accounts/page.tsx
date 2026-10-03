@@ -9,7 +9,7 @@ import { partyBalances, partyNames, type PartyBalance } from "@/lib/accounts/led
 import { returnCreditPending } from "@/lib/accounts/stock-queries";
 import { settlementBalances } from "@/lib/accounts/working-queries";
 import { listFirms, listStoreFirmPeriods, mastersSummary, salesCoverage, storesWithFirmToday } from "@/lib/accounts/queries";
-import { money } from "@/lib/accounts/format";
+import { drCr, money } from "@/lib/accounts/format";
 
 const figureKeys = [
   ["ledger_balance", "Ledger balance"], ["due_now", "Due for payment"], ["overdue", "Overdue"], ["due_unknown", "Due date not set"],
@@ -93,7 +93,7 @@ export default async function AccountsOverviewPage() {
               {figureKeys.map(([key, label]) => (
                 <Link className="rounded-2xl border border-border bg-background p-3 transition hover:border-primary" href={key === "disputed" ? "/app/accounts/reconciliation" : `/app/accounts/daybook?firm=${firm.id}`} key={key}>
                   <p className="text-xs font-semibold uppercase text-muted">{label}</p>
-                  <p className="mt-1 text-lg font-semibold">{money(sum[key])}</p>
+                  <p className="mt-1 text-lg font-semibold">{key === "ledger_balance" ? drCr(sum[key]) : money(sum[key])}</p>
                 </Link>
               ))}
             </div>
@@ -102,7 +102,7 @@ export default async function AccountsOverviewPage() {
                 {top.map((row) => (
                   <Link className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm" href={`/app/accounts/parties/${row.party_id}/ledger?firm=${firm.id}`} key={row.party_id}>
                     <span className="font-semibold">{names.get(row.party_id) ?? "Supplier"}</span>
-                    <span className="text-muted">balance {money(row.ledger_balance)} · due {money(row.due_now)}{Number(row.overdue) ? <> · <Badge tone="bad">overdue {money(row.overdue)}</Badge></> : null}</span>
+                    <span className="text-muted">balance {drCr(row.ledger_balance)} · due {money(row.due_now)}{Number(row.overdue) ? <> · <Badge tone="bad">overdue {money(row.overdue)}</Badge></> : null}</span>
                   </Link>
                 ))}
               </div>
@@ -116,7 +116,7 @@ export default async function AccountsOverviewPage() {
             {figureKeys.slice(0, 4).map(([key, label]) => (
               <div className="rounded-2xl border border-border bg-background p-3" key={key}>
                 <p className="text-xs font-semibold uppercase text-muted">{label}</p>
-                <p className="mt-1 text-lg font-semibold">{money(totals(balances)[key])}</p>
+                <p className="mt-1 text-lg font-semibold">{key === "ledger_balance" ? drCr(totals(balances)[key]) : money(totals(balances)[key])}</p>
               </div>
             ))}
           </div>

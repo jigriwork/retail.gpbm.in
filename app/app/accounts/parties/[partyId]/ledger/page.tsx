@@ -6,7 +6,7 @@ import { AccountsNav } from "@/components/accounts/accounts-nav";
 import { BalanceCards } from "@/components/accounts/balance-cards";
 import { Badge, Empty, inputClass, Pager, Panel } from "@/components/accounts/fields";
 import { getFinanceSession } from "@/lib/accounts/access";
-import { financialYear, indiaToday, labelFor, money, shortDate, voucherTypes } from "@/lib/accounts/format";
+import { drCr, financialYear, indiaToday, labelFor, money, shortDate, voucherTypes } from "@/lib/accounts/format";
 import { openBills, openCredits, partyBalances, partyLedger } from "@/lib/accounts/ledger-queries";
 import { getParty, listFirms } from "@/lib/accounts/queries";
 
@@ -67,7 +67,7 @@ export default async function PartyLedgerPage({ params, searchParams }: {
               <table className="min-w-full text-sm">
                 <thead className="text-left text-xs text-muted"><tr><th className="py-1 pr-3">Date</th><th className="pr-3">Entry</th><th className="pr-3 text-right">Debit (paid/notes)</th><th className="pr-3 text-right">Credit (bills)</th><th className="text-right">Balance</th></tr></thead>
                 <tbody className="divide-y divide-border">
-                  {page === 0 && view === "ledger" ? <tr><td className="py-1.5 pr-3 text-muted" colSpan={4}>Opening balance on {shortDate(from)}</td><td className="text-right font-semibold">{money(rows[0]?.opening_balance ?? 0)}</td></tr> : null}
+                  {page === 0 && view === "ledger" ? <tr><td className="py-1.5 pr-3 text-muted" colSpan={4}>Opening balance on {shortDate(from)}</td><td className="text-right font-semibold">{drCr(rows[0]?.opening_balance ?? 0)}</td></tr> : null}
                   {shownRows.map((row) => (
                     <tr key={row.voucher_id}>
                       <td className="py-1.5 pr-3 whitespace-nowrap">{shortDate(row.voucher_date)}</td>
@@ -77,7 +77,7 @@ export default async function PartyLedgerPage({ params, searchParams }: {
                       </td>
                       <td className="pr-3 text-right">{Number(row.debit) ? money(row.debit) : ""}</td>
                       <td className="pr-3 text-right">{Number(row.credit) ? money(row.credit) : ""}</td>
-                      <td className="text-right font-semibold">{money(row.running_balance)}</td>
+                      <td className="text-right font-semibold">{drCr(row.running_balance)}</td>
                     </tr>
                   ))}
                 </tbody>

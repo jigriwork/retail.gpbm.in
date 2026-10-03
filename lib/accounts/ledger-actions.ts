@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireFinance } from "@/lib/accounts/access";
+import { canPostFirmWide, requireFinance } from "@/lib/accounts/access";
 import { financialYear, indiaToday, isoDateOrNull } from "@/lib/accounts/format";
 import type { AccountsActionState } from "@/lib/accounts/master-actions";
 import { createClient } from "@/lib/supabase/server";
@@ -82,6 +82,7 @@ export async function savePurchaseDraft(_state: AccountsActionState, formData: F
     financial_year: financialYear(invoiceDate),
     firm_id: firmId,
     invoice_date: invoiceDate,
+    logic_purchase_ref: text(formData, "logicPurchaseRef", 40) || null,
     notes: text(formData, "notes", 1000) || null,
     party_id: partyId,
     received_date: isoDateOrNull(text(formData, "receivedDate")),
@@ -206,7 +207,7 @@ export async function linkDocument(_state: AccountsActionState, formData: FormDa
  * Allocation amounts come from fields named alloc_<voucherId>. With
  * "autoAllocate" ticked, the server fills the oldest open bills first.
  */
-async function readAllocations(formData: FormData, total: number, firmId: string, partyId: string, side: "credit" | "debit") {
+async function readAllocations(formData: FormData, total: number, firmId: string, partyId: string, side: "credit" | "debit", storeId: string | null) {
   const manual = [...formData.entries()]
     .filter(([key, entry]) => key.startsWith("alloc_") && typeof entry === "string" && entry.trim())
     .map(([key, entry]) => ({ amount: Number(String(entry).replace(/[,₹\s]/g, "")), voucher_id: key.slice(6) }));
@@ -221,7 +222,7 @@ async function readAllocations(formData: FormData, total: number, firmId: string
   const { data } = await supabase.rpc("open_vouchers", { p_firm: firmId, p_party: partyId, p_side: side });
   let remaining = Math.round(total * 100);
   const allocations: Array<{ voucher_id: string; amount: number }> = [];
-  for (const bill of data ?? []) {
+  for (const bill of (data ?? []).filter((item) => !storeId || item.store_id === storeId)) {
     if (remaining <= 0) break;
     const open = Math.round(Number(bill.open_amount) * 100);
     const take = Math.min(open, remaining);
@@ -248,9 +249,19 @@ export async function recordSupplierEntry(_state: AccountsActionState, formData:
   const sgst = amount(formData, "sgst");
   const igst = amount(formData, "igst");
   if ([taxable, cgst, sgst, igst].some((value) => Number.isNaN(value))) return { ok: false, message: "Check the tax amounts." };
+  const storeId = ["payment", "credit_note", "debit_note"].includes(type) ? text(formData, "storeId") || null : null;
+  // Firm-wide entries need a grant without a store limit. A store-scoped
+  // accountant posts for their store, set in full against its bills (the
+  // database enforces the same rules).
+  if (!storeId && !canPostFirmWide(session, firmId)) {
+    return { ok: false, message: "Your access is limited to a store: choose the store and set the full amount against its bills. Advances and firm-wide entries need firm-wide permission." };
+  }
   const side = type === "receipt" || (type === "opening" && text(formData, "mode") === "payable") ? "credit" : "debit";
-  const parsed = type === "opening" && side === "credit" ? { allocations: [] } : await readAllocations(formData, total, firmId, partyId, side === "debit" ? "credit" : "debit");
+  const parsed = type === "opening" && side === "credit" ? { allocations: [] } : await readAllocations(formData, total, firmId, partyId, side === "debit" ? "credit" : "debit", storeId);
   if ("error" in parsed) return { ok: false, message: parsed.error ?? "Check the adjustments." };
+  if (storeId && type === "payment" && Math.round(parsed.allocations.reduce((sum, item) => sum + item.amount * 100, 0)) !== Math.round(total * 100)) {
+    return { ok: false, message: "A store payment must be set in full against that store's open bills. Adjust the amounts, or leave the store empty for a firm-wide entry." };
+  }
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("record_supplier_voucher", {
     p_allocations: parsed.allocations,
@@ -267,7 +278,7 @@ export async function recordSupplierEntry(_state: AccountsActionState, formData:
     p_reference: text(formData, "reference", 80) || null,
     p_reference_date: isoDateOrNull(text(formData, "referenceDate")),
     p_sgst: sgst,
-    p_store: text(formData, "storeId") || null,
+    p_store: storeId,
     p_taxable: taxable,
     p_type: type,
   });

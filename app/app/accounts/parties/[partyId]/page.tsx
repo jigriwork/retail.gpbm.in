@@ -11,7 +11,7 @@ import { labelFor, settlementBases, shortDate } from "@/lib/accounts/format";
 import { addPartyAlias, saveAgent, saveParty } from "@/lib/accounts/master-actions";
 import { partyBalances } from "@/lib/accounts/ledger-queries";
 import { getParty, listFirms, recentFinanceEvents } from "@/lib/accounts/queries";
-import { money } from "@/lib/accounts/format";
+import { drCr, money } from "@/lib/accounts/format";
 
 export default async function PartyPage({ params, searchParams }: { params: Promise<{ partyId: string }>; searchParams: Promise<{ saved?: string }> }) {
   const session = await getFinanceSession();
@@ -44,7 +44,7 @@ export default async function PartyPage({ params, searchParams }: { params: Prom
             return (
               <Link className="rounded-2xl border border-border bg-background p-4 transition hover:border-primary" href={`/app/accounts/parties/${party.id}/ledger?firm=${firm.id}`} key={firm.id}>
                 <p className="font-semibold">{firm.name}</p>
-                <p className="mt-1 text-sm text-muted">Ledger balance {money(row?.ledger_balance ?? 0)} · due {money(row?.due_now ?? 0)} · advance {money(row?.advance ?? 0)}</p>
+                <p className="mt-1 text-sm text-muted">Ledger balance {drCr(row?.ledger_balance ?? 0)} · due {money(row?.due_now ?? 0)} · advance {money(row?.advance ?? 0)}</p>
                 <p className="mt-2 text-sm font-semibold text-primary">Open ledger →</p>
               </Link>
             );

@@ -7,7 +7,7 @@ import { Badge, inputClass, Notice, Panel } from "@/components/accounts/fields";
 import { getFinanceSession } from "@/lib/accounts/access";
 import { coverageLabels, indiaToday, money, shortDate } from "@/lib/accounts/format";
 import { confirmZeroSalesDay } from "@/lib/accounts/master-actions";
-import { listFinanceStores, salesCoverage } from "@/lib/accounts/queries";
+import { listFinanceStores, listFirms, listStoreFirmPeriods, salesCoverage } from "@/lib/accounts/queries";
 
 const tone = (status: string) => (status === "bill_level" || status === "zero_confirmed" ? "good" : status === "missing" ? "bad" : "warn") as "good" | "bad" | "warn";
 
@@ -22,6 +22,15 @@ export default async function SalesInputsPage({ searchParams }: { searchParams: 
   const [year, monthNumber] = month.split("-").map(Number);
   const last = new Date(Date.UTC(year, monthNumber, 0)).toISOString().slice(0, 10);
   const days = store ? await salesCoverage(store.id, `${month}-01`, last < today ? last : today) : [];
+  const [periods, firms] = await Promise.all([listStoreFirmPeriods(), listFirms()]);
+  const firmName = (id: string) => firms.find((firm) => firm.id === id)?.name ?? "—";
+  // The firm each day bills under; null when no single confirmed period covers it.
+  const firmOn = (day: string) => {
+    const matches = periods.filter((period) => period.store_id === store?.id && period.status === "confirmed"
+      && (!period.valid_from || period.valid_from <= day) && (!period.valid_to || period.valid_to >= day));
+    return matches.length === 1 ? firmName(matches[0].firm_id) : null;
+  };
+  const unconfirmedDays = days.filter((day) => !firmOn(day.day)).length;
   const incomplete = days.filter((day) => !["bill_level", "zero_confirmed"].includes(day.status));
   const unreconciled = days.reduce((sum, day) => sum + day.unreconciled_lines, 0);
   const months = Array.from({ length: 8 }, (_, index) => {
@@ -47,6 +56,12 @@ export default async function SalesInputsPage({ searchParams }: { searchParams: 
           <button className="h-11 rounded-xl border border-border px-4 text-sm font-semibold">Show</button>
         </form>
       </Panel>
+      {unconfirmedDays ? (
+        <Notice>
+          {unconfirmedDays} day{unconfirmedDays > 1 ? "s" : ""} in {month} {unconfirmedDays > 1 ? "have" : "has"} no confirmed billing firm for {store?.name}.
+          Their sales are not counted in either firm&apos;s workings until the date is confirmed under <Link className="font-semibold underline" href="/app/accounts/firms">Firms &amp; stores</Link>.
+        </Notice>
+      ) : null}
       {incomplete.length ? (
         <Notice>
           {incomplete.length} day{incomplete.length > 1 ? "s" : ""} in {month} {incomplete.length > 1 ? "are" : "is"} incomplete. Any company working covering
@@ -66,6 +81,7 @@ export default async function SalesInputsPage({ searchParams }: { searchParams: 
               <span className="w-28 font-semibold">{shortDate(day.day)}</span>
               <span className="flex-1">
                 <Badge tone={tone(day.status)}>{coverageLabels[day.status] ?? day.status}</Badge>
+                {firmOn(day.day) ? <span className="ml-2 text-xs text-muted">Billed under {firmOn(day.day)}</span> : <span className="ml-2"><Badge tone="warn">firm to confirm</Badge></span>}
                 {day.report_id ? <span className="ml-2 text-muted">{day.item_lines} lines · {money(day.net_sale)}{day.summary_lines ? ` · ${day.summary_lines} summary lines` : ""}{day.unreconciled_lines ? ` · ${day.unreconciled_lines} to check` : ""}</span> : null}
               </span>
               {day.status === "missing" ? (

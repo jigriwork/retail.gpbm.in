@@ -13,6 +13,13 @@ export function money(value: number | string | null | undefined) {
   return Number.isFinite(number) ? rupees.format(number) : "—";
 }
 
+/** Tally-style supplier balance: Cr = we owe the supplier, Dr = the supplier owes us. */
+export function drCr(value: number | string | null | undefined) {
+  const number = Number(value ?? 0);
+  if (!Number.isFinite(number) || number === 0) return money(0);
+  return `${money(Math.abs(number))} ${number > 0 ? "Cr" : "Dr"}`;
+}
+
 export function shortDate(value: string | null | undefined) {
   if (!value) return "—";
   const [year, month, day] = value.slice(0, 10).split("-").map(Number);

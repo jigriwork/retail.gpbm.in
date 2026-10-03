@@ -3,7 +3,7 @@ import { indiaToday } from "@/lib/accounts/format";
 
 type Invoice = {
   id: string; firm_id: string; store_id: string; party_id: string; supplier_invoice_no: string; invoice_date: string; received_date: string | null;
-  total_qty: number | null; taxable_amount: number; cgst_amount: number; sgst_amount: number; igst_amount: number; freight_amount: number;
+  logic_purchase_ref?: string | null; total_qty: number | null; taxable_amount: number; cgst_amount: number; sgst_amount: number; igst_amount: number; freight_amount: number;
   other_charges: number; discount_amount: number; round_off: number; invoice_total: number; due_date: string | null; due_date_source: string | null; notes: string | null;
 };
 
@@ -40,6 +40,7 @@ export function PurchaseHeaderFields({ firms, invoice, parties, stores }: {
         </Field>
         <Field label="Supplier invoice number"><input className={inputClass} defaultValue={invoice?.supplier_invoice_no ?? ""} name="supplierInvoiceNo" placeholder="PJ-26" required /></Field>
         <Field label="Invoice date"><input className={inputClass} defaultValue={invoice?.invoice_date ?? ""} max={indiaToday()} name="invoiceDate" required type="date" /></Field>
+        <Field hint="Logic's purchase number, e.g. PP26-193, if it differs from the supplier's invoice number. Sales show it as LOT NUMBER." label="Logic purchase no. (optional)"><input className={inputClass} defaultValue={invoice?.logic_purchase_ref ?? ""} name="logicPurchaseRef" /></Field>
         <Field label="Received on"><input className={inputClass} defaultValue={invoice?.received_date ?? ""} name="receivedDate" type="date" /></Field>
         <Field label="Total quantity"><input className={inputClass} defaultValue={invoice?.total_qty ?? ""} inputMode="decimal" name="totalQty" placeholder="463" /></Field>
         <Field label="Taxable value"><input className={inputClass} defaultValue={amount(invoice?.taxable_amount)} inputMode="decimal" name="taxable" placeholder="976985.60" /></Field>

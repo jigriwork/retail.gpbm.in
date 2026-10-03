@@ -6,5 +6,5 @@ export default async function Home() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const profile = await getCurrentProfile();
-  redirect(profile?.role === "staff" ? "/staff" : "/app/today");
+  redirect(profile?.role === "staff" ? "/staff" : profile?.role === "accountant" ? "/app/accounts" : "/app/today");
 }

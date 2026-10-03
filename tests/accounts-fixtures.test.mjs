@@ -70,6 +70,14 @@ test("Pepe SS-26 promo: our calculation vs the company's sheet differs only on t
   const differing = result.lines.map((line, index) => ({ row: index + 3, diff: Number(line.cn) - data[index]["CN/DN"] })).filter(item => Math.abs(item.diff) > 0.01);
   // 95/193/215: the sheet used 5% tax on NSV above ₹2,599; 109: discount cap; 104/146/192: paise roundings.
   assert.deepEqual(differing.map(item => item.row), [95, 104, 109, 146, 192, 193, 215]);
-  console.log(`Pepe: company sheet ${sheetTotal.toFixed(2)}, our rules ${Number(result.totals.cn).toFixed(2)}`);
+  console.log(`Pepe: company sheet ${sheetTotal.toFixed(2)}, our rules (2599) ${Number(result.totals.cn).toFixed(2)}`);
+  // With the GST cut-off at ₹2,625 incl. tax (₹2,500 taxable), rows 95 and 193 match the sheet too.
+  const at2625 = compute({
+    formula: "promo_share", threshold_basis: "line", share_pct: 50, discount: { accept: "input" },
+    sales_tax: { mode: "approx", approx_high: 15.25, approx_low: 4.76, threshold: 2625, operator: ">" },
+  }, data.map(row => ({ qty: row.QTY, mrp: row.MRP, nsv: row.NET, accepted_discount: row["ACTUAL DIS"], sale_date: excelDate(row.DATE), bill_no: row["BILL NO."] })));
+  const rows2625 = at2625.lines.map((line, index) => ({ row: index + 3, diff: Number(line.cn) - data[index]["CN/DN"] })).filter(item => Math.abs(item.diff) > 0.01).map(item => item.row);
+  assert.deepEqual(rows2625, [104, 109, 146, 192, 215]);
+  assert.equal(Number(at2625.totals.cn).toFixed(2), "30271.59");
   assert.equal(Math.round(differing.find(item => item.row === 109).diff * 100) / 100, -99.93); // cap applied correctly
 });

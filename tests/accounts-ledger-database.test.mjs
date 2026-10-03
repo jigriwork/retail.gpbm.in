@@ -166,3 +166,29 @@ test("open bills and unadjusted entries come back in one query, oldest due first
   ${check(`(select open_amount from open_vouchers(${quote(goPlanet)},:'party','debit'))=1000`, "Unadjusted payment wrong")}
   rollback;`);
 });
+
+test("a store-scoped accountant can pay that store's bills in full, but not leave advances or touch other stores", () => {
+  const bm = value("select id from stores where code='BM'");
+  // Store accountant pays the Go Planet store's bill, fully allocated.
+  sql(`begin; ${setup} ${as(storeAccountant)}
+  select record_supplier_voucher('payment',${quote(goPlanet)},${quote(gp)},:'party','2026-10-01',65813,'bank',null,null,null,null,null,null,null,null,jsonb_build_array(jsonb_build_object('voucher_id',:'pur','amount',65813)),null) as pay \\gset
+  ${check(`(select store_id from vouchers where id=:'pay')=${quote(gp)} and (select open_amount from open_vouchers(${quote(goPlanet)},:'party','credit'))=1000000`, "Store payment must be posted and allocated")}
+  rollback;`);
+  // Partly unallocated store payment = advance -> refused.
+  assert.throws(() => sql(`begin; ${setup} ${as(storeAccountant)}
+    select record_supplier_voucher('payment',${quote(goPlanet)},${quote(gp)},:'party','2026-10-01',70000,'bank',null,null,null,null,null,null,null,null,jsonb_build_array(jsonb_build_object('voucher_id',:'pur','amount',65813)),null); rollback;`), /set in full/);
+  // Firm-wide payment -> refused for the store accountant.
+  assert.throws(() => sql(`begin; ${setup} ${as(storeAccountant)}
+    select record_supplier_voucher('payment',${quote(goPlanet)},null,:'party','2026-10-01',100,'bank',null,null,null,null,null,null,null,null,jsonb_build_array(jsonb_build_object('voucher_id',:'pur','amount',100)),null); rollback;`), /cannot post/);
+  // Another store's payment -> refused.
+  assert.throws(() => sql(`begin; ${setup} ${as(storeAccountant)}
+    select record_supplier_voucher('payment',${quote(goPlanet)},${quote(bm)},:'party','2026-10-01',100,'bank',null,null,null,null,null,null,null,null,null,null); rollback;`), /cannot post/);
+  // Undoing part of a store payment needs firm-wide permission.
+  assert.throws(() => sql(`begin; ${setup} ${as(storeAccountant)}
+    select record_supplier_voucher('payment',${quote(goPlanet)},${quote(gp)},:'party','2026-10-01',100,'bank',null,null,null,null,null,null,null,null,jsonb_build_array(jsonb_build_object('voucher_id',:'pur','amount',100)),null) as pay \\gset
+    select release_allocation((select id from voucher_allocations where from_voucher_id=:'pay'),'test'); rollback;`), /firm-wide permission/);
+  // The firm-wide accountant may still record an advance.
+  sql(`begin; ${setup} ${as(accountant)}
+  select record_supplier_voucher('payment',${quote(goPlanet)},null,:'party','2026-10-01',500,'bank',null,null,null,null,null,null,null,null,null,null);
+  ${check(`(select advance from party_balances(${quote(goPlanet)},:'party','2026-10-31'))=500`, "Firm-wide advance allowed")} rollback;`);
+});

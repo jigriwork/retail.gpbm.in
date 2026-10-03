@@ -22,3 +22,10 @@ test("accounts formatting keeps paise and Indian grouping, and never invents dat
   assert.equal(validGstin("21AAAAA0000A1Z5"), true);
   assert.equal(validGstin("21AAAA"), false);
 });
+
+test("supplier balances read Tally-style: Cr = we owe them, Dr = they owe us", () => {
+  const { drCr } = fixture().load("@/lib/accounts/format");
+  assert.equal(drCr(1065813), "₹10,65,813.00 Cr");
+  assert.equal(drCr(-1149), "₹1,149.00 Dr");
+  assert.equal(drCr(0), "₹0.00");
+});

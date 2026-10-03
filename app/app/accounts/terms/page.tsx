@@ -25,7 +25,8 @@ Sales minus margin (Turtle-type):
 Promotion share (Pepe-type):
 {"formula":"promo_share","threshold_basis":"piece","share_pct":50,
  "discount":{"accept":"tiers","tiers":[{"min_bill_mrp":4499,"amount":500},{"min_bill_mrp":6999,"amount":1000},{"min_bill_mrp":12999,"amount":2000}]},
- "sales_tax":{"mode":"approx","approx_high":15.25,"approx_low":4.76,"threshold":2599,"operator":">"}}
+ "sales_tax":{"mode":"approx","approx_high":15.25,"approx_low":4.76,"threshold":2625,"operator":">"}}
+ (2625 incl. tax = ₹2,500 taxable at 5%; confirm the cut-off with the company/CA.)
 
 Discount "accept": "all" | "none" | "cap" (with "cap") | "tiers" | "manual" (bill approvals).`;
 

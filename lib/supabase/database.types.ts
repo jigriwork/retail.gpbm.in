@@ -1982,6 +1982,7 @@ export type Database = {
           updated_at: string
           posted_by: string | null
           posted_at: string | null
+          logic_purchase_ref: string | null
         }
         Insert: {
           id?: string
@@ -2013,6 +2014,7 @@ export type Database = {
           updated_at?: string
           posted_by?: string | null
           posted_at?: string | null
+          logic_purchase_ref?: string | null
         }
         Update: {
           id?: string
@@ -2044,6 +2046,7 @@ export type Database = {
           updated_at?: string
           posted_by?: string | null
           posted_at?: string | null
+          logic_purchase_ref?: string | null
         }
         Relationships: [
           {

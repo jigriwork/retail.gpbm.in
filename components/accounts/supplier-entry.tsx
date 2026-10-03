@@ -8,7 +8,8 @@ import { indiaToday, money, noteReasons, paymentModes, shortDate } from "@/lib/a
 import { recordSupplierEntry } from "@/lib/accounts/ledger-actions";
 import { openBills, openCredits, partyBalances } from "@/lib/accounts/ledger-queries";
 import { linkableDocuments } from "@/lib/accounts/ledger-queries";
-import { listAllParties, listFirms } from "@/lib/accounts/queries";
+import { listAllParties, listFinanceStores, listFirms } from "@/lib/accounts/queries";
+import { canPostFirmWide } from "@/lib/accounts/access";
 
 const typeLabels: Record<string, string> = {
   credit_note: "Credit note received", debit_note: "Debit note we raised", opening: "Opening balance", payment: "Payment to supplier", receipt: "Refund from supplier",
@@ -19,10 +20,12 @@ const typeLabels: Record<string, string> = {
  * adjust it against bills. Used by Payments (payment, refund, opening) and
  * Notes (credit and debit notes).
  */
-export async function SupplierEntry({ base, firmId, partyId, session, type, types }: {
-  base: string; firmId?: string; partyId?: string; session: FinanceSession; type: string; types: string[];
+export async function SupplierEntry({ base, firmId, partyId, session, storeId, type, types }: {
+  base: string; firmId?: string; partyId?: string; session: FinanceSession; storeId?: string; type: string; types: string[];
 }) {
-  const [firms, parties] = await Promise.all([listFirms(), listAllParties()]);
+  const [firms, parties, stores] = await Promise.all([listFirms(), listAllParties(), listFinanceStores()]);
+  const storeAllowed = ["payment", "credit_note", "debit_note"].includes(type);
+  const store = storeAllowed ? stores.find((item) => item.id === storeId) : undefined;
   const firm = firms.find((item) => item.id === firmId);
   const party = parties.find((item) => item.id === partyId);
   const chooser = (
@@ -37,6 +40,12 @@ export async function SupplierEntry({ base, firmId, partyId, session, type, type
           <option value="">Supplier…</option>
           {parties.map((item) => <option key={item.id} value={item.id}>{item.legal_name}</option>)}
         </select>
+        {storeAllowed ? (
+          <select className={`${inputClass} max-w-56`} defaultValue={store?.id ?? ""} name="store">
+            <option value="">Firm-wide (no store)</option>
+            {stores.filter((item) => item.is_active).map((item) => <option key={item.id} value={item.id}>{item.name} bills only</option>)}
+          </select>
+        ) : null}
         <button className="h-11 rounded-xl border border-border px-4 text-sm font-semibold">Show</button>
       </form>
     </Panel>
@@ -50,7 +59,8 @@ export async function SupplierEntry({ base, firmId, partyId, session, type, type
     type === "receipt" ? openCredits(firm.id, party.id) : Promise.resolve([]),
     linkableDocuments(null),
   ]);
-  const targets = type === "receipt" ? credits : bills;
+  const targets = type === "receipt" ? credits : store ? bills.filter((bill) => bill.store_id === store.id) : bills;
+  const firmWide = canPostFirmWide(session, firm.id);
   return (
     <>
       {chooser}
@@ -59,7 +69,7 @@ export async function SupplierEntry({ base, firmId, partyId, session, type, type
       </Panel>
       <div className="flex flex-wrap gap-1 text-xs font-semibold">
         {types.map((item) => (
-          <Link className={item === type ? "rounded-full bg-primary px-3 py-1.5 text-white" : "rounded-full border border-border px-3 py-1.5 text-muted"} href={`${base}?firm=${firm.id}&party=${party.id}&type=${item}`} key={item}>
+          <Link className={item === type ? "rounded-full bg-primary px-3 py-1.5 text-white" : "rounded-full border border-border px-3 py-1.5 text-muted"} href={`${base}?firm=${firm.id}&party=${party.id}&type=${item}${store ? `&store=${store.id}` : ""}`} key={item}>
             {typeLabels[item]}
           </Link>
         ))}
@@ -70,6 +80,9 @@ export async function SupplierEntry({ base, firmId, partyId, session, type, type
             <input name="type" type="hidden" value={type} />
             <input name="firmId" type="hidden" value={firm.id} />
             <input name="partyId" type="hidden" value={party.id} />
+            {store ? <input name="storeId" type="hidden" value={store.id} /> : null}
+            {store ? <p className="text-sm text-muted">For {store.name} only: {type === "payment" ? <>the full amount must be set against {store.name}&apos;s bills below.</> : <>it can only be set against {store.name}&apos;s bills.</>}</p> : null}
+            {!store && !firmWide ? <p className="text-sm text-danger">Your access is limited to a store. Choose your store above; advances and firm-wide entries need firm-wide permission.</p> : null}
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label={type === "opening" ? "As of date" : "Date"}><input className={inputClass} defaultValue={indiaToday()} max={indiaToday()} name="date" required type="date" /></Field>
               <Field label="Amount (₹)"><input className={inputClass} inputMode="decimal" name="amount" required /></Field>

@@ -66,6 +66,15 @@ export const getFinanceSession = cache(async (): Promise<FinanceSession> => {
   return { profile, isOwner, grants, can, canSubmitDocuments: can.post || profile.role === "manager" };
 });
 
+/**
+ * Firm-wide posting (payments not tied to a store, advances, refunds, opening
+ * balances): owner, or a posting grant with no store limit for the firm.
+ * Same rule as finance_can('post', firm, null) in the database.
+ */
+export function canPostFirmWide(session: FinanceSession, firmId: string) {
+  return session.isOwner || session.grants.some((grant) => grant.can_post && !grant.store_id && (!grant.firm_id || grant.firm_id === firmId));
+}
+
 /** Null when the person may not use this part of Accounts. */
 export async function requireFinance(action: FinanceAction) {
   const session = await getFinanceSession();
