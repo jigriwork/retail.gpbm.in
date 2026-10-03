@@ -44,11 +44,14 @@ export async function listSettlements() {
     .from("settlements")
     .select("id,payable,due_date,status,run_id,firm_id,party_id, parties(legal_name), billing_firms(name)")
     .order("created_at", { ascending: false }).limit(200);
-  const paid = await Promise.all((data ?? []).map(async (settlement) => {
-    const { data: payments } = await supabase.from("settlement_payments").select("amount").eq("settlement_id", settlement.id).is("released_at", null);
-    return { ...settlement, paid: (payments ?? []).reduce((sum, row) => sum + Math.round(Number(row.amount) * 100), 0) / 100 };
+  const ids = (data ?? []).map((settlement) => settlement.id);
+  const { data: payments } = ids.length
+    ? await supabase.from("settlement_payments").select("settlement_id,amount").in("settlement_id", ids).is("released_at", null)
+    : { data: [] };
+  return (data ?? []).map((settlement) => ({
+    ...settlement,
+    paid: (payments ?? []).filter((row) => row.settlement_id === settlement.id).reduce((sum, row) => sum + Math.round(Number(row.amount) * 100), 0) / 100,
   }));
-  return paid;
 }
 
 /** Posted credit notes not yet matched to an expected credit, for one supplier and firm. */

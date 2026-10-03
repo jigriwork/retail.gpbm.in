@@ -9,6 +9,226 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      supplier_statement_lines: {
+        Row: {
+          id: string
+          statement_id: string
+          line_date: string | null
+          doc_no: string | null
+          doc_key: string | null
+          description: string | null
+          debit: number
+          credit: number
+          matched_voucher_id: string | null
+          match_note: string | null
+        }
+        Insert: {
+          id?: string
+          statement_id: string
+          line_date?: string | null
+          doc_no?: string | null
+          description?: string | null
+          debit?: number
+          credit?: number
+          matched_voucher_id?: string | null
+          match_note?: string | null
+        }
+        Update: {
+          id?: string
+          statement_id?: string
+          line_date?: string | null
+          doc_no?: string | null
+          description?: string | null
+          debit?: number
+          credit?: number
+          matched_voucher_id?: string | null
+          match_note?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "supplier_statement_lines_matched_voucher_id_fkey",
+            "columns": [
+              "matched_voucher_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "vouchers",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supplier_statement_lines_statement_id_fkey",
+            "columns": [
+              "statement_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "supplier_statements",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      supplier_statements: {
+        Row: {
+          id: string
+          firm_id: string
+          party_id: string
+          document_id: string | null
+          period_from: string
+          period_to: string
+          opening_balance: number | null
+          closing_balance: number
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          firm_id: string
+          party_id: string
+          document_id?: string | null
+          period_from: string
+          period_to: string
+          opening_balance?: number | null
+          closing_balance: number
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          firm_id?: string
+          party_id?: string
+          document_id?: string | null
+          period_from?: string
+          period_to?: string
+          opening_balance?: number | null
+          closing_balance?: number
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "supplier_statements_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supplier_statements_document_id_fkey",
+            "columns": [
+              "document_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "finance_documents",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supplier_statements_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supplier_statements_party_id_fkey",
+            "columns": [
+              "party_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "parties",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      accounting_periods: {
+        Row: {
+          id: string
+          firm_id: string
+          month: string
+          status: string
+          closed_by: string | null
+          closed_at: string | null
+          reopened_by: string | null
+          reopened_at: string | null
+          reopen_reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          firm_id: string
+          month: string
+          status?: string
+          closed_by?: string | null
+          closed_at?: string | null
+          reopened_by?: string | null
+          reopened_at?: string | null
+          reopen_reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          firm_id?: string
+          month?: string
+          status?: string
+          closed_by?: string | null
+          closed_at?: string | null
+          reopened_by?: string | null
+          reopened_at?: string | null
+          reopen_reason?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "accounting_periods_closed_by_fkey",
+            "columns": [
+              "closed_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "accounting_periods_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "accounting_periods_reopened_by_fkey",
+            "columns": [
+              "reopened_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
       settlement_payments: {
         Row: {
           id: string
@@ -6255,6 +6475,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      batches_with_remaining: { Args: { p_store: string | null; p_party: string | null; p_search: string | null; p_unattributed: boolean | null; p_limit: number | null }; Returns: { id: string; store_id: string; firm_id: string; party_id: string | null; brand_id: string | null; source: string; lot_code: string | null; barcode: string | null; article: string | null; size: string | null; description: string | null; mrp: number | null; unit_cost: number | null; cost_basis: string; qty_in: number; received_date: string; attribution: string; remaining: number }[] }
+      accounts_summary: { Args: { p_firm: string | null; p_store: string | null; p_brand: string | null; p_from: string; p_to: string }; Returns: { firm_id: string; store_id: string | null; party_id: string; brand_id: string | null; purchases_taxable: number; purchases_total: number; payments: number; credit_notes: number; debit_notes: number; purchase_qty: number }[] }
+      statement_comparison: { Args: { p_statement: string }; Returns: Json }
+      match_statement: { Args: { p_statement: string }; Returns: number }
+      save_supplier_statement: { Args: { p_firm: string; p_party: string; p_from: string; p_to: string; p_opening: number | null; p_closing: number; p_document: string | null; p_lines: Json; p_notes: string | null }; Returns: string }
+      reopen_period: { Args: { p_firm: string; p_month: string; p_reason: string }; Returns: undefined }
+      close_period: { Args: { p_firm: string; p_month: string }; Returns: undefined }
+      period_is_closed: { Args: { p_firm: string; p_date: string }; Returns: boolean }
       settlement_balances: { Args: { p_firm: string | null; p_as_of?: string | null }; Returns: { firm_id: string; party_id: string; settlement_open: number; settlement_due: number; cn_expected: number; cn_pending: number }[] }
       pay_settlement: { Args: { p_settlement: string; p_voucher: string; p_amount: number }; Returns: undefined }
       match_claim: { Args: { p_claim: string; p_voucher: string }; Returns: undefined }

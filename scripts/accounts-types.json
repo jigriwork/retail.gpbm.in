@@ -38,7 +38,10 @@
     "bill_discount_approvals",
     "claims",
     "settlements",
-    "settlement_payments"
+    "settlement_payments",
+    "accounting_periods",
+    "supplier_statements",
+    "supplier_statement_lines"
   ],
   "functions": {
     "finance_can": [
@@ -188,6 +191,38 @@
     "settlement_balances": [
       "p_firm: string | null; p_as_of?: string | null",
       "{ firm_id: string; party_id: string; settlement_open: number; settlement_due: number; cn_expected: number; cn_pending: number }[]"
+    ],
+    "period_is_closed": [
+      "p_firm: string; p_date: string",
+      "boolean"
+    ],
+    "close_period": [
+      "p_firm: string; p_month: string",
+      "undefined"
+    ],
+    "reopen_period": [
+      "p_firm: string; p_month: string; p_reason: string",
+      "undefined"
+    ],
+    "save_supplier_statement": [
+      "p_firm: string; p_party: string; p_from: string; p_to: string; p_opening: number | null; p_closing: number; p_document: string | null; p_lines: Json; p_notes: string | null",
+      "string"
+    ],
+    "match_statement": [
+      "p_statement: string",
+      "number"
+    ],
+    "statement_comparison": [
+      "p_statement: string",
+      "Json"
+    ],
+    "accounts_summary": [
+      "p_firm: string | null; p_store: string | null; p_brand: string | null; p_from: string; p_to: string",
+      "{ firm_id: string; store_id: string | null; party_id: string; brand_id: string | null; purchases_taxable: number; purchases_total: number; payments: number; credit_notes: number; debit_notes: number; purchase_qty: number }[]"
+    ],
+    "batches_with_remaining": [
+      "p_store: string | null; p_party: string | null; p_search: string | null; p_unattributed: boolean | null; p_limit: number | null",
+      "{ id: string; store_id: string; firm_id: string; party_id: string | null; brand_id: string | null; source: string; lot_code: string | null; barcode: string | null; article: string | null; size: string | null; description: string | null; mrp: number | null; unit_cost: number | null; cost_basis: string; qty_in: number; received_date: string; attribution: string; remaining: number }[]"
     ]
   }
 }

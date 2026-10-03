@@ -20,26 +20,28 @@ export async function unresolvedLines(storeId: string, from: string, to: string,
   return data ?? [];
 }
 
-/** Active batches with stock left, filtered by supplier/lot/barcode text. Bounded. */
+/** Active batches with stock left, filtered by supplier/lot/barcode text. One bounded query. */
 export async function findBatches(filters: { storeId?: string; partyId?: string; search?: string; unattributed?: boolean; limit?: number }) {
   const supabase = await createClient();
-  let query = supabase
-    .from("purchase_batches")
-    .select("id,store_id,firm_id,party_id,brand_id,source,lot_code,barcode,article,size,description,mrp,unit_cost,cost_basis,qty_in,received_date,attribution, parties(legal_name), brands(name), stores(name)")
-    .eq("status", "active").order("received_date", { ascending: false }).limit(filters.limit ?? 60);
-  if (filters.storeId) query = query.eq("store_id", filters.storeId);
-  if (filters.partyId) query = query.eq("party_id", filters.partyId);
-  if (filters.unattributed) query = query.eq("attribution", "unattributed");
-  if (filters.search) {
-    const term = filters.search.replace(/[%_,()]/g, " ").trim();
-    query = query.or(`lot_code.ilike.%${term}%,barcode.ilike.%${term}%,article.ilike.%${term}%,description.ilike.%${term}%`);
-  }
-  const { data } = await query;
-  const batches = await Promise.all((data ?? []).map(async (batch) => {
-    const { data: left } = await supabase.rpc("batch_remaining", { p_batch: batch.id });
-    return { ...batch, remaining: Number(left ?? 0) };
+  const { data, error } = await supabase.rpc("batches_with_remaining", {
+    p_limit: filters.limit ?? 60, p_party: filters.partyId ?? null, p_search: filters.search ?? null,
+    p_store: filters.storeId ?? null, p_unattributed: filters.unattributed ?? false,
+  });
+  if (error) throw new Error("Stock could not be loaded. Please retry.");
+  const rows = data ?? [];
+  const [{ data: parties }, { data: brands }, { data: stores }] = await Promise.all([
+    supabase.from("parties").select("id,legal_name").in("id", [...new Set(rows.map((row) => row.party_id).filter((id): id is string => Boolean(id)))]),
+    supabase.from("brands").select("id,name").in("id", [...new Set(rows.map((row) => row.brand_id).filter((id): id is string => Boolean(id)))]),
+    supabase.from("stores").select("id,name").in("id", [...new Set(rows.map((row) => row.store_id))]),
+  ]);
+  const name = <T extends { id: string }>(list: T[] | null, id: string | null, key: keyof T) => (id ? (list ?? []).find((item) => item.id === id)?.[key] ?? null : null);
+  return rows.map((row) => ({
+    ...row,
+    brands: row.brand_id ? { name: name(brands, row.brand_id, "name") as string | null } : null,
+    parties: row.party_id ? { legal_name: name(parties, row.party_id, "legal_name") as string | null } : null,
+    remaining: Number(row.remaining),
+    stores: { name: name(stores, row.store_id, "name") as string | null },
   }));
-  return batches;
 }
 
 /** Unattributed opening stock grouped by store and brand (pieces and lots). */

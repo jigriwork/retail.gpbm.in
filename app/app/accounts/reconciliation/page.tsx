@@ -21,7 +21,7 @@ export default async function ReconciliationPage() {
         description="Differences with suppliers that still need an answer. A dispute never changes the ledger by itself; once agreed, post the credit or debit note and mark it resolved."
         title="Reconciliation"
       />
-      <Notice tone="info">Company statement upload and line-by-line matching, and expected credits from company workings, are added in later releases.</Notice>
+      <Notice tone="info">Compare a supplier&apos;s statement under <Link className="font-semibold underline" href="/app/accounts/statements">Statements</Link>, and match expected credits under <Link className="font-semibold underline" href="/app/accounts/claims">Expected credits</Link>.</Notice>
       <Panel title={`Difference to resolve (${open.length})`}>
         {disputes.length ? (
           <div className="space-y-3">
