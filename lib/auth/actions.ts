@@ -145,14 +145,14 @@ export async function createUserAccount(formData: FormData) {
   const fullName = readString(formData, "fullName");
   const phone = readString(formData, "phone");
   const requestedRole = readString(formData, "role") || "manager";
-  const role = requestedRole === "owner" ? "owner" : "manager";
+  const role = requestedRole === "owner" ? "owner" : requestedRole === "accountant" ? "accountant" : "manager";
 
   if (!email || !password || !fullName) {
     return { ok: false, message: "Email, password, and full name are required." };
   }
 
-  if (!["manager", "owner"].includes(role)) {
-    return { ok: false, message: "Choose Manager or Owner role." };
+  if (!["manager", "owner", "accountant"].includes(role)) {
+    return { ok: false, message: "Choose Manager, Accountant or Owner role." };
   }
 
   const { data, error } = await admin.auth.admin.createUser({
@@ -194,7 +194,11 @@ export async function createUserAccount(formData: FormData) {
   });
 
   revalidatePath("/app/users");
-  return { ok: true, message: `${role === "owner" ? "Owner" : "Manager"} account created.` };
+  const created = role === "owner" ? "Owner" : role === "accountant" ? "Accountant" : "Manager";
+  return {
+    ok: true,
+    message: role === "accountant" ? "Accountant account created. Give access under Accounts → Access." : `${created} account created.`,
+  };
 }
 
 export async function createManager(formData: FormData) {

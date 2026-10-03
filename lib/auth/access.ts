@@ -52,6 +52,7 @@ export function isHandheld({
 const handheldExact = new Set(["/app/reports", "/app/reports/sales", "/app/reports/stock", "/app/stores"]);
 const handheldPrefixes = [
   "/app/today",
+  "/app/accounts",
   "/app/tasks",
   "/app/checklist",
   "/app/updates",
@@ -61,6 +62,12 @@ const handheldPrefixes = [
   "/app/reports/staff-aliases",
   "/app/staff-accounts",
 ];
+
+/** Accountants work only in Accounts (plus their own password page). */
+export function accountantAllows(pathname: string) {
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  return path === "/app/accounts" || path.startsWith("/app/accounts/") || path === "/app/settings/account";
+}
 
 export function handheldAllows(pathname: string) {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;

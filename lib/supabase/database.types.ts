@@ -9,6 +9,1086 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      sales_day_confirmations: {
+        Row: {
+          id: string
+          store_id: string
+          sale_date: string
+          status: string
+          note: string | null
+          confirmed_by: string | null
+          confirmed_at: string
+        }
+        Insert: {
+          id?: string
+          store_id: string
+          sale_date: string
+          status?: string
+          note?: string | null
+          confirmed_by?: string | null
+          confirmed_at?: string
+        }
+        Update: {
+          id?: string
+          store_id?: string
+          sale_date?: string
+          status?: string
+          note?: string | null
+          confirmed_by?: string | null
+          confirmed_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "sales_day_confirmations_confirmed_by_fkey",
+            "columns": [
+              "confirmed_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "sales_day_confirmations_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      finance_documents: {
+        Row: {
+          id: string
+          kind: string
+          firm_id: string | null
+          store_id: string | null
+          party_id: string | null
+          title: string | null
+          doc_no: string | null
+          doc_date: string | null
+          amount: number | null
+          bucket: string
+          file_path: string
+          file_name: string
+          mime_type: string
+          byte_size: number
+          sha256: string
+          status: string
+          submitted_by: string
+          submitted_role: string
+          notes: string | null
+          created_at: string
+          stored_at: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+        }
+        Insert: {
+          id?: string
+          kind: string
+          firm_id?: string | null
+          store_id?: string | null
+          party_id?: string | null
+          title?: string | null
+          doc_no?: string | null
+          doc_date?: string | null
+          amount?: number | null
+          bucket?: string
+          file_path: string
+          file_name: string
+          mime_type: string
+          byte_size: number
+          sha256: string
+          status?: string
+          submitted_by: string
+          submitted_role: string
+          notes?: string | null
+          created_at?: string
+          stored_at?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+        }
+        Update: {
+          id?: string
+          kind?: string
+          firm_id?: string | null
+          store_id?: string | null
+          party_id?: string | null
+          title?: string | null
+          doc_no?: string | null
+          doc_date?: string | null
+          amount?: number | null
+          bucket?: string
+          file_path?: string
+          file_name?: string
+          mime_type?: string
+          byte_size?: number
+          sha256?: string
+          status?: string
+          submitted_by?: string
+          submitted_role?: string
+          notes?: string | null
+          created_at?: string
+          stored_at?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "finance_documents_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "finance_documents_party_id_fkey",
+            "columns": [
+              "party_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "parties",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "finance_documents_reviewed_by_fkey",
+            "columns": [
+              "reviewed_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "finance_documents_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "finance_documents_submitted_by_fkey",
+            "columns": [
+              "submitted_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      company_terms: {
+        Row: {
+          id: string
+          arrangement_id: string
+          version: number
+          effective_from: string
+          effective_to: string | null
+          status: string
+          payment_cycle: string
+          credit_days: number | null
+          early_payment_discount_pct: number | null
+          early_payment_days: number | null
+          early_payment_base: string | null
+          rules: Json
+          source_document_id: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string
+          confirmed_by: string | null
+          confirmed_at: string | null
+        }
+        Insert: {
+          id?: string
+          arrangement_id: string
+          version: number
+          effective_from: string
+          effective_to?: string | null
+          status?: string
+          payment_cycle?: string
+          credit_days?: number | null
+          early_payment_discount_pct?: number | null
+          early_payment_days?: number | null
+          early_payment_base?: string | null
+          rules?: Json
+          source_document_id?: string | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          confirmed_by?: string | null
+          confirmed_at?: string | null
+        }
+        Update: {
+          id?: string
+          arrangement_id?: string
+          version?: number
+          effective_from?: string
+          effective_to?: string | null
+          status?: string
+          payment_cycle?: string
+          credit_days?: number | null
+          early_payment_discount_pct?: number | null
+          early_payment_days?: number | null
+          early_payment_base?: string | null
+          rules?: Json
+          source_document_id?: string | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          confirmed_by?: string | null
+          confirmed_at?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "company_terms_arrangement_id_fkey",
+            "columns": [
+              "arrangement_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "supply_arrangements",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "company_terms_confirmed_by_fkey",
+            "columns": [
+              "confirmed_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "company_terms_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "company_terms_source_document_fkey",
+            "columns": [
+              "source_document_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "finance_documents",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      supply_arrangements: {
+        Row: {
+          id: string
+          party_id: string
+          brand_id: string
+          firm_id: string
+          store_id: string | null
+          valid_from: string
+          valid_to: string | null
+          settlement_basis: string
+          status: string
+          notes: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          party_id: string
+          brand_id: string
+          firm_id: string
+          store_id?: string | null
+          valid_from: string
+          valid_to?: string | null
+          settlement_basis?: string
+          status?: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          party_id?: string
+          brand_id?: string
+          firm_id?: string
+          store_id?: string | null
+          valid_from?: string
+          valid_to?: string | null
+          settlement_basis?: string
+          status?: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "supply_arrangements_brand_id_fkey",
+            "columns": [
+              "brand_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "brands",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supply_arrangements_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supply_arrangements_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supply_arrangements_party_id_fkey",
+            "columns": [
+              "party_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "parties",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supply_arrangements_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      brand_aliases: {
+        Row: {
+          id: string
+          brand_id: string
+          alias: string
+          normalized: string | null
+          source: string
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          brand_id: string
+          alias: string
+          source?: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          brand_id?: string
+          alias?: string
+          source?: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "brand_aliases_brand_id_fkey",
+            "columns": [
+              "brand_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "brands",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "brand_aliases_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      brands: {
+        Row: {
+          id: string
+          name: string
+          normalized: string | null
+          is_merchandise: boolean
+          notes: string | null
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          is_merchandise?: boolean
+          notes?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          is_merchandise?: boolean
+          notes?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "brands_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      agent_parties: {
+        Row: {
+          id: string
+          agent_id: string
+          party_id: string
+          role: string | null
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          agent_id: string
+          party_id: string
+          role?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          agent_id?: string
+          party_id?: string
+          role?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "agent_parties_agent_id_fkey",
+            "columns": [
+              "agent_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "agents",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "agent_parties_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "agent_parties_party_id_fkey",
+            "columns": [
+              "party_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "parties",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      agents: {
+        Row: {
+          id: string
+          name: string
+          phone: string | null
+          email: string | null
+          notes: string | null
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          phone?: string | null
+          email?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          phone?: string | null
+          email?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "agents_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      party_aliases: {
+        Row: {
+          id: string
+          party_id: string
+          alias: string
+          normalized: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          party_id: string
+          alias: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          party_id?: string
+          alias?: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "party_aliases_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "party_aliases_party_id_fkey",
+            "columns": [
+              "party_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "parties",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      parties: {
+        Row: {
+          id: string
+          legal_name: string
+          display_name: string | null
+          gstin: string | null
+          gstin_exception: string | null
+          state_code: string | null
+          address: string | null
+          phone: string | null
+          email: string | null
+          notes: string | null
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          legal_name: string
+          display_name?: string | null
+          gstin?: string | null
+          gstin_exception?: string | null
+          state_code?: string | null
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          legal_name?: string
+          display_name?: string | null
+          gstin?: string | null
+          gstin_exception?: string | null
+          state_code?: string | null
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "parties_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      finance_grants: {
+        Row: {
+          id: string
+          user_id: string
+          firm_id: string | null
+          store_id: string | null
+          can_view: boolean
+          can_post: boolean
+          can_manage_masters: boolean
+          can_approve: boolean
+          can_close_period: boolean
+          valid_from: string
+          valid_to: string | null
+          note: string | null
+          granted_by: string | null
+          created_at: string
+          revoked_at: string | null
+          revoked_by: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          firm_id?: string | null
+          store_id?: string | null
+          can_view?: boolean
+          can_post?: boolean
+          can_manage_masters?: boolean
+          can_approve?: boolean
+          can_close_period?: boolean
+          valid_from?: string
+          valid_to?: string | null
+          note?: string | null
+          granted_by?: string | null
+          created_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          firm_id?: string | null
+          store_id?: string | null
+          can_view?: boolean
+          can_post?: boolean
+          can_manage_masters?: boolean
+          can_approve?: boolean
+          can_close_period?: boolean
+          valid_from?: string
+          valid_to?: string | null
+          note?: string | null
+          granted_by?: string | null
+          created_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "finance_grants_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "finance_grants_granted_by_fkey",
+            "columns": [
+              "granted_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "finance_grants_revoked_by_fkey",
+            "columns": [
+              "revoked_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "finance_grants_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "finance_grants_user_id_fkey",
+            "columns": [
+              "user_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      billing_series: {
+        Row: {
+          id: string
+          store_id: string
+          firm_id: string
+          prefix: string
+          number_from: number | null
+          number_to: number | null
+          valid_from: string | null
+          valid_to: string | null
+          status: string
+          evidence: string
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          store_id: string
+          firm_id: string
+          prefix: string
+          number_from?: number | null
+          number_to?: number | null
+          valid_from?: string | null
+          valid_to?: string | null
+          status: string
+          evidence: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          store_id?: string
+          firm_id?: string
+          prefix?: string
+          number_from?: number | null
+          number_to?: number | null
+          valid_from?: string | null
+          valid_to?: string | null
+          status?: string
+          evidence?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "billing_series_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "billing_series_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "billing_series_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      store_firm_periods: {
+        Row: {
+          id: string
+          store_id: string
+          firm_id: string
+          valid_from: string | null
+          valid_to: string | null
+          status: string
+          evidence: string
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          store_id: string
+          firm_id: string
+          valid_from?: string | null
+          valid_to?: string | null
+          status: string
+          evidence: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          store_id?: string
+          firm_id?: string
+          valid_from?: string | null
+          valid_to?: string | null
+          status?: string
+          evidence?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "store_firm_periods_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "store_firm_periods_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "store_firm_periods_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      billing_firms: {
+        Row: {
+          id: string
+          name: string
+          legal_name: string | null
+          gstin: string | null
+          state_code: string | null
+          address: string | null
+          notes: string | null
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          legal_name?: string | null
+          gstin?: string | null
+          state_code?: string | null
+          address?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          legal_name?: string | null
+          gstin?: string | null
+          state_code?: string | null
+          address?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "billing_firms_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      finance_events: {
+        Row: {
+          id: number
+          entity_type: string
+          entity_id: string | null
+          action: string
+          actor_id: string | null
+          actor_role: string | null
+          reason: string | null
+          before: Json | null
+          after: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          entity_type: string
+          entity_id?: string | null
+          action: string
+          actor_id?: string | null
+          actor_role?: string | null
+          reason?: string | null
+          before?: Json | null
+          after?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          entity_type?: string
+          entity_id?: string | null
+          action?: string
+          actor_id?: string | null
+          actor_role?: string | null
+          reason?: string | null
+          before?: Json | null
+          after?: Json | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       upload_intents: {
         Row: {
           id: string
@@ -1645,36 +2725,48 @@ export type Database = {
       }
       profiles: {
         Row: {
-          created_at: string | null
-          email: string | null
-          full_name: string | null
           id: string
-          is_active: boolean | null
+          full_name: string | null
+          email: string | null
           phone: string | null
           role: string
+          is_active: boolean | null
+          created_at: string | null
           updated_at: string | null
         }
         Insert: {
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
           id: string
-          is_active?: boolean | null
+          full_name?: string | null
+          email?: string | null
           phone?: string | null
           role?: string
+          is_active?: boolean | null
+          created_at?: string | null
           updated_at?: string | null
         }
         Update: {
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
           id?: string
-          is_active?: boolean | null
+          full_name?: string | null
+          email?: string | null
           phone?: string | null
           role?: string
+          is_active?: boolean | null
+          created_at?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            "foreignKeyName": "profiles_id_fkey",
+            "columns": [
+              "id"
+            ],
+            "isOneToOne": true,
+            "referencedRelation": "users",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       }
       rack_reviews: {
         Row: {
@@ -2071,89 +3163,154 @@ export type Database = {
       }
       sales_rows: {
         Row: {
-          barcode: string | null
+          id: string
+          report_id: string | null
+          store_id: string | null
+          sale_date: string | null
           bill_no: string | null
+          item_name: string | null
+          sku: string | null
+          barcode: string | null
           brand: string | null
           category: string | null
+          size: string | null
           color: string | null
-          created_at: string | null
+          quantity: number | null
+          mrp: number | null
+          discount: number | null
+          net_sale: number | null
+          staff_name: string | null
           customer_name: string | null
           customer_phone: string | null
-          discount: number | null
-          id: string
-          item_name: string | null
-          mrp: number | null
-          net_sale: number | null
-          quantity: number | null
           raw_data: Json | null
-          report_id: string | null
-          sale_date: string | null
-          size: string | null
-          sku: string | null
-          staff_name: string | null
-          store_id: string | null
+          created_at: string | null
+          unit_rate: number | null
+          gross_amount: number | null
+          cd_percent: number | null
+          cd_amount: number | null
+          scheme_unit_amount: number | null
+          scheme_amount: number | null
+          taxable_amount: number | null
+          cgst_rate: number | null
+          cgst_amount: number | null
+          sgst_rate: number | null
+          sgst_amount: number | null
+          tax_amount: number | null
+          hsn_code: string | null
+          lot_code: string | null
+          lot_number: string | null
+          article_code: string | null
+          source_line_no: number | null
+          line_kind: string | null
+          amounts_reconciled: boolean | null
         }
         Insert: {
-          barcode?: string | null
+          id?: string
+          report_id?: string | null
+          store_id?: string | null
+          sale_date?: string | null
           bill_no?: string | null
+          item_name?: string | null
+          sku?: string | null
+          barcode?: string | null
           brand?: string | null
           category?: string | null
+          size?: string | null
           color?: string | null
-          created_at?: string | null
+          quantity?: number | null
+          mrp?: number | null
+          discount?: number | null
+          net_sale?: number | null
+          staff_name?: string | null
           customer_name?: string | null
           customer_phone?: string | null
-          discount?: number | null
-          id?: string
-          item_name?: string | null
-          mrp?: number | null
-          net_sale?: number | null
-          quantity?: number | null
           raw_data?: Json | null
-          report_id?: string | null
-          sale_date?: string | null
-          size?: string | null
-          sku?: string | null
-          staff_name?: string | null
-          store_id?: string | null
+          created_at?: string | null
+          unit_rate?: number | null
+          gross_amount?: number | null
+          cd_percent?: number | null
+          cd_amount?: number | null
+          scheme_unit_amount?: number | null
+          scheme_amount?: number | null
+          taxable_amount?: number | null
+          cgst_rate?: number | null
+          cgst_amount?: number | null
+          sgst_rate?: number | null
+          sgst_amount?: number | null
+          tax_amount?: number | null
+          hsn_code?: string | null
+          lot_code?: string | null
+          lot_number?: string | null
+          article_code?: string | null
+          source_line_no?: number | null
+          line_kind?: string | null
+          amounts_reconciled?: boolean | null
         }
         Update: {
-          barcode?: string | null
+          id?: string
+          report_id?: string | null
+          store_id?: string | null
+          sale_date?: string | null
           bill_no?: string | null
+          item_name?: string | null
+          sku?: string | null
+          barcode?: string | null
           brand?: string | null
           category?: string | null
+          size?: string | null
           color?: string | null
-          created_at?: string | null
+          quantity?: number | null
+          mrp?: number | null
+          discount?: number | null
+          net_sale?: number | null
+          staff_name?: string | null
           customer_name?: string | null
           customer_phone?: string | null
-          discount?: number | null
-          id?: string
-          item_name?: string | null
-          mrp?: number | null
-          net_sale?: number | null
-          quantity?: number | null
           raw_data?: Json | null
-          report_id?: string | null
-          sale_date?: string | null
-          size?: string | null
-          sku?: string | null
-          staff_name?: string | null
-          store_id?: string | null
+          created_at?: string | null
+          unit_rate?: number | null
+          gross_amount?: number | null
+          cd_percent?: number | null
+          cd_amount?: number | null
+          scheme_unit_amount?: number | null
+          scheme_amount?: number | null
+          taxable_amount?: number | null
+          cgst_rate?: number | null
+          cgst_amount?: number | null
+          sgst_rate?: number | null
+          sgst_amount?: number | null
+          tax_amount?: number | null
+          hsn_code?: string | null
+          lot_code?: string | null
+          lot_number?: string | null
+          article_code?: string | null
+          source_line_no?: number | null
+          line_kind?: string | null
+          amounts_reconciled?: boolean | null
         }
         Relationships: [
           {
-            foreignKeyName: "sales_rows_report_id_fkey"
-            columns: ["report_id"]
-            isOneToOne: false
-            referencedRelation: "reports"
-            referencedColumns: ["id"]
+            "foreignKeyName": "sales_rows_report_id_fkey",
+            "columns": [
+              "report_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "reports",
+            "referencedColumns": [
+              "id"
+            ]
           },
           {
-            foreignKeyName: "sales_rows_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
+            "foreignKeyName": "sales_rows_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
         ]
       }
       sales_upload_batches: {
@@ -2549,83 +3706,109 @@ export type Database = {
       }
       stock_rows: {
         Row: {
-          ageing_days: number | null
+          id: string
+          report_id: string | null
+          store_id: string | null
+          stock_month: string | null
+          item_name: string | null
+          sku: string | null
           barcode: string | null
           brand: string | null
           category: string | null
-          color: string | null
-          cost_price: number | null
-          created_at: string | null
-          id: string
-          item_name: string | null
-          mrp: number | null
-          purchase_date: string | null
-          quantity: number | null
-          raw_data: Json | null
-          report_id: string | null
           size: string | null
-          sku: string | null
-          stock_month: string | null
-          store_id: string | null
+          color: string | null
+          quantity: number | null
+          mrp: number | null
+          cost_price: number | null
           supplier: string | null
+          purchase_date: string | null
+          ageing_days: number | null
+          raw_data: Json | null
+          created_at: string | null
+          purchase_rate: number | null
+          basic_rate: number | null
+          hsn_code: string | null
+          lot_code: string | null
+          lot_number: string | null
+          article_code: string | null
         }
         Insert: {
-          ageing_days?: number | null
+          id?: string
+          report_id?: string | null
+          store_id?: string | null
+          stock_month?: string | null
+          item_name?: string | null
+          sku?: string | null
           barcode?: string | null
           brand?: string | null
           category?: string | null
-          color?: string | null
-          cost_price?: number | null
-          created_at?: string | null
-          id?: string
-          item_name?: string | null
-          mrp?: number | null
-          purchase_date?: string | null
-          quantity?: number | null
-          raw_data?: Json | null
-          report_id?: string | null
           size?: string | null
-          sku?: string | null
-          stock_month?: string | null
-          store_id?: string | null
+          color?: string | null
+          quantity?: number | null
+          mrp?: number | null
+          cost_price?: number | null
           supplier?: string | null
+          purchase_date?: string | null
+          ageing_days?: number | null
+          raw_data?: Json | null
+          created_at?: string | null
+          purchase_rate?: number | null
+          basic_rate?: number | null
+          hsn_code?: string | null
+          lot_code?: string | null
+          lot_number?: string | null
+          article_code?: string | null
         }
         Update: {
-          ageing_days?: number | null
+          id?: string
+          report_id?: string | null
+          store_id?: string | null
+          stock_month?: string | null
+          item_name?: string | null
+          sku?: string | null
           barcode?: string | null
           brand?: string | null
           category?: string | null
-          color?: string | null
-          cost_price?: number | null
-          created_at?: string | null
-          id?: string
-          item_name?: string | null
-          mrp?: number | null
-          purchase_date?: string | null
-          quantity?: number | null
-          raw_data?: Json | null
-          report_id?: string | null
           size?: string | null
-          sku?: string | null
-          stock_month?: string | null
-          store_id?: string | null
+          color?: string | null
+          quantity?: number | null
+          mrp?: number | null
+          cost_price?: number | null
           supplier?: string | null
+          purchase_date?: string | null
+          ageing_days?: number | null
+          raw_data?: Json | null
+          created_at?: string | null
+          purchase_rate?: number | null
+          basic_rate?: number | null
+          hsn_code?: string | null
+          lot_code?: string | null
+          lot_number?: string | null
+          article_code?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "stock_rows_report_id_fkey"
-            columns: ["report_id"]
-            isOneToOne: false
-            referencedRelation: "reports"
-            referencedColumns: ["id"]
+            "foreignKeyName": "stock_rows_report_id_fkey",
+            "columns": [
+              "report_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "reports",
+            "referencedColumns": [
+              "id"
+            ]
           },
           {
-            foreignKeyName: "stock_rows_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
+            "foreignKeyName": "stock_rows_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
         ]
       }
       store_users: {
@@ -2669,49 +3852,49 @@ export type Database = {
       }
       stores: {
         Row: {
-          code: string
-          created_at: string | null
-          dead_stock_days: number | null
-          firm_name: string | null
           id: string
-          is_active: boolean | null
-          location: string | null
-          monthly_target: number | null
-          monthly_target_enabled: boolean | null
           name: string
-          slow_stock_days: number | null
+          code: string
           type: string | null
+          location: string | null
+          is_active: boolean | null
+          monthly_target_enabled: boolean | null
+          monthly_target: number | null
+          slow_stock_days: number | null
+          dead_stock_days: number | null
+          created_at: string | null
           updated_at: string | null
+          firm_name: string | null
         }
         Insert: {
-          code: string
-          created_at?: string | null
-          dead_stock_days?: number | null
-          firm_name?: string | null
           id?: string
-          is_active?: boolean | null
-          location?: string | null
-          monthly_target?: number | null
-          monthly_target_enabled?: boolean | null
           name: string
-          slow_stock_days?: number | null
+          code: string
           type?: string | null
+          location?: string | null
+          is_active?: boolean | null
+          monthly_target_enabled?: boolean | null
+          monthly_target?: number | null
+          slow_stock_days?: number | null
+          dead_stock_days?: number | null
+          created_at?: string | null
           updated_at?: string | null
+          firm_name?: string | null
         }
         Update: {
-          code?: string
-          created_at?: string | null
-          dead_stock_days?: number | null
-          firm_name?: string | null
           id?: string
-          is_active?: boolean | null
-          location?: string | null
-          monthly_target?: number | null
-          monthly_target_enabled?: boolean | null
           name?: string
-          slow_stock_days?: number | null
+          code?: string
           type?: string | null
+          location?: string | null
+          is_active?: boolean | null
+          monthly_target_enabled?: boolean | null
+          monthly_target?: number | null
+          slow_stock_days?: number | null
+          dead_stock_days?: number | null
+          created_at?: string | null
           updated_at?: string | null
+          firm_name?: string | null
         }
         Relationships: []
       }
@@ -2863,6 +4046,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finance_create_store: { Args: { p_name: string; p_code: string; p_firm: string; p_from: string; p_location: string | null }; Returns: string }
+      sales_input_coverage: { Args: { p_store: string; p_from: string; p_to: string }; Returns: { day: string; status: string; report_id: string | null; item_lines: number; summary_lines: number; no_amount_lines: number; unreconciled_lines: number; net_sale: number | null }[] }
+      review_finance_document: { Args: { p_id: string; p_kind: string; p_firm: string | null; p_store: string | null; p_party: string | null; p_title: string | null; p_doc_no: string | null; p_doc_date: string | null; p_amount: number | null; p_status: string; p_notes: string | null }; Returns: undefined }
+      finalize_finance_document: { Args: { p_id: string }; Returns: Json }
+      reserve_finance_document: { Args: { p_kind: string; p_store: string | null; p_firm: string | null; p_party: string | null; p_file_name: string; p_mime: string; p_size: number; p_sha256: string; p_title: string | null; p_doc_no: string | null; p_doc_date: string | null }; Returns: Json }
+      store_billing_firm_label: { Args: { p_store: string; p_date: string }; Returns: string | null }
+      store_firm_on: { Args: { p_store: string; p_date: string }; Returns: string | null }
+      finance_any: { Args: { p_action: string }; Returns: boolean }
+      finance_can: { Args: { p_action: string; p_firm: string | null; p_store: string | null }; Returns: boolean }
       convert_owner_note_to_task: { Args: { p_note_id: string }; Returns: string }
       create_followup_task: {
         Args: {

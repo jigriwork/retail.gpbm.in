@@ -1,0 +1,61 @@
+{
+  "tables": [
+    "profiles",
+    "stores",
+    "sales_rows",
+    "stock_rows",
+    "finance_events",
+    "billing_firms",
+    "store_firm_periods",
+    "billing_series",
+    "finance_grants",
+    "parties",
+    "party_aliases",
+    "agents",
+    "agent_parties",
+    "brands",
+    "brand_aliases",
+    "supply_arrangements",
+    "company_terms",
+    "finance_documents",
+    "sales_day_confirmations"
+  ],
+  "functions": {
+    "finance_can": [
+      "p_action: string; p_firm: string | null; p_store: string | null",
+      "boolean"
+    ],
+    "finance_any": [
+      "p_action: string",
+      "boolean"
+    ],
+    "store_firm_on": [
+      "p_store: string; p_date: string",
+      "string | null"
+    ],
+    "store_billing_firm_label": [
+      "p_store: string; p_date: string",
+      "string | null"
+    ],
+    "reserve_finance_document": [
+      "p_kind: string; p_store: string | null; p_firm: string | null; p_party: string | null; p_file_name: string; p_mime: string; p_size: number; p_sha256: string; p_title: string | null; p_doc_no: string | null; p_doc_date: string | null",
+      "Json"
+    ],
+    "finalize_finance_document": [
+      "p_id: string",
+      "Json"
+    ],
+    "review_finance_document": [
+      "p_id: string; p_kind: string; p_firm: string | null; p_store: string | null; p_party: string | null; p_title: string | null; p_doc_no: string | null; p_doc_date: string | null; p_amount: number | null; p_status: string; p_notes: string | null",
+      "undefined"
+    ],
+    "sales_input_coverage": [
+      "p_store: string; p_from: string; p_to: string",
+      "{ day: string; status: string; report_id: string | null; item_lines: number; summary_lines: number; no_amount_lines: number; unreconciled_lines: number; net_sale: number | null }[]"
+    ],
+    "finance_create_store": [
+      "p_name: string; p_code: string; p_firm: string; p_from: string; p_location: string | null",
+      "string"
+    ]
+  }
+}
