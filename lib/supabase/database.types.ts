@@ -9,6 +9,653 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      settlement_payments: {
+        Row: {
+          id: string
+          settlement_id: string
+          voucher_id: string
+          amount: number
+          created_by: string | null
+          created_at: string
+          released_at: string | null
+        }
+        Insert: {
+          id?: string
+          settlement_id: string
+          voucher_id: string
+          amount: number
+          created_by?: string | null
+          created_at?: string
+          released_at?: string | null
+        }
+        Update: {
+          id?: string
+          settlement_id?: string
+          voucher_id?: string
+          amount?: number
+          created_by?: string | null
+          created_at?: string
+          released_at?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "settlement_payments_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "settlement_payments_settlement_id_fkey",
+            "columns": [
+              "settlement_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "settlements",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "settlement_payments_voucher_id_fkey",
+            "columns": [
+              "voucher_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "vouchers",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      settlements: {
+        Row: {
+          id: string
+          run_id: string
+          firm_id: string
+          party_id: string
+          payable: number
+          due_date: string | null
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          run_id: string
+          firm_id: string
+          party_id: string
+          payable: number
+          due_date?: string | null
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          run_id?: string
+          firm_id?: string
+          party_id?: string
+          payable?: number
+          due_date?: string | null
+          status?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "settlements_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "settlements_party_id_fkey",
+            "columns": [
+              "party_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "parties",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "settlements_run_id_fkey",
+            "columns": [
+              "run_id"
+            ],
+            "isOneToOne": true,
+            "referencedRelation": "calculation_runs",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      claims: {
+        Row: {
+          id: string
+          firm_id: string
+          party_id: string
+          arrangement_id: string | null
+          run_id: string | null
+          kind: string
+          period_from: string | null
+          period_to: string | null
+          expected_amount: number
+          status: string
+          matched_voucher_id: string | null
+          received_amount: number | null
+          note: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          firm_id: string
+          party_id: string
+          arrangement_id?: string | null
+          run_id?: string | null
+          kind: string
+          period_from?: string | null
+          period_to?: string | null
+          expected_amount: number
+          status?: string
+          matched_voucher_id?: string | null
+          received_amount?: number | null
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          firm_id?: string
+          party_id?: string
+          arrangement_id?: string | null
+          run_id?: string | null
+          kind?: string
+          period_from?: string | null
+          period_to?: string | null
+          expected_amount?: number
+          status?: string
+          matched_voucher_id?: string | null
+          received_amount?: number | null
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "claims_arrangement_id_fkey",
+            "columns": [
+              "arrangement_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "supply_arrangements",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "claims_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "claims_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "claims_matched_voucher_id_fkey",
+            "columns": [
+              "matched_voucher_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "vouchers",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "claims_party_id_fkey",
+            "columns": [
+              "party_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "parties",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "claims_run_id_fkey",
+            "columns": [
+              "run_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "calculation_runs",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      bill_discount_approvals: {
+        Row: {
+          id: string
+          arrangement_id: string
+          store_id: string
+          sale_date: string
+          bill_no: string
+          approved_amount: number
+          note: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          arrangement_id: string
+          store_id: string
+          sale_date: string
+          bill_no: string
+          approved_amount: number
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          arrangement_id?: string
+          store_id?: string
+          sale_date?: string
+          bill_no?: string
+          approved_amount?: number
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "bill_discount_approvals_arrangement_id_fkey",
+            "columns": [
+              "arrangement_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "supply_arrangements",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "bill_discount_approvals_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "bill_discount_approvals_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      calculation_lines: {
+        Row: {
+          id: number
+          run_id: string
+          ord: number
+          sales_row_id: string | null
+          sale_date: string | null
+          bill_no: string | null
+          lot_code: string | null
+          class: string | null
+          qty: number | null
+          mrp: number | null
+          mrp_value: number | null
+          nsv: number | null
+          customer_discount: number | null
+          accepted_discount: number | null
+          sales_value: number | null
+          sales_tax: number | null
+          margin: number | null
+          purchase_cost: number | null
+          purchase_tax: number | null
+          purchase_value: number | null
+          tax_diff: number | null
+          payment: number | null
+          cn: number | null
+          flags: Json
+        }
+        Insert: {
+          id?: number
+          run_id: string
+          ord: number
+          sales_row_id?: string | null
+          sale_date?: string | null
+          bill_no?: string | null
+          lot_code?: string | null
+          class?: string | null
+          qty?: number | null
+          mrp?: number | null
+          mrp_value?: number | null
+          nsv?: number | null
+          customer_discount?: number | null
+          accepted_discount?: number | null
+          sales_value?: number | null
+          sales_tax?: number | null
+          margin?: number | null
+          purchase_cost?: number | null
+          purchase_tax?: number | null
+          purchase_value?: number | null
+          tax_diff?: number | null
+          payment?: number | null
+          cn?: number | null
+          flags?: Json
+        }
+        Update: {
+          id?: number
+          run_id?: string
+          ord?: number
+          sales_row_id?: string | null
+          sale_date?: string | null
+          bill_no?: string | null
+          lot_code?: string | null
+          class?: string | null
+          qty?: number | null
+          mrp?: number | null
+          mrp_value?: number | null
+          nsv?: number | null
+          customer_discount?: number | null
+          accepted_discount?: number | null
+          sales_value?: number | null
+          sales_tax?: number | null
+          margin?: number | null
+          purchase_cost?: number | null
+          purchase_tax?: number | null
+          purchase_value?: number | null
+          tax_diff?: number | null
+          payment?: number | null
+          cn?: number | null
+          flags?: Json
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "calculation_lines_run_id_fkey",
+            "columns": [
+              "run_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "calculation_runs",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "calculation_lines_sales_row_id_fkey",
+            "columns": [
+              "sales_row_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "sales_rows",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      calculation_runs: {
+        Row: {
+          id: string
+          arrangement_id: string
+          terms_id: string | null
+          firm_id: string
+          party_id: string
+          brand_id: string
+          store_id: string | null
+          period_from: string
+          period_to: string
+          rule_set: string
+          rules: Json
+          status: string
+          complete: boolean
+          blockers: Json
+          inputs: Json
+          totals: Json
+          company_figures: Json | null
+          source_changed: boolean
+          source_changed_at: string | null
+          supersedes_run_id: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string
+          reviewed_by: string | null
+          reviewed_at: string | null
+          approved_by: string | null
+          approved_at: string | null
+          closed_by: string | null
+          closed_at: string | null
+        }
+        Insert: {
+          id?: string
+          arrangement_id: string
+          terms_id?: string | null
+          firm_id: string
+          party_id: string
+          brand_id: string
+          store_id?: string | null
+          period_from: string
+          period_to: string
+          rule_set: string
+          rules: Json
+          status?: string
+          complete: boolean
+          blockers?: Json
+          inputs?: Json
+          totals?: Json
+          company_figures?: Json | null
+          source_changed?: boolean
+          source_changed_at?: string | null
+          supersedes_run_id?: string | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          closed_by?: string | null
+          closed_at?: string | null
+        }
+        Update: {
+          id?: string
+          arrangement_id?: string
+          terms_id?: string | null
+          firm_id?: string
+          party_id?: string
+          brand_id?: string
+          store_id?: string | null
+          period_from?: string
+          period_to?: string
+          rule_set?: string
+          rules?: Json
+          status?: string
+          complete?: boolean
+          blockers?: Json
+          inputs?: Json
+          totals?: Json
+          company_figures?: Json | null
+          source_changed?: boolean
+          source_changed_at?: string | null
+          supersedes_run_id?: string | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          closed_by?: string | null
+          closed_at?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "calculation_runs_approved_by_fkey",
+            "columns": [
+              "approved_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "calculation_runs_arrangement_id_fkey",
+            "columns": [
+              "arrangement_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "supply_arrangements",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "calculation_runs_brand_id_fkey",
+            "columns": [
+              "brand_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "brands",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "calculation_runs_closed_by_fkey",
+            "columns": [
+              "closed_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "calculation_runs_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "calculation_runs_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "calculation_runs_party_id_fkey",
+            "columns": [
+              "party_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "parties",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "calculation_runs_reviewed_by_fkey",
+            "columns": [
+              "reviewed_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "calculation_runs_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "calculation_runs_supersedes_run_id_fkey",
+            "columns": [
+              "supersedes_run_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "calculation_runs",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "calculation_runs_terms_id_fkey",
+            "columns": [
+              "terms_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "company_terms",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
       distributor_transfers: {
         Row: {
           id: string
@@ -5608,6 +6255,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      settlement_balances: { Args: { p_firm: string | null; p_as_of?: string | null }; Returns: { firm_id: string; party_id: string; settlement_open: number; settlement_due: number; cn_expected: number; cn_pending: number }[] }
+      pay_settlement: { Args: { p_settlement: string; p_voucher: string; p_amount: number }; Returns: undefined }
+      match_claim: { Args: { p_claim: string; p_voucher: string }; Returns: undefined }
+      record_company_figures: { Args: { p_run: string; p_payment: number | null; p_cn: number | null; p_note: string | null }; Returns: undefined }
+      set_working_status: { Args: { p_run: string; p_status: string; p_note: string | null }; Returns: undefined }
+      prepare_working: { Args: { p_arrangement: string; p_from: string; p_to: string; p_rule_set: string; p_rules: Json | null; p_notes: string | null }; Returns: string }
+      compute_working: { Args: { p_rules: Json; p_lines: Json }; Returns: Json }
       transfer_stock_between_stores: { Args: { p_to_store: string; p_date: string; p_items: Json; p_document: string | null; p_note: string | null }; Returns: number }
       record_distributor_transfer: { Args: { p_firm: string; p_from: string; p_to: string; p_date: string; p_amount: number; p_document: string; p_batches: string[] | null; p_narration: string }; Returns: string }
       return_credit_pending: { Args: { p_firm: string | null }; Returns: { firm_id: string; party_id: string; pending: number; returns: number }[] }

@@ -32,7 +32,13 @@
     "stock_allocations",
     "supplier_returns",
     "supplier_return_lines",
-    "distributor_transfers"
+    "distributor_transfers",
+    "calculation_runs",
+    "calculation_lines",
+    "bill_discount_approvals",
+    "claims",
+    "settlements",
+    "settlement_payments"
   ],
   "functions": {
     "finance_can": [
@@ -154,6 +160,34 @@
     "transfer_stock_between_stores": [
       "p_to_store: string; p_date: string; p_items: Json; p_document: string | null; p_note: string | null",
       "number"
+    ],
+    "compute_working": [
+      "p_rules: Json; p_lines: Json",
+      "Json"
+    ],
+    "prepare_working": [
+      "p_arrangement: string; p_from: string; p_to: string; p_rule_set: string; p_rules: Json | null; p_notes: string | null",
+      "string"
+    ],
+    "set_working_status": [
+      "p_run: string; p_status: string; p_note: string | null",
+      "undefined"
+    ],
+    "record_company_figures": [
+      "p_run: string; p_payment: number | null; p_cn: number | null; p_note: string | null",
+      "undefined"
+    ],
+    "match_claim": [
+      "p_claim: string; p_voucher: string",
+      "undefined"
+    ],
+    "pay_settlement": [
+      "p_settlement: string; p_voucher: string; p_amount: number",
+      "undefined"
+    ],
+    "settlement_balances": [
+      "p_firm: string | null; p_as_of?: string | null",
+      "{ firm_id: string; party_id: string; settlement_open: number; settlement_due: number; cn_expected: number; cn_pending: number }[]"
     ]
   }
 }

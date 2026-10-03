@@ -7,6 +7,28 @@ import { indiaToday, labelFor, paymentCycles, settlementBases, shortDate } from 
 import { saveArrangement, saveTermsDraft, setTermsStatus } from "@/lib/accounts/master-actions";
 import { listAllBrands, listAllParties, listArrangementsWithTerms, listFinanceStores, listFirms } from "@/lib/accounts/queries";
 
+const rulesTemplates = `Sale against payment (Mufti-type):
+{"formula":"sale_against_payment","threshold_basis":"piece",
+ "class":{"default":"fresh","eoss":[{"from":"2026-07-01","to":"2026-08-31"}]},
+ "margin":{"fresh":26.7,"eoss":19,"other":26.7},
+ "sales_tax":{"mode":"fraction","high_rate":18,"low_rate":5,"threshold":2625,"operator":">"},
+ "purchase_cost":{"basis":"formula","high_factor":58.05,"low_factor":68.54,"threshold":2599,"operator":">"},
+ "purchase_tax":{"high_rate":18,"low_rate":5,"threshold":2500,"operator":">"},
+ "company_working":{ ...the company's own version, e.g. "threshold_basis":"line" ... }}
+
+Sales minus margin (Turtle-type):
+{"formula":"sales_margin","threshold_basis":"piece","margin":{"fresh":28,"eoss":28,"other":0},
+ "discount":{"accept":"manual"},
+ "sales_tax":{"mode":"fraction","high_rate":18,"low_rate":5,"threshold":2625,"operator":">"},
+ "md":{"high_pct":43.25,"low_pct":32.76,"threshold":2625,"operator":">"}}
+
+Promotion share (Pepe-type):
+{"formula":"promo_share","threshold_basis":"piece","share_pct":50,
+ "discount":{"accept":"tiers","tiers":[{"min_bill_mrp":4499,"amount":500},{"min_bill_mrp":6999,"amount":1000},{"min_bill_mrp":12999,"amount":2000}]},
+ "sales_tax":{"mode":"approx","approx_high":15.25,"approx_low":4.76,"threshold":2599,"operator":">"}}
+
+Discount "accept": "all" | "none" | "cap" (with "cap") | "tiers" | "manual" (bill approvals).`;
+
 type Terms = Awaited<ReturnType<typeof listArrangementsWithTerms>>[number]["terms"][number];
 
 function TermsCard({ canApprove, canEdit, terms }: { canApprove: boolean; canEdit: boolean; terms: Terms }) {
@@ -147,6 +169,11 @@ export default async function TermsPage({ searchParams }: { searchParams: Promis
                             </select>
                           </Field>
                         </div>
+                        <details className="rounded-xl border border-border bg-background p-3 text-xs">
+                          <summary className="cursor-pointer font-semibold">Rule templates (copy and adjust)</summary>
+                          <p className="mt-2 text-muted">“threshold_basis”: “piece” tests slabs per piece (recommended), “line” on the whole line as some company sheets do. “mode”: “fraction” uses exact 18/118 and 5/105; “approx” uses the published 15.25% / 4.76%. Put the company&apos;s own way under “company_working” to reproduce their sheet for comparison.</p>
+                          <pre className="mt-2 overflow-x-auto whitespace-pre-wrap">{rulesTemplates}</pre>
+                        </details>
                         <Field hint="Optional, as JSON. For example margins, promotions and tax thresholds agreed with the company." label="Calculation rules">
                           <textarea className={areaClass} name="rules" placeholder='{"margin": {"fresh_pct": 25, "eoss_pct": 18, "base": "nsv_incl_tax"}, "promo_share_pct": 50}' />
                         </Field>

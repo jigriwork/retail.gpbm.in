@@ -9,6 +9,8 @@ export function AccountsNav({ active, session }: { active: string; session: Fina
     { href: "/app/accounts/purchases", label: "Purchases", show: session.can.view },
     { href: "/app/accounts/payments", label: "Payments", show: session.can.view },
     { href: "/app/accounts/notes", label: "Credit/debit notes", show: session.can.view },
+    { href: "/app/accounts/workings", label: "Company workings", show: session.can.view },
+    { href: "/app/accounts/claims", label: "Expected credits", show: session.can.view },
     { href: "/app/accounts/stock", label: "Stock attribution", show: session.can.view },
     { href: "/app/accounts/returns", label: "Stock returns", show: session.can.view },
     { href: "/app/accounts/transfers", label: "Transfers", show: session.can.view },
