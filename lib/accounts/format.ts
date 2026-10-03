@@ -87,7 +87,7 @@ export function validGstin(value: string | null) {
 
 export const importFields = [
   { value: "brand", label: "Brand" }, { value: "article", label: "Article / style" }, { value: "description", label: "Description" },
-  { value: "barcode", label: "Barcode" }, { value: "size", label: "Size" }, { value: "colour", label: "Colour" }, { value: "hsn", label: "HSN" },
+  { value: "barcode", label: "Barcode" }, { value: "lot_code", label: "Logic lot code" }, { value: "size", label: "Size" }, { value: "colour", label: "Colour" }, { value: "hsn", label: "HSN" },
   { value: "quantity", label: "Quantity (required)" }, { value: "mrp", label: "MRP (per piece)" }, { value: "unit_rate", label: "Purchase rate (per piece)" },
   { value: "taxable_amount", label: "Taxable amount (line)" }, { value: "gst_rate", label: "GST % (numeric only)" }, { value: "cgst_amount", label: "CGST amount" },
   { value: "sgst_amount", label: "SGST amount" }, { value: "igst_amount", label: "IGST amount" }, { value: "line_total", label: "Line total" },

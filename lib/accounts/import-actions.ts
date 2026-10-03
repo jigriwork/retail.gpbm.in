@@ -89,7 +89,7 @@ export async function importPurchaseLines(input: {
     if (brandText && !brandId) unknownBrands.add(brandText);
     const gst = numberOrNull(get("gst_rate"));
     lines.push({
-      article: textOrNull(get("article"), 120), barcode: textOrNull(get("barcode"), 40), brand_id: brandId,
+      article: textOrNull(get("article"), 120), barcode: textOrNull(get("barcode"), 40), brand_id: brandId, lot_code: textOrNull(get("lot_code"), 40),
       cgst_amount: numberOrNull(get("cgst_amount")) ?? 0, colour: textOrNull(get("colour"), 60), description: textOrNull(get("description"), 300),
       gst_rate: gst !== null && gst >= 0 && gst <= 40 ? gst : null, hsn_code: textOrNull(get("hsn"), 12),
       igst_amount: numberOrNull(get("igst_amount")) ?? 0, invoice_id: input.invoiceId, line_total: numberOrNull(get("line_total")),

@@ -6,6 +6,7 @@ import { Badge, Notice, Panel } from "@/components/accounts/fields";
 import { getFinanceSession } from "@/lib/accounts/access";
 import { indiaToday } from "@/lib/accounts/format";
 import { partyBalances, partyNames, type PartyBalance } from "@/lib/accounts/ledger-queries";
+import { returnCreditPending } from "@/lib/accounts/stock-queries";
 import { listFirms, listStoreFirmPeriods, mastersSummary, salesCoverage, storesWithFirmToday } from "@/lib/accounts/queries";
 import { money } from "@/lib/accounts/format";
 
@@ -45,7 +46,9 @@ export default async function AccountsOverviewPage() {
 
   const today = indiaToday();
   const monthStart = `${today.slice(0, 7)}-01`;
-  const [summary, stores, periods, firms, balances] = await Promise.all([mastersSummary(), storesWithFirmToday(), listStoreFirmPeriods(), listFirms(), partyBalances(null)]);
+  const [summary, stores, periods, firms, balances, returnPending] = await Promise.all([
+    mastersSummary(), storesWithFirmToday(), listStoreFirmPeriods(), listFirms(), partyBalances(null), returnCreditPending(null),
+  ]);
   const names = await partyNames(balances.map((row) => row.party_id));
   const coverage = await Promise.all(stores.map(async (store) => {
     const days = await salesCoverage(store.id, monthStart, today);
@@ -66,8 +69,8 @@ export default async function AccountsOverviewPage() {
         title="Accounts overview"
       />
       <Notice tone="info">
-        Balances come only from posted entries. “CN expected”, “CN pending” and “Return credit pending” appear once company workings and stock returns
-        are added; until then they are not shown rather than shown as zero.
+        Balances come only from posted entries. “CN expected” and “CN pending” appear once company workings are added; until then they are not shown
+        rather than shown as zero.
       </Notice>
       {firms.map((firm) => {
         const rows = balances.filter((row) => row.firm_id === firm.id);
@@ -76,6 +79,10 @@ export default async function AccountsOverviewPage() {
         return (
           <Panel description="This firm's own books." key={firm.id} title={firm.name}>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <Link className="rounded-2xl border border-border bg-background p-3 transition hover:border-primary" href="/app/accounts/returns">
+                <p className="text-xs font-semibold uppercase text-muted">Return credit pending</p>
+                <p className="mt-1 text-lg font-semibold">{money(returnPending.filter((row) => row.firm_id === firm.id).reduce((total, row) => total + Math.round(Number(row.pending) * 100), 0) / 100)}</p>
+              </Link>
               {figureKeys.map(([key, label]) => (
                 <Link className="rounded-2xl border border-border bg-background p-3 transition hover:border-primary" href={key === "disputed" ? "/app/accounts/reconciliation" : `/app/accounts/daybook?firm=${firm.id}`} key={key}>
                   <p className="text-xs font-semibold uppercase text-muted">{label}</p>

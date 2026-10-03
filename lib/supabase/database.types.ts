@@ -9,6 +9,729 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      distributor_transfers: {
+        Row: {
+          id: string
+          firm_id: string
+          from_party_id: string
+          to_party_id: string
+          transfer_date: string
+          liability_amount: number
+          from_voucher_id: string | null
+          to_voucher_id: string | null
+          document_id: string
+          narration: string
+          batches_moved: number
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          firm_id: string
+          from_party_id: string
+          to_party_id: string
+          transfer_date: string
+          liability_amount?: number
+          from_voucher_id?: string | null
+          to_voucher_id?: string | null
+          document_id: string
+          narration: string
+          batches_moved?: number
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          firm_id?: string
+          from_party_id?: string
+          to_party_id?: string
+          transfer_date?: string
+          liability_amount?: number
+          from_voucher_id?: string | null
+          to_voucher_id?: string | null
+          document_id?: string
+          narration?: string
+          batches_moved?: number
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "distributor_transfers_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "distributor_transfers_document_id_fkey",
+            "columns": [
+              "document_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "finance_documents",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "distributor_transfers_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "distributor_transfers_from_party_id_fkey",
+            "columns": [
+              "from_party_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "parties",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "distributor_transfers_from_voucher_id_fkey",
+            "columns": [
+              "from_voucher_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "vouchers",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "distributor_transfers_to_party_id_fkey",
+            "columns": [
+              "to_party_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "parties",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "distributor_transfers_to_voucher_id_fkey",
+            "columns": [
+              "to_voucher_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "vouchers",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      supplier_return_lines: {
+        Row: {
+          id: string
+          return_id: string
+          batch_id: string | null
+          lot_code: string | null
+          barcode: string | null
+          article: string | null
+          size: string | null
+          qty: number
+          unit_value: number
+          accepted_qty: number | null
+          rejected_qty: number | null
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          return_id: string
+          batch_id?: string | null
+          lot_code?: string | null
+          barcode?: string | null
+          article?: string | null
+          size?: string | null
+          qty: number
+          unit_value: number
+          accepted_qty?: number | null
+          rejected_qty?: number | null
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          return_id?: string
+          batch_id?: string | null
+          lot_code?: string | null
+          barcode?: string | null
+          article?: string | null
+          size?: string | null
+          qty?: number
+          unit_value?: number
+          accepted_qty?: number | null
+          rejected_qty?: number | null
+          note?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "supplier_return_lines_batch_id_fkey",
+            "columns": [
+              "batch_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "purchase_batches",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supplier_return_lines_return_id_fkey",
+            "columns": [
+              "return_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "supplier_returns",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      supplier_returns: {
+        Row: {
+          id: string
+          firm_id: string
+          store_id: string
+          party_id: string
+          return_no: string
+          status: string
+          request_date: string
+          authorisation_ref: string | null
+          authorised_date: string | null
+          dispatch_date: string | null
+          dispatch_ref: string | null
+          acknowledged_date: string | null
+          expected_credit: number
+          accepted_value: number | null
+          debit_note_voucher_id: string | null
+          credit_note_voucher_id: string | null
+          supplier_credit_ref: string | null
+          supplier_credit_amount: number | null
+          deduct_on: string
+          notes: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          firm_id: string
+          store_id: string
+          party_id: string
+          return_no: string
+          status?: string
+          request_date: string
+          authorisation_ref?: string | null
+          authorised_date?: string | null
+          dispatch_date?: string | null
+          dispatch_ref?: string | null
+          acknowledged_date?: string | null
+          expected_credit?: number
+          accepted_value?: number | null
+          debit_note_voucher_id?: string | null
+          credit_note_voucher_id?: string | null
+          supplier_credit_ref?: string | null
+          supplier_credit_amount?: number | null
+          deduct_on?: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          firm_id?: string
+          store_id?: string
+          party_id?: string
+          return_no?: string
+          status?: string
+          request_date?: string
+          authorisation_ref?: string | null
+          authorised_date?: string | null
+          dispatch_date?: string | null
+          dispatch_ref?: string | null
+          acknowledged_date?: string | null
+          expected_credit?: number
+          accepted_value?: number | null
+          debit_note_voucher_id?: string | null
+          credit_note_voucher_id?: string | null
+          supplier_credit_ref?: string | null
+          supplier_credit_amount?: number | null
+          deduct_on?: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "supplier_returns_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supplier_returns_credit_note_voucher_id_fkey",
+            "columns": [
+              "credit_note_voucher_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "vouchers",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supplier_returns_debit_note_voucher_id_fkey",
+            "columns": [
+              "debit_note_voucher_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "vouchers",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supplier_returns_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supplier_returns_party_id_fkey",
+            "columns": [
+              "party_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "parties",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "supplier_returns_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      stock_allocations: {
+        Row: {
+          id: string
+          sales_row_id: string
+          store_id: string
+          sale_date: string
+          batch_id: string | null
+          qty: number
+          method: string
+          status: string
+          note: string | null
+          created_by: string | null
+          created_at: string
+          reversed_at: string | null
+          reversed_reason: string | null
+        }
+        Insert: {
+          id?: string
+          sales_row_id: string
+          store_id: string
+          sale_date: string
+          batch_id?: string | null
+          qty: number
+          method: string
+          status?: string
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+          reversed_at?: string | null
+          reversed_reason?: string | null
+        }
+        Update: {
+          id?: string
+          sales_row_id?: string
+          store_id?: string
+          sale_date?: string
+          batch_id?: string | null
+          qty?: number
+          method?: string
+          status?: string
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+          reversed_at?: string | null
+          reversed_reason?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "stock_allocations_batch_id_fkey",
+            "columns": [
+              "batch_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "purchase_batches",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "stock_allocations_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "stock_allocations_sales_row_id_fkey",
+            "columns": [
+              "sales_row_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "sales_rows",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "stock_allocations_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      batch_movements: {
+        Row: {
+          id: string
+          batch_id: string
+          kind: string
+          qty: number
+          to_batch_id: string | null
+          movement_date: string
+          transfer_id: string | null
+          document_id: string | null
+          note: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          batch_id: string
+          kind: string
+          qty: number
+          to_batch_id?: string | null
+          movement_date: string
+          transfer_id?: string | null
+          document_id?: string | null
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          batch_id?: string
+          kind?: string
+          qty?: number
+          to_batch_id?: string | null
+          movement_date?: string
+          transfer_id?: string | null
+          document_id?: string | null
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "batch_movements_batch_id_fkey",
+            "columns": [
+              "batch_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "purchase_batches",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "batch_movements_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "batch_movements_document_id_fkey",
+            "columns": [
+              "document_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "finance_documents",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "batch_movements_to_batch_id_fkey",
+            "columns": [
+              "to_batch_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "purchase_batches",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      purchase_batches: {
+        Row: {
+          id: string
+          firm_id: string
+          store_id: string
+          party_id: string | null
+          brand_id: string | null
+          source: string
+          invoice_id: string | null
+          invoice_line_id: string | null
+          opening_report_id: string | null
+          parent_batch_id: string | null
+          lot_code: string | null
+          barcode: string | null
+          article: string | null
+          size: string | null
+          description: string | null
+          mrp: number | null
+          unit_cost: number | null
+          cost_basis: string
+          qty_in: number
+          received_date: string
+          attribution: string
+          attribution_note: string | null
+          attributed_by: string | null
+          attributed_at: string | null
+          status: string
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          firm_id: string
+          store_id: string
+          party_id?: string | null
+          brand_id?: string | null
+          source: string
+          invoice_id?: string | null
+          invoice_line_id?: string | null
+          opening_report_id?: string | null
+          parent_batch_id?: string | null
+          lot_code?: string | null
+          barcode?: string | null
+          article?: string | null
+          size?: string | null
+          description?: string | null
+          mrp?: number | null
+          unit_cost?: number | null
+          cost_basis: string
+          qty_in: number
+          received_date: string
+          attribution: string
+          attribution_note?: string | null
+          attributed_by?: string | null
+          attributed_at?: string | null
+          status?: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          firm_id?: string
+          store_id?: string
+          party_id?: string | null
+          brand_id?: string | null
+          source?: string
+          invoice_id?: string | null
+          invoice_line_id?: string | null
+          opening_report_id?: string | null
+          parent_batch_id?: string | null
+          lot_code?: string | null
+          barcode?: string | null
+          article?: string | null
+          size?: string | null
+          description?: string | null
+          mrp?: number | null
+          unit_cost?: number | null
+          cost_basis?: string
+          qty_in?: number
+          received_date?: string
+          attribution?: string
+          attribution_note?: string | null
+          attributed_by?: string | null
+          attributed_at?: string | null
+          status?: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "purchase_batches_attributed_by_fkey",
+            "columns": [
+              "attributed_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "purchase_batches_brand_id_fkey",
+            "columns": [
+              "brand_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "brands",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "purchase_batches_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "purchase_batches_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "purchase_batches_invoice_id_fkey",
+            "columns": [
+              "invoice_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "purchase_invoices",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "purchase_batches_invoice_line_id_fkey",
+            "columns": [
+              "invoice_line_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "purchase_invoice_lines",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "purchase_batches_opening_report_id_fkey",
+            "columns": [
+              "opening_report_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "reports",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "purchase_batches_parent_batch_id_fkey",
+            "columns": [
+              "parent_batch_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "purchase_batches",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "purchase_batches_party_id_fkey",
+            "columns": [
+              "party_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "parties",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "purchase_batches_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
       purchase_import_profiles: {
         Row: {
           id: string
@@ -272,6 +995,7 @@ export type Database = {
           source: string
           source_document_id: string | null
           created_at: string
+          lot_code: string | null
         }
         Insert: {
           id?: string
@@ -296,6 +1020,7 @@ export type Database = {
           source?: string
           source_document_id?: string | null
           created_at?: string
+          lot_code?: string | null
         }
         Update: {
           id?: string
@@ -320,6 +1045,7 @@ export type Database = {
           source?: string
           source_document_id?: string | null
           created_at?: string
+          lot_code?: string | null
         }
         Relationships: [
           {
@@ -4882,6 +5608,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      transfer_stock_between_stores: { Args: { p_to_store: string; p_date: string; p_items: Json; p_document: string | null; p_note: string | null }; Returns: number }
+      record_distributor_transfer: { Args: { p_firm: string; p_from: string; p_to: string; p_date: string; p_amount: number; p_document: string; p_batches: string[] | null; p_narration: string }; Returns: string }
+      return_credit_pending: { Args: { p_firm: string | null }; Returns: { firm_id: string; party_id: string; pending: number; returns: number }[] }
+      advance_supplier_return: { Args: { p_id: string; p_action: string; p_date: string; p_ref: string | null; p_amount: number | null; p_lines: Json | null; p_cgst: number | null; p_sgst: number | null; p_igst: number | null }; Returns: Json }
+      create_supplier_return: { Args: { p_firm: string; p_store: string; p_party: string; p_date: string; p_lines: Json; p_notes: string | null; p_deduct_on: string | null }; Returns: string }
+      attribution_summary: { Args: { p_store: string; p_from: string; p_to: string }; Returns: { party_id: string | null; brand_id: string | null; method: string; qty: number; lines: number }[] }
+      allocate_sales_line_manually: { Args: { p_allocation: string; p_batch: string; p_note: string }; Returns: undefined }
+      allocate_store_sales: { Args: { p_store: string; p_from: string; p_to: string }; Returns: Json }
+      attribute_batches: { Args: { p_store: string | null; p_brand: string | null; p_party: string; p_note: string; p_batch?: string | null }; Returns: number }
+      create_opening_batches: { Args: { p_report: string; p_as_of: string }; Returns: number }
+      batch_remaining: { Args: { p_batch: string }; Returns: number | null }
       open_vouchers: { Args: { p_firm: string; p_party: string; p_side: string }; Returns: { id: string; voucher_no: string; voucher_type: string; voucher_date: string; reference_no: string | null; due_date: string | null; amount: number; settlement_basis: string | null; store_id: string | null; open_amount: number }[] }
       party_ledger: { Args: { p_firm: string; p_party: string; p_from: string; p_to: string; p_offset: number; p_limit: number }; Returns: { voucher_id: string; voucher_no: string; voucher_type: string; voucher_date: string; reference_no: string | null; narration: string | null; status: string; debit: number; credit: number; running_balance: number; opening_balance: number; total_rows: number }[] }
       party_balances: { Args: { p_firm: string | null; p_party?: string | null; p_as_of?: string | null }; Returns: { firm_id: string; party_id: string; ledger_balance: number; open_bills: number; due_now: number; overdue: number; due_unknown: number; sales_basis_open: number; advance: number; unadjusted_notes: number; cn_received: number; disputed: number }[] }
