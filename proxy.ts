@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { handheldAllows, isHandheld, isManagerHours, pointerCookie } from "@/lib/auth/access";
+import { isRemembered, rememberCookie, sessionCookieOptions } from "@/lib/auth/remember";
 import type { Database } from "@/lib/supabase/database.types";
 
 const publicAuthRoutes = new Set(["/login", "/forgot-password", "/reset-password"]);
@@ -32,8 +33,9 @@ export async function proxy(request: NextRequest) {
             request,
           });
 
+          const remember = isRemembered(request.cookies.get(rememberCookie)?.value);
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
+            response.cookies.set(name, value, sessionCookieOptions(options, remember));
           });
         },
       },

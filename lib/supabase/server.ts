@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
+import { isRemembered, rememberCookie, sessionCookieOptions } from "@/lib/auth/remember";
+
 import type { Database } from "./database.types";
 
 export async function createClient() {
@@ -16,9 +18,10 @@ export async function createClient() {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
+          const remember = isRemembered(cookieStore.get(rememberCookie)?.value);
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
+              cookieStore.set(name, value, sessionCookieOptions(options, remember));
             });
           } catch {
             // Server Components cannot set cookies. Middleware can refresh sessions.

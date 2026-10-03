@@ -3,16 +3,46 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { rememberCookie, rememberedEmailKey } from "@/lib/auth/remember";
 import { createClient } from "@/lib/supabase/client";
+
+const rememberMaxAge = 400 * 24 * 60 * 60;
+
+function readRememberedEmail() {
+  try {
+    return localStorage.getItem(rememberedEmailKey) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function saveRememberedEmail(email: string | null) {
+  try {
+    if (email) localStorage.setItem(rememberedEmailKey, email);
+    else localStorage.removeItem(rememberedEmailKey);
+  } catch {
+    // Private windows can block storage; the login itself still works.
+  }
+}
 
 export function LoginForm() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const email = readRememberedEmail();
+    if (email && emailRef.current && !emailRef.current.value) {
+      emailRef.current.value = email;
+      passwordRef.current?.focus();
+    }
+  }, []);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -22,6 +52,12 @@ export function LoginForm() {
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
+    const remember = formData.get("remember") === "on";
+    // Set before signing in so the session cookies are written with (or
+    // without) an expiry. Unticked, the login ends when the browser closes.
+    document.cookie = remember
+      ? `${rememberCookie}=1; Path=/; Max-Age=${rememberMaxAge}; SameSite=Lax`
+      : `${rememberCookie}=0; Path=/; SameSite=Lax`;
     const supabase = createClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
@@ -34,6 +70,8 @@ export function LoginForm() {
       setError(signInError.message);
       return;
     }
+
+    saveRememberedEmail(remember ? email : null);
 
     router.replace("/");
     router.refresh();
@@ -48,6 +86,7 @@ export function LoginForm() {
           className="h-[3.25rem] w-full rounded-2xl border border-border bg-card px-4 text-base outline-none transition hover:border-muted/50 focus:border-primary focus:ring-4 focus:ring-foreground/5"
           name="email"
           placeholder="owner@gpbm.in"
+          ref={emailRef}
           required
           type="email"
         />
@@ -62,6 +101,7 @@ export function LoginForm() {
             className="h-[3.25rem] w-full rounded-2xl border border-border bg-card px-4 pr-12 text-base outline-none transition hover:border-muted/50 focus:border-primary focus:ring-4 focus:ring-foreground/5"
             name="password"
             placeholder="Enter password"
+            ref={passwordRef}
             required
             type={showPassword ? "text" : "password"}
           />
@@ -74,6 +114,11 @@ export function LoginForm() {
             {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
         </div>
+      </label>
+
+      <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-muted">
+        <input className="size-4 accent-primary" defaultChecked name="remember" type="checkbox" />
+        Remember me
       </label>
 
       {error ? (
