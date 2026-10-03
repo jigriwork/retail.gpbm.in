@@ -9,14 +9,18 @@ import { History } from "@/components/accounts/history";
 import { getFinanceSession } from "@/lib/accounts/access";
 import { labelFor, settlementBases, shortDate } from "@/lib/accounts/format";
 import { addPartyAlias, saveAgent, saveParty } from "@/lib/accounts/master-actions";
-import { getParty, recentFinanceEvents } from "@/lib/accounts/queries";
+import { partyBalances } from "@/lib/accounts/ledger-queries";
+import { getParty, listFirms, recentFinanceEvents } from "@/lib/accounts/queries";
+import { money } from "@/lib/accounts/format";
 
 export default async function PartyPage({ params, searchParams }: { params: Promise<{ partyId: string }>; searchParams: Promise<{ saved?: string }> }) {
   const session = await getFinanceSession();
   if (!session.can.view) return <AccessDenied message="Suppliers are visible to the owner and people with accounts access." />;
   const [{ partyId }, { saved }] = await Promise.all([params, searchParams]);
   if (!/^[0-9a-f-]{36}$/.test(partyId)) notFound();
-  const [{ party, aliases, agents, arrangements }, history] = await Promise.all([getParty(partyId), recentFinanceEvents("parties", partyId)]);
+  const [{ party, aliases, agents, arrangements }, history, firms, balances] = await Promise.all([
+    getParty(partyId), recentFinanceEvents("parties", partyId), listFirms(), partyBalances(null, partyId),
+  ]);
   if (!party) notFound();
   const canEdit = session.can.masters;
 
@@ -32,6 +36,21 @@ export default async function PartyPage({ params, searchParams }: { params: Prom
         </div>
       </section>
       {saved ? <Notice tone="info">Supplier added. Add its agents and the brands it supplies below.</Notice> : null}
+
+      <Panel description="One account per supplier; each billing firm keeps its own ledger." title="Balances by firm">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {firms.map((firm) => {
+            const row = balances.find((item) => item.firm_id === firm.id);
+            return (
+              <Link className="rounded-2xl border border-border bg-background p-4 transition hover:border-primary" href={`/app/accounts/parties/${party.id}/ledger?firm=${firm.id}`} key={firm.id}>
+                <p className="font-semibold">{firm.name}</p>
+                <p className="mt-1 text-sm text-muted">Ledger balance {money(row?.ledger_balance ?? 0)} · due {money(row?.due_now ?? 0)} · advance {money(row?.advance ?? 0)}</p>
+                <p className="mt-2 text-sm font-semibold text-primary">Open ledger →</p>
+              </Link>
+            );
+          })}
+        </div>
+      </Panel>
 
       <Panel description="Brand, billing firm and dates. The ledger for this supplier is kept separately for each billing firm." title="Brands supplied">
         {arrangements.length ? (

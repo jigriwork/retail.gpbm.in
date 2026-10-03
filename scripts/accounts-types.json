@@ -18,7 +18,15 @@
     "supply_arrangements",
     "company_terms",
     "finance_documents",
-    "sales_day_confirmations"
+    "sales_day_confirmations",
+    "vouchers",
+    "voucher_lines",
+    "voucher_allocations",
+    "purchase_invoices",
+    "purchase_invoice_lines",
+    "document_links",
+    "disputes",
+    "purchase_import_profiles"
   ],
   "functions": {
     "finance_can": [
@@ -56,6 +64,46 @@
     "finance_create_store": [
       "p_name: string; p_code: string; p_firm: string; p_from: string; p_location: string | null",
       "string"
+    ],
+    "voucher_open_amount": [
+      "p_voucher: string",
+      "number | null"
+    ],
+    "allocate_voucher": [
+      "p_from: string; p_to: string; p_amount: number",
+      "string"
+    ],
+    "release_allocation": [
+      "p_id: string; p_reason: string",
+      "undefined"
+    ],
+    "purchase_invoice_check": [
+      "p_id: string",
+      "Json"
+    ],
+    "post_purchase_invoice": [
+      "p_id: string; p_brand?: string | null",
+      "string"
+    ],
+    "record_supplier_voucher": [
+      "p_type: string; p_firm: string; p_store: string | null; p_party: string; p_date: string; p_amount: number; p_mode: string | null; p_reference: string | null; p_reference_date: string | null; p_reason: string | null; p_taxable: number | null; p_cgst: number | null; p_sgst: number | null; p_igst: number | null; p_narration: string | null; p_allocations: Json | null; p_due_date: string | null",
+      "string"
+    ],
+    "reverse_voucher": [
+      "p_id: string; p_date: string; p_reason: string",
+      "string"
+    ],
+    "party_balances": [
+      "p_firm: string | null; p_party?: string | null; p_as_of?: string | null",
+      "{ firm_id: string; party_id: string; ledger_balance: number; open_bills: number; due_now: number; overdue: number; due_unknown: number; sales_basis_open: number; advance: number; unadjusted_notes: number; cn_received: number; disputed: number }[]"
+    ],
+    "party_ledger": [
+      "p_firm: string; p_party: string; p_from: string; p_to: string; p_offset: number; p_limit: number",
+      "{ voucher_id: string; voucher_no: string; voucher_type: string; voucher_date: string; reference_no: string | null; narration: string | null; status: string; debit: number; credit: number; running_balance: number; opening_balance: number; total_rows: number }[]"
+    ],
+    "open_vouchers": [
+      "p_firm: string; p_party: string; p_side: string",
+      "{ id: string; voucher_no: string; voucher_type: string; voucher_date: string; reference_no: string | null; due_date: string | null; amount: number; settlement_basis: string | null; store_id: string | null; open_amount: number }[]"
     ]
   }
 }

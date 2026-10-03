@@ -6,6 +6,11 @@ export function AccountsNav({ active, session }: { active: string; session: Fina
   const links = [
     { href: "/app/accounts", label: "Overview", show: session.can.view },
     { href: "/app/accounts/parties", label: "Suppliers", show: session.can.view },
+    { href: "/app/accounts/purchases", label: "Purchases", show: session.can.view },
+    { href: "/app/accounts/payments", label: "Payments", show: session.can.view },
+    { href: "/app/accounts/notes", label: "Credit/debit notes", show: session.can.view },
+    { href: "/app/accounts/daybook", label: "Day book", show: session.can.view },
+    { href: "/app/accounts/reconciliation", label: "Reconciliation", show: session.can.view },
     { href: "/app/accounts/brands", label: "Brands", show: session.can.view },
     { href: "/app/accounts/terms", label: "Company terms", show: session.can.view },
     { href: "/app/accounts/documents", label: "Documents", show: session.can.view || session.canSubmitDocuments },

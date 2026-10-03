@@ -5,7 +5,20 @@ import { AccountsHeader, AccountsNav } from "@/components/accounts/accounts-nav"
 import { Badge, Notice, Panel } from "@/components/accounts/fields";
 import { getFinanceSession } from "@/lib/accounts/access";
 import { indiaToday } from "@/lib/accounts/format";
-import { listStoreFirmPeriods, mastersSummary, salesCoverage, storesWithFirmToday } from "@/lib/accounts/queries";
+import { partyBalances, partyNames, type PartyBalance } from "@/lib/accounts/ledger-queries";
+import { listFirms, listStoreFirmPeriods, mastersSummary, salesCoverage, storesWithFirmToday } from "@/lib/accounts/queries";
+import { money } from "@/lib/accounts/format";
+
+const figureKeys = [
+  ["ledger_balance", "Ledger balance"], ["due_now", "Due for payment"], ["overdue", "Overdue"], ["due_unknown", "Due date not set"],
+  ["sales_basis_open", "Against sold stock"], ["advance", "Advance paid"], ["unadjusted_notes", "Notes not adjusted"],
+  ["cn_received", "CN received"], ["disputed", "Difference to resolve"],
+] as const;
+
+/** Sums in paise so rupee totals never drift. */
+function totals(rows: PartyBalance[]) {
+  return Object.fromEntries(figureKeys.map(([key]) => [key, rows.reduce((sum, row) => sum + Math.round(Number(row[key]) * 100), 0) / 100])) as Record<(typeof figureKeys)[number][0], number>;
+}
 
 function Stat({ href, label, value }: { href: string; label: string; value: number | string }) {
   return (
@@ -32,7 +45,8 @@ export default async function AccountsOverviewPage() {
 
   const today = indiaToday();
   const monthStart = `${today.slice(0, 7)}-01`;
-  const [summary, stores, periods] = await Promise.all([mastersSummary(), storesWithFirmToday(), listStoreFirmPeriods()]);
+  const [summary, stores, periods, firms, balances] = await Promise.all([mastersSummary(), storesWithFirmToday(), listStoreFirmPeriods(), listFirms(), partyBalances(null)]);
+  const names = await partyNames(balances.map((row) => row.party_id));
   const coverage = await Promise.all(stores.map(async (store) => {
     const days = await salesCoverage(store.id, monthStart, today);
     return {
@@ -52,9 +66,48 @@ export default async function AccountsOverviewPage() {
         title="Accounts overview"
       />
       <Notice tone="info">
-        Ready now: suppliers, agents, brands, company terms, billing firms and store mapping, documents, and sales-input checks.
-        Purchases, payments, credit/debit notes and party ledgers come in the next release, so no balances are shown yet.
+        Balances come only from posted entries. “CN expected”, “CN pending” and “Return credit pending” appear once company workings and stock returns
+        are added; until then they are not shown rather than shown as zero.
       </Notice>
+      {firms.map((firm) => {
+        const rows = balances.filter((row) => row.firm_id === firm.id);
+        const sum = totals(rows);
+        const top = [...rows].sort((a, b) => Number(b.due_now) - Number(a.due_now) || Number(b.ledger_balance) - Number(a.ledger_balance)).slice(0, 8);
+        return (
+          <Panel description="This firm's own books." key={firm.id} title={firm.name}>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {figureKeys.map(([key, label]) => (
+                <Link className="rounded-2xl border border-border bg-background p-3 transition hover:border-primary" href={key === "disputed" ? "/app/accounts/reconciliation" : `/app/accounts/daybook?firm=${firm.id}`} key={key}>
+                  <p className="text-xs font-semibold uppercase text-muted">{label}</p>
+                  <p className="mt-1 text-lg font-semibold">{money(sum[key])}</p>
+                </Link>
+              ))}
+            </div>
+            {top.length ? (
+              <div className="mt-4 divide-y divide-border">
+                {top.map((row) => (
+                  <Link className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm" href={`/app/accounts/parties/${row.party_id}/ledger?firm=${firm.id}`} key={row.party_id}>
+                    <span className="font-semibold">{names.get(row.party_id) ?? "Supplier"}</span>
+                    <span className="text-muted">balance {money(row.ledger_balance)} · due {money(row.due_now)}{Number(row.overdue) ? <> · <Badge tone="bad">overdue {money(row.overdue)}</Badge></> : null}</span>
+                  </Link>
+                ))}
+              </div>
+            ) : <p className="mt-3 text-sm text-muted">No posted entries yet.</p>}
+          </Panel>
+        );
+      })}
+      {firms.length > 1 ? (
+        <Panel description="Management view only: the firms' books are not merged." title="All firms together">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {figureKeys.slice(0, 4).map(([key, label]) => (
+              <div className="rounded-2xl border border-border bg-background p-3" key={key}>
+                <p className="text-xs font-semibold uppercase text-muted">{label}</p>
+                <p className="mt-1 text-lg font-semibold">{money(totals(balances)[key])}</p>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      ) : null}
       {unconfirmed.length ? (
         <Notice>
           {unconfirmed.length} store billing period{unconfirmed.length > 1 ? "s are" : " is"} still “to confirm” (Brand Mark in September 2026).
