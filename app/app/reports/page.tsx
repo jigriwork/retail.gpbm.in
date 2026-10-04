@@ -4,6 +4,7 @@ import {
   BarChart3,
   CalendarClock,
   ChartNoAxesCombined,
+  Contact,
   FileText,
   FileSpreadsheet,
   LineChart,
@@ -13,6 +14,7 @@ import {
   UploadCloud,
   UserRoundCheck,
   UserRoundCog,
+  Wallet,
 } from "lucide-react";
 
 import { SalesReportList } from "@/components/reports/sales-report-list";
@@ -75,6 +77,34 @@ export default async function ReportsPage() {
           </span>
         </Link>
       ) : null}
+
+      <Link
+        className="flex items-center gap-4 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
+        href="/app/money"
+      >
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+          <Wallet className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Store money</span>
+          <span className="block text-sm leading-5 text-muted">
+            {profile?.role === "owner" ? "Day close, expenses and monthly profit per store." : "Close the day's cash and record store expenses."}
+          </span>
+        </span>
+      </Link>
+
+      <Link
+        className="flex items-center gap-4 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
+        href="/app/customers"
+      >
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+          <Contact className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Customers</span>
+          <span className="block text-sm leading-5 text-muted">Repeat and lapsed customers from the bills, with WhatsApp thank-you and offer messages.</span>
+        </span>
+      </Link>
 
       <section className="grid gap-3 lg:grid-cols-3">
         <div className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm lg:col-span-2">

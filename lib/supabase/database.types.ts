@@ -9,6 +9,362 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      customer_messages: {
+        Row: {
+          id: string
+          mobile: string
+          store_id: string
+          kind: string
+          sent_by: string
+          sent_at: string
+        }
+        Insert: {
+          id?: string
+          mobile: string
+          store_id: string
+          kind: string
+          sent_by?: string
+          sent_at?: string
+        }
+        Update: {
+          id?: string
+          mobile?: string
+          store_id?: string
+          kind?: string
+          sent_by?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "customer_messages_sent_by_fkey",
+            "columns": [
+              "sent_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "customer_messages_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      customer_profiles: {
+        Row: {
+          mobile: string
+          preferred_name: string | null
+          birthday: string | null
+          anniversary: string | null
+          marketing_consent: boolean
+          consent_source: string | null
+          consent_at: string | null
+          consent_by: string | null
+          withdrawn_at: string | null
+          do_not_contact: boolean
+          note: string | null
+          updated_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          mobile: string
+          preferred_name?: string | null
+          birthday?: string | null
+          anniversary?: string | null
+          marketing_consent?: boolean
+          consent_source?: string | null
+          consent_at?: string | null
+          consent_by?: string | null
+          withdrawn_at?: string | null
+          do_not_contact?: boolean
+          note?: string | null
+          updated_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          mobile?: string
+          preferred_name?: string | null
+          birthday?: string | null
+          anniversary?: string | null
+          marketing_consent?: boolean
+          consent_source?: string | null
+          consent_at?: string | null
+          consent_by?: string | null
+          withdrawn_at?: string | null
+          do_not_contact?: boolean
+          note?: string | null
+          updated_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "customer_profiles_consent_by_fkey",
+            "columns": [
+              "consent_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "customer_profiles_updated_by_fkey",
+            "columns": [
+              "updated_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      store_monthly_costs: {
+        Row: {
+          id: string
+          store_id: string
+          name: string
+          amount: number
+          valid_from: string
+          valid_to: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          store_id: string
+          name: string
+          amount: number
+          valid_from: string
+          valid_to?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          store_id?: string
+          name?: string
+          amount?: number
+          valid_from?: string
+          valid_to?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "store_monthly_costs_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "store_monthly_costs_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      store_expenses: {
+        Row: {
+          id: string
+          store_id: string
+          expense_date: string
+          category: string
+          amount: number
+          paid_from: string
+          paid_to: string | null
+          note: string | null
+          status: string
+          reject_reason: string | null
+          created_by: string
+          created_at: string
+          checked_by: string | null
+          checked_at: string | null
+        }
+        Insert: {
+          id?: string
+          store_id: string
+          expense_date: string
+          category: string
+          amount: number
+          paid_from: string
+          paid_to?: string | null
+          note?: string | null
+          status?: string
+          reject_reason?: string | null
+          created_by?: string
+          created_at?: string
+          checked_by?: string | null
+          checked_at?: string | null
+        }
+        Update: {
+          id?: string
+          store_id?: string
+          expense_date?: string
+          category?: string
+          amount?: number
+          paid_from?: string
+          paid_to?: string | null
+          note?: string | null
+          status?: string
+          reject_reason?: string | null
+          created_by?: string
+          created_at?: string
+          checked_by?: string | null
+          checked_at?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "store_expenses_checked_by_fkey",
+            "columns": [
+              "checked_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "store_expenses_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "store_expenses_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      store_day_closes: {
+        Row: {
+          id: string
+          store_id: string
+          close_date: string
+          opening_cash: number
+          cash_counted: number
+          upi_amount: number
+          card_amount: number
+          other_amount: number
+          other_note: string | null
+          cash_deposited: number
+          note: string | null
+          status: string
+          submitted_by: string | null
+          submitted_at: string
+          reviewed_by: string | null
+          reviewed_at: string | null
+          review_note: string | null
+        }
+        Insert: {
+          id?: string
+          store_id: string
+          close_date: string
+          opening_cash: number
+          cash_counted: number
+          upi_amount?: number
+          card_amount?: number
+          other_amount?: number
+          other_note?: string | null
+          cash_deposited?: number
+          note?: string | null
+          status?: string
+          submitted_by?: string | null
+          submitted_at?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          review_note?: string | null
+        }
+        Update: {
+          id?: string
+          store_id?: string
+          close_date?: string
+          opening_cash?: number
+          cash_counted?: number
+          upi_amount?: number
+          card_amount?: number
+          other_amount?: number
+          other_note?: string | null
+          cash_deposited?: number
+          note?: string | null
+          status?: string
+          submitted_by?: string | null
+          submitted_at?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          review_note?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "store_day_closes_reviewed_by_fkey",
+            "columns": [
+              "reviewed_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "store_day_closes_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "store_day_closes_submitted_by_fkey",
+            "columns": [
+              "submitted_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
       supplier_statement_lines: {
         Row: {
           id: string
@@ -5268,100 +5624,123 @@ export type Database = {
       }
       report_import_chunks: {
         Row: {
-          chunk_no: number
           import_id: string
-          published_at: string | null
+          chunk_no: number
           rows: Json
+          published_at: string | null
         }
         Insert: {
-          chunk_no: number
           import_id: string
-          published_at?: string | null
+          chunk_no: number
           rows: Json
+          published_at?: string | null
         }
         Update: {
-          chunk_no?: number
           import_id?: string
-          published_at?: string | null
+          chunk_no?: number
           rows?: Json
+          published_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "report_import_chunks_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "report_imports"
-            referencedColumns: ["id"]
-          },
+            "foreignKeyName": "report_import_chunks_import_id_fkey",
+            "columns": [
+              "import_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "report_imports",
+            "referencedColumns": [
+              "id"
+            ]
+          }
         ]
       }
       report_imports: {
         Row: {
-          actor_id: string
-          created_at: string
-          failure_message: string | null
-          file_name: string
-          file_path: string
-          fingerprint: string
           id: string
-          is_bulk: boolean
-          manifest: Json
-          mode: string
-          publish_report_id: string | null
-          report_type: string
-          result: Json | null
-          status: string
           store_id: string
+          actor_id: string
+          fingerprint: string
+          report_type: string
+          mode: string
+          is_bulk: boolean
+          file_path: string
+          file_name: string
+          manifest: Json
+          status: string
+          failure_message: string | null
+          result: Json | null
+          created_at: string
+          publish_report_id: string | null
         }
         Insert: {
-          actor_id: string
-          created_at?: string
-          failure_message?: string | null
-          file_name: string
-          file_path: string
-          fingerprint: string
           id?: string
-          is_bulk?: boolean
-          manifest: Json
-          mode: string
-          publish_report_id?: string | null
-          report_type: string
-          result?: Json | null
-          status?: string
           store_id: string
+          actor_id: string
+          fingerprint: string
+          report_type: string
+          mode: string
+          is_bulk?: boolean
+          file_path: string
+          file_name: string
+          manifest: Json
+          status?: string
+          failure_message?: string | null
+          result?: Json | null
+          created_at?: string
+          publish_report_id?: string | null
         }
         Update: {
-          actor_id?: string
-          created_at?: string
-          failure_message?: string | null
-          file_name?: string
-          file_path?: string
-          fingerprint?: string
           id?: string
-          is_bulk?: boolean
-          manifest?: Json
-          mode?: string
-          publish_report_id?: string | null
-          report_type?: string
-          result?: Json | null
-          status?: string
           store_id?: string
+          actor_id?: string
+          fingerprint?: string
+          report_type?: string
+          mode?: string
+          is_bulk?: boolean
+          file_path?: string
+          file_name?: string
+          manifest?: Json
+          status?: string
+          failure_message?: string | null
+          result?: Json | null
+          created_at?: string
+          publish_report_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "report_imports_actor_id_fkey"
-            columns: ["actor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            "foreignKeyName": "report_imports_actor_id_fkey",
+            "columns": [
+              "actor_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
           },
           {
-            foreignKeyName: "report_imports_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
+            "foreignKeyName": "report_imports_publish_report_id_fkey",
+            "columns": [
+              "publish_report_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "reports",
+            "referencedColumns": [
+              "id"
+            ]
           },
+          {
+            "foreignKeyName": "report_imports_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
         ]
       }
       reports: {
@@ -5641,6 +6020,7 @@ export type Database = {
           source_line_no: number | null
           line_kind: string | null
           amounts_reconciled: boolean | null
+          customer_mobile: string | null
         }
         Insert: {
           id?: string
@@ -5683,6 +6063,7 @@ export type Database = {
           source_line_no?: number | null
           line_kind?: string | null
           amounts_reconciled?: boolean | null
+          customer_mobile?: string | null
         }
         Update: {
           id?: string
@@ -5725,6 +6106,7 @@ export type Database = {
           source_line_no?: number | null
           line_kind?: string | null
           amounts_reconciled?: boolean | null
+          customer_mobile?: string | null
         }
         Relationships: [
           {
@@ -6303,6 +6685,8 @@ export type Database = {
           created_at: string | null
           updated_at: string | null
           firm_name: string | null
+          estimated_margin_pct: number | null
+          google_review_url: string | null
         }
         Insert: {
           id?: string
@@ -6318,6 +6702,8 @@ export type Database = {
           created_at?: string | null
           updated_at?: string | null
           firm_name?: string | null
+          estimated_margin_pct?: number | null
+          google_review_url?: string | null
         }
         Update: {
           id?: string
@@ -6333,6 +6719,8 @@ export type Database = {
           created_at?: string | null
           updated_at?: string | null
           firm_name?: string | null
+          estimated_margin_pct?: number | null
+          google_review_url?: string | null
         }
         Relationships: []
       }
@@ -6484,6 +6872,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      customer_visible: { Args: { p_mobile: string }; Returns: boolean }
+      customer_purchases: { Args: { p_mobile: string }; Returns: { sale_date: string; store_name: string; bill_no: string | null; item_name: string | null; brand: string | null; size: string | null; quantity: number | null; net_sale: number | null; staff_name: string | null; customer_name: string | null }[] }
+      customer_kpis: { Args: { p_store: string | null; p_from: string; p_to: string }; Returns: Json }
+      customer_list: { Args: { p_store: string | null; p_segment: string; p_search: string | null; p_limit: number; p_offset: number }; Returns: { mobile: string; name: string | null; first_visit: string; last_visit: string; bills: number; items: number; spend: number; store_count: number; marketing_consent: boolean; do_not_contact: boolean; birthday: string | null; last_message_at: string | null; total_count: number }[] }
+      log_customer_message: { Args: { p_mobile: string; p_store: string; p_kind: string }; Returns: undefined }
+      save_customer_profile: { Args: { p_mobile: string; p_name: string | null; p_birthday: string | null; p_anniversary: string | null; p_consent: boolean; p_source: string | null; p_do_not_contact: boolean; p_note: string | null }; Returns: undefined }
+      store_profit: { Args: { p_store: string; p_month: string }; Returns: Json }
+      missing_day_closes: { Args: { p_store: string; p_days?: number }; Returns: string[] }
+      day_close_overview: { Args: { p_store: string; p_from: string; p_to: string }; Returns: { id: string; close_date: string; status: string; opening_cash: number; cash_counted: number; upi_amount: number; card_amount: number; other_amount: number; other_note: string | null; cash_deposited: number; note: string | null; review_note: string | null; submitted_by_name: string | null; submitted_at: string; logic_net_sale: number | null; sales_report_uploaded: boolean; cash_expenses: number; expected_cash: number | null; difference: number | null }[] }
+      review_day_close: { Args: { p_id: string; p_action: string; p_note: string | null }; Returns: undefined }
+      submit_day_close: { Args: { p_store: string; p_date: string; p_opening: number | null; p_cash: number; p_upi: number; p_card: number; p_other: number; p_other_note: string | null; p_deposited: number; p_note: string | null }; Returns: string }
       batches_with_remaining: { Args: { p_store: string | null; p_party: string | null; p_search: string | null; p_unattributed: boolean | null; p_limit: number | null }; Returns: { id: string; store_id: string; firm_id: string; party_id: string | null; brand_id: string | null; source: string; lot_code: string | null; barcode: string | null; article: string | null; size: string | null; description: string | null; mrp: number | null; unit_cost: number | null; cost_basis: string; qty_in: number; received_date: string; attribution: string; remaining: number }[] }
       accounts_summary: { Args: { p_firm: string | null; p_store: string | null; p_brand: string | null; p_from: string; p_to: string }; Returns: { firm_id: string; store_id: string | null; party_id: string; brand_id: string | null; purchases_taxable: number; purchases_total: number; payments: number; credit_notes: number; debit_notes: number; purchase_qty: number }[] }
       statement_comparison: { Args: { p_statement: string }; Returns: Json }
@@ -6640,10 +7039,7 @@ export type Database = {
         Args: { p_import: string }
         Returns: Json
       }
-      publish_stock_import_part: {
-        Args: { p_import: string }
-        Returns: Json
-      }
+      publish_stock_import_part: { Args: { p_import: string }; Returns: Json }
       fail_report_import: {
         Args: { p_import: string }
         Returns: undefined

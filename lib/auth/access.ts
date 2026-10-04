@@ -53,6 +53,8 @@ const handheldExact = new Set(["/app/reports", "/app/reports/sales", "/app/repor
 const handheldPrefixes = [
   "/app/today",
   "/app/accounts",
+  "/app/money",
+  "/app/customers",
   "/app/tasks",
   "/app/checklist",
   "/app/updates",

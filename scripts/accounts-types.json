@@ -1,228 +1,283 @@
 {
-  "tables": [
-    "profiles",
-    "stores",
-    "sales_rows",
-    "stock_rows",
-    "finance_events",
-    "billing_firms",
-    "store_firm_periods",
-    "billing_series",
-    "finance_grants",
-    "parties",
-    "party_aliases",
-    "agents",
-    "agent_parties",
-    "brands",
-    "brand_aliases",
-    "supply_arrangements",
-    "company_terms",
-    "finance_documents",
-    "sales_day_confirmations",
-    "vouchers",
-    "voucher_lines",
-    "voucher_allocations",
-    "purchase_invoices",
-    "purchase_invoice_lines",
-    "document_links",
-    "disputes",
-    "purchase_import_profiles",
-    "purchase_batches",
-    "batch_movements",
-    "stock_allocations",
-    "supplier_returns",
-    "supplier_return_lines",
-    "distributor_transfers",
-    "calculation_runs",
-    "calculation_lines",
-    "bill_discount_approvals",
-    "claims",
-    "settlements",
-    "settlement_payments",
-    "accounting_periods",
-    "supplier_statements",
-    "supplier_statement_lines"
+ "tables": [
+  "profiles",
+  "stores",
+  "sales_rows",
+  "stock_rows",
+  "finance_events",
+  "billing_firms",
+  "store_firm_periods",
+  "billing_series",
+  "finance_grants",
+  "parties",
+  "party_aliases",
+  "agents",
+  "agent_parties",
+  "brands",
+  "brand_aliases",
+  "supply_arrangements",
+  "company_terms",
+  "finance_documents",
+  "sales_day_confirmations",
+  "vouchers",
+  "voucher_lines",
+  "voucher_allocations",
+  "purchase_invoices",
+  "purchase_invoice_lines",
+  "document_links",
+  "disputes",
+  "purchase_import_profiles",
+  "purchase_batches",
+  "batch_movements",
+  "stock_allocations",
+  "supplier_returns",
+  "supplier_return_lines",
+  "distributor_transfers",
+  "calculation_runs",
+  "calculation_lines",
+  "bill_discount_approvals",
+  "claims",
+  "settlements",
+  "settlement_payments",
+  "accounting_periods",
+  "supplier_statements",
+  "supplier_statement_lines",
+  "report_imports",
+  "report_import_chunks",
+  "store_day_closes",
+  "store_expenses",
+  "store_monthly_costs",
+  "customer_profiles",
+  "customer_messages"
+ ],
+ "functions": {
+  "finance_can": [
+   "p_action: string; p_firm: string | null; p_store: string | null",
+   "boolean"
   ],
-  "functions": {
-    "finance_can": [
-      "p_action: string; p_firm: string | null; p_store: string | null",
-      "boolean"
-    ],
-    "finance_any": [
-      "p_action: string",
-      "boolean"
-    ],
-    "store_firm_on": [
-      "p_store: string; p_date: string",
-      "string | null"
-    ],
-    "store_billing_firm_label": [
-      "p_store: string; p_date: string",
-      "string | null"
-    ],
-    "reserve_finance_document": [
-      "p_kind: string; p_store: string | null; p_firm: string | null; p_party: string | null; p_file_name: string; p_mime: string; p_size: number; p_sha256: string; p_title: string | null; p_doc_no: string | null; p_doc_date: string | null",
-      "Json"
-    ],
-    "finalize_finance_document": [
-      "p_id: string",
-      "Json"
-    ],
-    "review_finance_document": [
-      "p_id: string; p_kind: string; p_firm: string | null; p_store: string | null; p_party: string | null; p_title: string | null; p_doc_no: string | null; p_doc_date: string | null; p_amount: number | null; p_status: string; p_notes: string | null",
-      "undefined"
-    ],
-    "sales_input_coverage": [
-      "p_store: string; p_from: string; p_to: string",
-      "{ day: string; status: string; report_id: string | null; item_lines: number; summary_lines: number; no_amount_lines: number; unreconciled_lines: number; net_sale: number | null }[]"
-    ],
-    "finance_create_store": [
-      "p_name: string; p_code: string; p_firm: string; p_from: string; p_location: string | null",
-      "string"
-    ],
-    "voucher_open_amount": [
-      "p_voucher: string",
-      "number | null"
-    ],
-    "allocate_voucher": [
-      "p_from: string; p_to: string; p_amount: number",
-      "string"
-    ],
-    "release_allocation": [
-      "p_id: string; p_reason: string",
-      "undefined"
-    ],
-    "purchase_invoice_check": [
-      "p_id: string",
-      "Json"
-    ],
-    "post_purchase_invoice": [
-      "p_id: string; p_brand?: string | null",
-      "string"
-    ],
-    "record_supplier_voucher": [
-      "p_type: string; p_firm: string; p_store: string | null; p_party: string; p_date: string; p_amount: number; p_mode: string | null; p_reference: string | null; p_reference_date: string | null; p_reason: string | null; p_taxable: number | null; p_cgst: number | null; p_sgst: number | null; p_igst: number | null; p_narration: string | null; p_allocations: Json | null; p_due_date: string | null",
-      "string"
-    ],
-    "reverse_voucher": [
-      "p_id: string; p_date: string; p_reason: string",
-      "string"
-    ],
-    "party_balances": [
-      "p_firm: string | null; p_party?: string | null; p_as_of?: string | null",
-      "{ firm_id: string; party_id: string; ledger_balance: number; open_bills: number; due_now: number; overdue: number; due_unknown: number; sales_basis_open: number; advance: number; unadjusted_notes: number; cn_received: number; disputed: number }[]"
-    ],
-    "party_ledger": [
-      "p_firm: string; p_party: string; p_from: string; p_to: string; p_offset: number; p_limit: number",
-      "{ voucher_id: string; voucher_no: string; voucher_type: string; voucher_date: string; reference_no: string | null; narration: string | null; status: string; debit: number; credit: number; running_balance: number; opening_balance: number; total_rows: number }[]"
-    ],
-    "open_vouchers": [
-      "p_firm: string; p_party: string; p_side: string",
-      "{ id: string; voucher_no: string; voucher_type: string; voucher_date: string; reference_no: string | null; due_date: string | null; amount: number; settlement_basis: string | null; store_id: string | null; open_amount: number }[]"
-    ],
-    "batch_remaining": [
-      "p_batch: string",
-      "number | null"
-    ],
-    "create_opening_batches": [
-      "p_report: string; p_as_of: string",
-      "number"
-    ],
-    "attribute_batches": [
-      "p_store: string | null; p_brand: string | null; p_party: string; p_note: string; p_batch?: string | null",
-      "number"
-    ],
-    "allocate_store_sales": [
-      "p_store: string; p_from: string; p_to: string",
-      "Json"
-    ],
-    "allocate_sales_line_manually": [
-      "p_allocation: string; p_batch: string; p_note: string",
-      "undefined"
-    ],
-    "attribution_summary": [
-      "p_store: string; p_from: string; p_to: string",
-      "{ party_id: string | null; brand_id: string | null; method: string; qty: number; lines: number }[]"
-    ],
-    "create_supplier_return": [
-      "p_firm: string; p_store: string; p_party: string; p_date: string; p_lines: Json; p_notes: string | null; p_deduct_on: string | null",
-      "string"
-    ],
-    "advance_supplier_return": [
-      "p_id: string; p_action: string; p_date: string; p_ref: string | null; p_amount: number | null; p_lines: Json | null; p_cgst: number | null; p_sgst: number | null; p_igst: number | null",
-      "Json"
-    ],
-    "return_credit_pending": [
-      "p_firm: string | null",
-      "{ firm_id: string; party_id: string; pending: number; returns: number }[]"
-    ],
-    "record_distributor_transfer": [
-      "p_firm: string; p_from: string; p_to: string; p_date: string; p_amount: number; p_document: string; p_batches: string[] | null; p_narration: string",
-      "string"
-    ],
-    "transfer_stock_between_stores": [
-      "p_to_store: string; p_date: string; p_items: Json; p_document: string | null; p_note: string | null",
-      "number"
-    ],
-    "compute_working": [
-      "p_rules: Json; p_lines: Json",
-      "Json"
-    ],
-    "prepare_working": [
-      "p_arrangement: string; p_from: string; p_to: string; p_rule_set: string; p_rules: Json | null; p_notes: string | null",
-      "string"
-    ],
-    "set_working_status": [
-      "p_run: string; p_status: string; p_note: string | null",
-      "undefined"
-    ],
-    "record_company_figures": [
-      "p_run: string; p_payment: number | null; p_cn: number | null; p_note: string | null",
-      "undefined"
-    ],
-    "match_claim": [
-      "p_claim: string; p_voucher: string",
-      "undefined"
-    ],
-    "pay_settlement": [
-      "p_settlement: string; p_voucher: string; p_amount: number",
-      "undefined"
-    ],
-    "settlement_balances": [
-      "p_firm: string | null; p_as_of?: string | null",
-      "{ firm_id: string; party_id: string; settlement_open: number; settlement_due: number; cn_expected: number; cn_pending: number }[]"
-    ],
-    "period_is_closed": [
-      "p_firm: string; p_date: string",
-      "boolean"
-    ],
-    "close_period": [
-      "p_firm: string; p_month: string",
-      "undefined"
-    ],
-    "reopen_period": [
-      "p_firm: string; p_month: string; p_reason: string",
-      "undefined"
-    ],
-    "save_supplier_statement": [
-      "p_firm: string; p_party: string; p_from: string; p_to: string; p_opening: number | null; p_closing: number; p_document: string | null; p_lines: Json; p_notes: string | null",
-      "string"
-    ],
-    "match_statement": [
-      "p_statement: string",
-      "number"
-    ],
-    "statement_comparison": [
-      "p_statement: string",
-      "Json"
-    ],
-    "accounts_summary": [
-      "p_firm: string | null; p_store: string | null; p_brand: string | null; p_from: string; p_to: string",
-      "{ firm_id: string; store_id: string | null; party_id: string; brand_id: string | null; purchases_taxable: number; purchases_total: number; payments: number; credit_notes: number; debit_notes: number; purchase_qty: number }[]"
-    ],
-    "batches_with_remaining": [
-      "p_store: string | null; p_party: string | null; p_search: string | null; p_unattributed: boolean | null; p_limit: number | null",
-      "{ id: string; store_id: string; firm_id: string; party_id: string | null; brand_id: string | null; source: string; lot_code: string | null; barcode: string | null; article: string | null; size: string | null; description: string | null; mrp: number | null; unit_cost: number | null; cost_basis: string; qty_in: number; received_date: string; attribution: string; remaining: number }[]"
-    ]
-  }
+  "finance_any": [
+   "p_action: string",
+   "boolean"
+  ],
+  "store_firm_on": [
+   "p_store: string; p_date: string",
+   "string | null"
+  ],
+  "store_billing_firm_label": [
+   "p_store: string; p_date: string",
+   "string | null"
+  ],
+  "reserve_finance_document": [
+   "p_kind: string; p_store: string | null; p_firm: string | null; p_party: string | null; p_file_name: string; p_mime: string; p_size: number; p_sha256: string; p_title: string | null; p_doc_no: string | null; p_doc_date: string | null",
+   "Json"
+  ],
+  "finalize_finance_document": [
+   "p_id: string",
+   "Json"
+  ],
+  "review_finance_document": [
+   "p_id: string; p_kind: string; p_firm: string | null; p_store: string | null; p_party: string | null; p_title: string | null; p_doc_no: string | null; p_doc_date: string | null; p_amount: number | null; p_status: string; p_notes: string | null",
+   "undefined"
+  ],
+  "sales_input_coverage": [
+   "p_store: string; p_from: string; p_to: string",
+   "{ day: string; status: string; report_id: string | null; item_lines: number; summary_lines: number; no_amount_lines: number; unreconciled_lines: number; net_sale: number | null }[]"
+  ],
+  "finance_create_store": [
+   "p_name: string; p_code: string; p_firm: string; p_from: string; p_location: string | null",
+   "string"
+  ],
+  "voucher_open_amount": [
+   "p_voucher: string",
+   "number | null"
+  ],
+  "allocate_voucher": [
+   "p_from: string; p_to: string; p_amount: number",
+   "string"
+  ],
+  "release_allocation": [
+   "p_id: string; p_reason: string",
+   "undefined"
+  ],
+  "purchase_invoice_check": [
+   "p_id: string",
+   "Json"
+  ],
+  "post_purchase_invoice": [
+   "p_id: string; p_brand?: string | null",
+   "string"
+  ],
+  "record_supplier_voucher": [
+   "p_type: string; p_firm: string; p_store: string | null; p_party: string; p_date: string; p_amount: number; p_mode: string | null; p_reference: string | null; p_reference_date: string | null; p_reason: string | null; p_taxable: number | null; p_cgst: number | null; p_sgst: number | null; p_igst: number | null; p_narration: string | null; p_allocations: Json | null; p_due_date: string | null",
+   "string"
+  ],
+  "reverse_voucher": [
+   "p_id: string; p_date: string; p_reason: string",
+   "string"
+  ],
+  "party_balances": [
+   "p_firm: string | null; p_party?: string | null; p_as_of?: string | null",
+   "{ firm_id: string; party_id: string; ledger_balance: number; open_bills: number; due_now: number; overdue: number; due_unknown: number; sales_basis_open: number; advance: number; unadjusted_notes: number; cn_received: number; disputed: number }[]"
+  ],
+  "party_ledger": [
+   "p_firm: string; p_party: string; p_from: string; p_to: string; p_offset: number; p_limit: number",
+   "{ voucher_id: string; voucher_no: string; voucher_type: string; voucher_date: string; reference_no: string | null; narration: string | null; status: string; debit: number; credit: number; running_balance: number; opening_balance: number; total_rows: number }[]"
+  ],
+  "open_vouchers": [
+   "p_firm: string; p_party: string; p_side: string",
+   "{ id: string; voucher_no: string; voucher_type: string; voucher_date: string; reference_no: string | null; due_date: string | null; amount: number; settlement_basis: string | null; store_id: string | null; open_amount: number }[]"
+  ],
+  "batch_remaining": [
+   "p_batch: string",
+   "number | null"
+  ],
+  "create_opening_batches": [
+   "p_report: string; p_as_of: string",
+   "number"
+  ],
+  "attribute_batches": [
+   "p_store: string | null; p_brand: string | null; p_party: string; p_note: string; p_batch?: string | null",
+   "number"
+  ],
+  "allocate_store_sales": [
+   "p_store: string; p_from: string; p_to: string",
+   "Json"
+  ],
+  "allocate_sales_line_manually": [
+   "p_allocation: string; p_batch: string; p_note: string",
+   "undefined"
+  ],
+  "attribution_summary": [
+   "p_store: string; p_from: string; p_to: string",
+   "{ party_id: string | null; brand_id: string | null; method: string; qty: number; lines: number }[]"
+  ],
+  "create_supplier_return": [
+   "p_firm: string; p_store: string; p_party: string; p_date: string; p_lines: Json; p_notes: string | null; p_deduct_on: string | null",
+   "string"
+  ],
+  "advance_supplier_return": [
+   "p_id: string; p_action: string; p_date: string; p_ref: string | null; p_amount: number | null; p_lines: Json | null; p_cgst: number | null; p_sgst: number | null; p_igst: number | null",
+   "Json"
+  ],
+  "return_credit_pending": [
+   "p_firm: string | null",
+   "{ firm_id: string; party_id: string; pending: number; returns: number }[]"
+  ],
+  "record_distributor_transfer": [
+   "p_firm: string; p_from: string; p_to: string; p_date: string; p_amount: number; p_document: string; p_batches: string[] | null; p_narration: string",
+   "string"
+  ],
+  "transfer_stock_between_stores": [
+   "p_to_store: string; p_date: string; p_items: Json; p_document: string | null; p_note: string | null",
+   "number"
+  ],
+  "compute_working": [
+   "p_rules: Json; p_lines: Json",
+   "Json"
+  ],
+  "prepare_working": [
+   "p_arrangement: string; p_from: string; p_to: string; p_rule_set: string; p_rules: Json | null; p_notes: string | null",
+   "string"
+  ],
+  "set_working_status": [
+   "p_run: string; p_status: string; p_note: string | null",
+   "undefined"
+  ],
+  "record_company_figures": [
+   "p_run: string; p_payment: number | null; p_cn: number | null; p_note: string | null",
+   "undefined"
+  ],
+  "match_claim": [
+   "p_claim: string; p_voucher: string",
+   "undefined"
+  ],
+  "pay_settlement": [
+   "p_settlement: string; p_voucher: string; p_amount: number",
+   "undefined"
+  ],
+  "settlement_balances": [
+   "p_firm: string | null; p_as_of?: string | null",
+   "{ firm_id: string; party_id: string; settlement_open: number; settlement_due: number; cn_expected: number; cn_pending: number }[]"
+  ],
+  "period_is_closed": [
+   "p_firm: string; p_date: string",
+   "boolean"
+  ],
+  "close_period": [
+   "p_firm: string; p_month: string",
+   "undefined"
+  ],
+  "reopen_period": [
+   "p_firm: string; p_month: string; p_reason: string",
+   "undefined"
+  ],
+  "save_supplier_statement": [
+   "p_firm: string; p_party: string; p_from: string; p_to: string; p_opening: number | null; p_closing: number; p_document: string | null; p_lines: Json; p_notes: string | null",
+   "string"
+  ],
+  "match_statement": [
+   "p_statement: string",
+   "number"
+  ],
+  "statement_comparison": [
+   "p_statement: string",
+   "Json"
+  ],
+  "accounts_summary": [
+   "p_firm: string | null; p_store: string | null; p_brand: string | null; p_from: string; p_to: string",
+   "{ firm_id: string; store_id: string | null; party_id: string; brand_id: string | null; purchases_taxable: number; purchases_total: number; payments: number; credit_notes: number; debit_notes: number; purchase_qty: number }[]"
+  ],
+  "batches_with_remaining": [
+   "p_store: string | null; p_party: string | null; p_search: string | null; p_unattributed: boolean | null; p_limit: number | null",
+   "{ id: string; store_id: string; firm_id: string; party_id: string | null; brand_id: string | null; source: string; lot_code: string | null; barcode: string | null; article: string | null; size: string | null; description: string | null; mrp: number | null; unit_cost: number | null; cost_basis: string; qty_in: number; received_date: string; attribution: string; remaining: number }[]"
+  ],
+  "submit_day_close": [
+   "p_store: string; p_date: string; p_opening: number | null; p_cash: number; p_upi: number; p_card: number; p_other: number; p_other_note: string | null; p_deposited: number; p_note: string | null",
+   "string"
+  ],
+  "review_day_close": [
+   "p_id: string; p_action: string; p_note: string | null",
+   "undefined"
+  ],
+  "day_close_overview": [
+   "p_store: string; p_from: string; p_to: string",
+   "{ id: string; close_date: string; status: string; opening_cash: number; cash_counted: number; upi_amount: number; card_amount: number; other_amount: number; other_note: string | null; cash_deposited: number; note: string | null; review_note: string | null; submitted_by_name: string | null; submitted_at: string; logic_net_sale: number | null; sales_report_uploaded: boolean; cash_expenses: number; expected_cash: number | null; difference: number | null }[]"
+  ],
+  "missing_day_closes": [
+   "p_store: string; p_days?: number",
+   "string[]"
+  ],
+  "store_profit": [
+   "p_store: string; p_month: string",
+   "Json"
+  ],
+  "publish_stock_import_part": [
+   "p_import: string",
+   "Json"
+  ],
+  "save_customer_profile": [
+   "p_mobile: string; p_name: string | null; p_birthday: string | null; p_anniversary: string | null; p_consent: boolean; p_source: string | null; p_do_not_contact: boolean; p_note: string | null",
+   "undefined"
+  ],
+  "log_customer_message": [
+   "p_mobile: string; p_store: string; p_kind: string",
+   "undefined"
+  ],
+  "customer_list": [
+   "p_store: string | null; p_segment: string; p_search: string | null; p_limit: number; p_offset: number",
+   "{ mobile: string; name: string | null; first_visit: string; last_visit: string; bills: number; items: number; spend: number; store_count: number; marketing_consent: boolean; do_not_contact: boolean; birthday: string | null; last_message_at: string | null; total_count: number }[]"
+  ],
+  "customer_kpis": [
+   "p_store: string | null; p_from: string; p_to: string",
+   "Json"
+  ],
+  "customer_purchases": [
+   "p_mobile: string",
+   "{ sale_date: string; store_name: string; bill_no: string | null; item_name: string | null; brand: string | null; size: string | null; quantity: number | null; net_sale: number | null; staff_name: string | null; customer_name: string | null }[]"
+  ],
+  "customer_visible": [
+   "p_mobile: string",
+   "boolean"
+  ]
+ }
 }
