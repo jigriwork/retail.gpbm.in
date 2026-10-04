@@ -16,6 +16,13 @@ function object(value: unknown): RecordValue | null {
 
 function firstField(value: unknown, keys: string[], depth = 0): unknown {
   if (depth > 5) return undefined;
+  if (typeof value === "string" && /^[\[{]/.test(value.trim())) {
+    try {
+      return firstField(JSON.parse(value), keys, depth + 1);
+    } catch {
+      return undefined;
+    }
+  }
   const record = object(value);
   if (!record) return undefined;
   for (const key of keys) if (record[key] !== undefined && record[key] !== null) return record[key];
