@@ -7702,6 +7702,10 @@ export type Database = {
         Args: { p_import: string }
         Returns: Json
       }
+      owner_daily_summary_facts: {
+        Args: { p_day: string }
+        Returns: Json
+      }
       publish_stock_import_part: { Args: { p_import: string }; Returns: Json }
       fail_report_import: {
         Args: { p_import: string }

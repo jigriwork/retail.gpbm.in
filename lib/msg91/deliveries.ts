@@ -12,7 +12,7 @@ export type DeliveryCandidate = {
   dedupeKey: string;
   initiatedBy: string;
   brandCode: "GP" | "BM";
-  kind: "customer_follow_up" | "customer_thank_you" | "payslip";
+  kind: "customer_follow_up" | "customer_thank_you" | "owner_summary" | "payslip";
   metadata?: Json;
   recipient: string;
   referenceId: string;
