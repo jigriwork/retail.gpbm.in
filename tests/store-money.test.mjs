@@ -27,6 +27,8 @@ test("managers can close the day and record expenses on a phone; accountants can
   assert.equal(handheldAllows("/app/money"), true);
   assert.equal(handheldAllows("/app/money/expenses"), true);
   assert.equal(handheldAllows("/app/customers"), true);
+  assert.equal(handheldAllows("/app/stock-counts/abc"), true);
+  assert.equal(handheldAllows("/app/buying"), false);
   assert.equal(accountantAllows("/app/money"), false);
   assert.equal(accountantAllows("/app/customers"), false);
 });

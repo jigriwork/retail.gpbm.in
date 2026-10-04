@@ -11,6 +11,7 @@ import {
   PackageSearch,
   Phone,
   ShieldAlert,
+  ShoppingBag,
   UploadCloud,
   UserRoundCheck,
   UserRoundCog,
@@ -103,6 +104,19 @@ export default async function ReportsPage() {
         <span className="min-w-0 flex-1">
           <span className="block font-semibold">Customers</span>
           <span className="block text-sm leading-5 text-muted">Repeat and lapsed customers from the bills, with WhatsApp thank-you and offer messages.</span>
+        </span>
+      </Link>
+
+      <Link
+        className="flex items-center gap-4 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
+        href="/app/buying"
+      >
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+          <ShoppingBag className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Buying & stock</span>
+          <span className="block text-sm leading-5 text-muted">Sell-through, reorder by size, transfers between stores, markdown list, budgets and stock counts.</span>
         </span>
       </Link>
 

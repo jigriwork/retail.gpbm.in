@@ -9,6 +9,246 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      stock_count_lines: {
+        Row: {
+          id: string
+          count_id: string
+          lot_code: string | null
+          brand: string | null
+          item_name: string | null
+          size: string | null
+          mrp: number | null
+          unit_cost: number | null
+          expected_qty: number
+          counted_qty: number | null
+          is_extra: boolean
+          counted_by: string | null
+          counted_at: string | null
+        }
+        Insert: {
+          id?: string
+          count_id: string
+          lot_code?: string | null
+          brand?: string | null
+          item_name?: string | null
+          size?: string | null
+          mrp?: number | null
+          unit_cost?: number | null
+          expected_qty?: number
+          counted_qty?: number | null
+          is_extra?: boolean
+          counted_by?: string | null
+          counted_at?: string | null
+        }
+        Update: {
+          id?: string
+          count_id?: string
+          lot_code?: string | null
+          brand?: string | null
+          item_name?: string | null
+          size?: string | null
+          mrp?: number | null
+          unit_cost?: number | null
+          expected_qty?: number
+          counted_qty?: number | null
+          is_extra?: boolean
+          counted_by?: string | null
+          counted_at?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "stock_count_lines_count_id_fkey",
+            "columns": [
+              "count_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stock_counts",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "stock_count_lines_counted_by_fkey",
+            "columns": [
+              "counted_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      stock_counts: {
+        Row: {
+          id: string
+          store_id: string
+          title: string
+          scope_brand: string | null
+          scope_category: string | null
+          snapshot_date: string | null
+          status: string
+          created_by: string
+          created_at: string
+          submitted_by: string | null
+          submitted_at: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          review_note: string | null
+        }
+        Insert: {
+          id?: string
+          store_id: string
+          title: string
+          scope_brand?: string | null
+          scope_category?: string | null
+          snapshot_date?: string | null
+          status?: string
+          created_by?: string
+          created_at?: string
+          submitted_by?: string | null
+          submitted_at?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          review_note?: string | null
+        }
+        Update: {
+          id?: string
+          store_id?: string
+          title?: string
+          scope_brand?: string | null
+          scope_category?: string | null
+          snapshot_date?: string | null
+          status?: string
+          created_by?: string
+          created_at?: string
+          submitted_by?: string | null
+          submitted_at?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          review_note?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "stock_counts_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "stock_counts_reviewed_by_fkey",
+            "columns": [
+              "reviewed_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "stock_counts_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "stock_counts_submitted_by_fkey",
+            "columns": [
+              "submitted_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      buying_budgets: {
+        Row: {
+          id: string
+          brand_id: string
+          store_id: string | null
+          season: string
+          starts_on: string
+          ends_on: string
+          budget_amount: number
+          note: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          brand_id: string
+          store_id?: string | null
+          season: string
+          starts_on: string
+          ends_on: string
+          budget_amount: number
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          brand_id?: string
+          store_id?: string | null
+          season?: string
+          starts_on?: string
+          ends_on?: string
+          budget_amount?: number
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "buying_budgets_brand_id_fkey",
+            "columns": [
+              "brand_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "brands",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "buying_budgets_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "buying_budgets_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
       customer_messages: {
         Row: {
           id: string
@@ -6872,6 +7112,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      stock_position_store_ids: { Args: Record<PropertyKey, never>; Returns: string[] }
+      stock_count_summary: { Args: { p_count: string }; Returns: Json }
+      review_stock_count: { Args: { p_count: string; p_note: string | null }; Returns: undefined }
+      submit_stock_count: { Args: { p_count: string }; Returns: undefined }
+      add_stock_count_extra: { Args: { p_count: string; p_code: string | null; p_item: string | null; p_size: string | null; p_qty: number }; Returns: undefined }
+      record_stock_count: { Args: { p_line: string; p_qty: number | null }; Returns: undefined }
+      stock_count_sheet: { Args: { p_count: string }; Returns: { id: string; lot_code: string | null; brand: string | null; item_name: string | null; size: string | null; mrp: number | null; expected_qty: number | null; counted_qty: number | null; is_extra: boolean }[] }
+      start_stock_count: { Args: { p_store: string; p_title: string | null; p_brand: string | null; p_category: string | null }; Returns: string }
+      budget_status: { Args: Record<PropertyKey, never>; Returns: { id: string; brand_id: string; brand: string; store_id: string | null; store_name: string | null; season: string; starts_on: string; ends_on: string; budget_amount: number; purchased: number; remaining: number; used_pct: number; sold_units: number; net_sales: number }[] }
+      markdown_candidates: { Args: { p_store: string }; Returns: { brand: string; item_name: string; size: string | null; category: string | null; mrp: number | null; on_hand: number; value_mrp: number; last_sale: string | null; days_without_sale: number; first_seen: string | null; suggested_pct: number }[] }
+      transfer_suggestions: { Args: Record<PropertyKey, never>; Returns: { brand: string; item_name: string; size: string | null; from_store_id: string; from_store: string; to_store_id: string; to_store: string; from_on_hand: number; to_sold_30: number; qty: number }[] }
+      reorder_suggestions: { Args: { p_store: string; p_days: number; p_cover_days: number }; Returns: { brand: string; item_name: string; size: string | null; sold: number; on_hand: number; suggest_qty: number; other_store_on_hand: number; other_store_names: string | null; last_sale: string }[] }
+      brand_sell_through: { Args: { p_store: string; p_days: number }; Returns: { brand: string; sold_units: number; net_sales: number; on_hand: number; on_hand_mrp: number; on_hand_cost: number | null; cost_known_units: number; sell_through_pct: number | null; days_cover: number | null; no_sale_90_units: number; snapshot_date: string | null }[] }
+      refresh_stock_position: { Args: { p_store: string }; Returns: boolean }
       customer_visible: { Args: { p_mobile: string }; Returns: boolean }
       customer_purchases: { Args: { p_mobile: string }; Returns: { sale_date: string; store_name: string; bill_no: string | null; item_name: string | null; brand: string | null; size: string | null; quantity: number | null; net_sale: number | null; staff_name: string | null; customer_name: string | null }[] }
       customer_kpis: { Args: { p_store: string | null; p_from: string; p_to: string }; Returns: Json }

@@ -48,7 +48,10 @@
   "store_expenses",
   "store_monthly_costs",
   "customer_profiles",
-  "customer_messages"
+  "customer_messages",
+  "buying_budgets",
+  "stock_counts",
+  "stock_count_lines"
  ],
  "functions": {
   "finance_can": [
@@ -278,6 +281,62 @@
   "customer_visible": [
    "p_mobile: string",
    "boolean"
+  ],
+  "refresh_stock_position": [
+   "p_store: string",
+   "boolean"
+  ],
+  "brand_sell_through": [
+   "p_store: string; p_days: number",
+   "{ brand: string; sold_units: number; net_sales: number; on_hand: number; on_hand_mrp: number; on_hand_cost: number | null; cost_known_units: number; sell_through_pct: number | null; days_cover: number | null; no_sale_90_units: number; snapshot_date: string | null }[]"
+  ],
+  "reorder_suggestions": [
+   "p_store: string; p_days: number; p_cover_days: number",
+   "{ brand: string; item_name: string; size: string | null; sold: number; on_hand: number; suggest_qty: number; other_store_on_hand: number; other_store_names: string | null; last_sale: string }[]"
+  ],
+  "transfer_suggestions": [
+   "",
+   "{ brand: string; item_name: string; size: string | null; from_store_id: string; from_store: string; to_store_id: string; to_store: string; from_on_hand: number; to_sold_30: number; qty: number }[]"
+  ],
+  "markdown_candidates": [
+   "p_store: string",
+   "{ brand: string; item_name: string; size: string | null; category: string | null; mrp: number | null; on_hand: number; value_mrp: number; last_sale: string | null; days_without_sale: number; first_seen: string | null; suggested_pct: number }[]"
+  ],
+  "budget_status": [
+   "",
+   "{ id: string; brand_id: string; brand: string; store_id: string | null; store_name: string | null; season: string; starts_on: string; ends_on: string; budget_amount: number; purchased: number; remaining: number; used_pct: number; sold_units: number; net_sales: number }[]"
+  ],
+  "start_stock_count": [
+   "p_store: string; p_title: string | null; p_brand: string | null; p_category: string | null",
+   "string"
+  ],
+  "stock_count_sheet": [
+   "p_count: string",
+   "{ id: string; lot_code: string | null; brand: string | null; item_name: string | null; size: string | null; mrp: number | null; expected_qty: number | null; counted_qty: number | null; is_extra: boolean }[]"
+  ],
+  "record_stock_count": [
+   "p_line: string; p_qty: number | null",
+   "undefined"
+  ],
+  "add_stock_count_extra": [
+   "p_count: string; p_code: string | null; p_item: string | null; p_size: string | null; p_qty: number",
+   "undefined"
+  ],
+  "submit_stock_count": [
+   "p_count: string",
+   "undefined"
+  ],
+  "review_stock_count": [
+   "p_count: string; p_note: string | null",
+   "undefined"
+  ],
+  "stock_count_summary": [
+   "p_count: string",
+   "Json"
+  ],
+  "stock_position_store_ids": [
+   "",
+   "string[]"
   ]
  }
 }

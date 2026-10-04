@@ -15,5 +15,5 @@ for(const table of tables){
  const re=new RegExp(`      ${table}: \\{[\\s\\S]*?^      \\}\\n`,'m');if(re.test(text))text=text.replace(re,()=>block);else text=text.replace('    Tables: {\n','    Tables: {\n'+block);
 }
 const functions=JSON.parse(readFileSync('scripts/accounts-types.json','utf8')).functions;
-for(const [name,[args,returns]] of Object.entries(functions)){const block=`      ${name}: { Args: { ${args} }; Returns: ${returns} }\n`;const re=new RegExp(`      ${name}: .*\\n`);text=re.test(text)?text.replace(re,block):text.replace('    Functions: {\n','    Functions: {\n'+block);}
+for(const [name,[args,returns]] of Object.entries(functions)){const block=`      ${name}: { Args: ${args?`{ ${args} }`:'Record<PropertyKey, never>'}; Returns: ${returns} }\n`;const re=new RegExp(`      ${name}: .*\\n`);text=re.test(text)?text.replace(re,block):text.replace('    Functions: {\n','    Functions: {\n'+block);}
 writeFileSync(file,text);console.log(`Regenerated ${tables.length} table types and ${Object.keys(functions).length} RPC signatures from the isolated schema.`);

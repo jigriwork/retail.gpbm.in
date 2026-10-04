@@ -55,6 +55,7 @@ const handheldPrefixes = [
   "/app/accounts",
   "/app/money",
   "/app/customers",
+  "/app/stock-counts",
   "/app/tasks",
   "/app/checklist",
   "/app/updates",
