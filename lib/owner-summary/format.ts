@@ -236,7 +236,7 @@ function billsDetail(store: OwnerSummaryStore | undefined) {
 
 function cashDetail(store: OwnerSummaryStore | undefined) {
   const close = store?.day_close;
-  if (!close) return "day not closed yet ❌";
+  if (!close) return "cash opening/closing not done ❌";
   if (close.difference === null || close.difference === undefined) return "closed, waiting for the sales report";
   const difference = Math.round(num(close.difference));
   const checked = close.status === "reviewed" ? " (checked)" : "";

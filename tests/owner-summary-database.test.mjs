@@ -29,6 +29,11 @@ insert into auth.users(id,email) values ('00000000-0000-0000-0000-0000000000a1',
 insert into store_day_closes(store_id,close_date,opening_cash,cash_counted,upi_amount) values ((select id from stores where code='GP'),'2099-05-20',1000,5500,2000);
 insert into store_expenses(store_id,expense_date,category,amount,paid_from,created_by) values ((select id from stores where code='GP'),'2099-05-20','tea_snacks',300,'cash','00000000-0000-0000-0000-0000000000a1');
 insert into staff_targets(store_id,month,staff_name,target) values ((select id from stores where code='GP'),'2099-05-01','RAHIM',200000),((select id from stores where code='GP'),'2099-05-01','SHABAZ',100000);
+-- "S" = shop counter: KUMAR S and KUMAR are one person.
+insert into sales_rows(report_id,store_id,sale_date,bill_no,item_name,brand,quantity,net_sale,staff_name,raw_data)
+  select id, store_id, report_date, x.bill, 'Belt', 'PEPE', 1, x.net, x.staff, '{}'::jsonb
+  from reports, (values ('K1', 600, 'KUMAR'), ('K2', 900, 'KUMAR S')) x(bill,net,staff)
+  where report_type='sales' and report_date='2099-05-19';
 insert into staff_name_aliases(store_id,canonical_staff_name,normalized_canonical_staff_name,source_name,normalized_source_name,source_type,is_active)
   values ((select id from stores where code='GP'),'SHABAZ','shabaz','SHABAZ S','shabaz s','sales_report',true);
 `;
@@ -45,7 +50,7 @@ rollback;`);
   assert.equal(Number(gp.sale), 7000);
   assert.equal(gp.bills, 5);
   assert.equal(Number(gp.last_week_sale), 10500);
-  assert.equal(Number(gp.month_sale), 147499);
+  assert.equal(Number(gp.month_sale), 148999); // incl. the KUMAR lines of the 19th
   assert.equal(gp.missing_days, 1);
   assert.equal(gp.summary_days, 1);
   assert.equal(Number(gp.returns), 2500);
@@ -63,6 +68,9 @@ rollback;`);
   assert.equal(Number(gp.last_month_same_days_sale), 52500);
   assert.equal(Number(gp.month_target), 300000);
   assert.deepEqual(gp.top_staffs.map((p) => [p.name, Number(p.sale)]), [["SHABAZ", 7000], ["RAHIM", 2000]]);
+  const may19 = JSON.parse(sql(`begin;${seed} select owner_daily_summary_facts('2099-05-19')->'stores'; rollback;`)).find((s) => s.code === "GP");
+  assert.deepEqual([may19.top_staff.name, Number(may19.top_staff.sale), may19.top_staff.bills], ["RAHIM", 2000, 1]);
+  assert.deepEqual(may19.top_staffs.map((p) => [p.name, Number(p.sale)]), [["RAHIM", 2000], ["KUMAR", 1500]]);
   assert.equal(bm.status, "missing");
   assert.equal(bm.sale, null);
   assert.equal(bm.top_staff, null);

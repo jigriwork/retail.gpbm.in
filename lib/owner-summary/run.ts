@@ -30,11 +30,19 @@ export function ownerSummaryRecipients() {
     .slice(0, MAX_RECIPIENTS);
 }
 
-export async function runOwnerDailySummary({ now = new Date(), preview = false }: { now?: Date; preview?: boolean } = {}) {
+/**
+ * Sends yesterday's summary (the 9 AM run). `day` sends a chosen past day on
+ * request, e.g. a first report once the template is approved; each day still
+ * goes to each recipient only once.
+ */
+export async function runOwnerDailySummary({ day: requestedDay, now = new Date(), preview = false }: { day?: string; now?: Date; preview?: boolean } = {}) {
   const admin = createAdminClient();
   if (!admin) throw new Error("Secure summary service is unavailable.");
   const india = indiaNow(now);
-  const day = previousDay(india.date);
+  if (requestedDay !== undefined && (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDay) || requestedDay >= india.date)) {
+    return { day: requestedDay, detail: "Choose a past day as YYYY-MM-DD.", sent: 0 };
+  }
+  const day = requestedDay ?? previousDay(india.date);
 
   const { data, error } = await admin.rpc("owner_daily_summary_facts", { p_day: day });
   if (error || !data) throw new Error("Summary figures could not be loaded.");
@@ -45,7 +53,7 @@ export async function runOwnerDailySummary({ now = new Date(), preview = false }
   }
 
   // pg_cron calls at 9:00; the Vercel backup runs later. Never send early.
-  if (india.minutes < 8 * 60 + 55) return { day, detail: "Before 9:00 AM IST; not sent.", sent: 0 };
+  if (!requestedDay && india.minutes < 8 * 60 + 55) return { day, detail: "Before 9:00 AM IST; not sent.", sent: 0 };
 
   // MSG91_OWNER_SUMMARY_TEMPLATE switches the summary on; the detailed
   // template is used once WhatsApp approves it, the short one until then.

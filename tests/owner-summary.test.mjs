@@ -103,7 +103,7 @@ test("detailed summary: target progress, day not closed, missing report, and the
   busy.stores[1].return_brands = ["ANOTHER VERY LONG BRAND NAME", "AND ONE MORE VERY LONG BRAND NAME"];
   const values = Array.from(formatOwnerSummaryDetailed(busy));
   assert.equal(values[4], "₹3.73 lakh in 3 days · 31% of ₹12 lakh target");
-  assert.equal(values[3], "day not closed yet ❌");
+  assert.equal(values[3], "cash opening/closing not done ❌");
   assert.equal(values[5], "report not received ❌");
   assert.equal(values[7], "closed, waiting for the sales report");
   assert.match(values[12], /^BM report missing ❌/);
