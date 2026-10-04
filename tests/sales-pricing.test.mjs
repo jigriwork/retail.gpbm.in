@@ -121,3 +121,19 @@ test("a file of day totals only still imports", async () => {
   assert.equal(result.rows.length, 2);
   assert.equal(summary.totalNetSale, 19350);
 });
+
+test("Logic DAILY SALE BOOK (brand/category totals, no bills) is recognised as summary-only; bill-wise is not", async () => {
+  // Real Brand Mark file of 2 Oct 2026, uploaded instead of the bill-wise report.
+  const daily = await parseMany(
+    ["SNO.", "SHOW ROOM", "BILL DATE", "BRAND NAME", "CATEGORY", "NET SALE QTY", "MRP VALUE", "DISCOUNT VALUE", "NET SALE VALUE", "VAT RS.", "SALE VALUE BEFORE TAX"],
+    [["1", "(NIL)", "02/10/2026", "ARROW", "BOTTOM WEAR", "1", "2299", "-115.13", "2183.87", "52", "2235.87"],
+     ["2", "(NIL)", "02/10/2026", "ARROW", "TOP WEAR", "2", "5124", "-256.2", "4867.82", "115.91", "4983.71"]],
+  );
+  assert.equal(daily.parser.salesRowsAreSummaryOnly(daily.result.rows), true);
+  assert.match(daily.parser.summaryOnlySalesFileMessage, /BILL WISE SALES REPORT/);
+  const billWise = await parseMany(
+    ["SNO.", "BILL NO.", "BILL DATE", "AGENT NAME", "ITEM NAME", "SALE QTY", "M.R.P.", "NET AMOUNT"],
+    [["1", "BM-334", "03/10/2026", "SAHU", "SDHS1199", "1", "1199", "1079"]],
+  );
+  assert.equal(billWise.parser.salesRowsAreSummaryOnly(billWise.result.rows), false);
+});

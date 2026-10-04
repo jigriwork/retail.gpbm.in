@@ -9,6 +9,8 @@ test('Stock imports use the bounded stock-only commit RPC',async()=>{
  f.client.rpc=async(name,args)=>{calls.push(name);return rpc(name,args);};
  assert.equal((await f.load('@/lib/reports/import-lifecycle').importReportFile(stockInput())).ok,true);
  assert.equal(calls.includes('commit_stock_report_import'),true);
+ // Published in parts first (each inside the 8s request limit), then made current.
+ assert.ok(calls.indexOf('publish_stock_import_part')>-1&&calls.indexOf('publish_stock_import_part')<calls.indexOf('commit_stock_report_import'));
  assert.equal(calls.includes('commit_report_import'),false);
 });
 test('H02 upload failure never publishes a report and preserves retry state',async()=>{

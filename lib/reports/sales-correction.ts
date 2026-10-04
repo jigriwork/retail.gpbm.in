@@ -11,6 +11,8 @@ import {
   matchesStoreName,
   missingStaffColumnWarning,
   parseSalesFileDetailed,
+  salesRowsAreSummaryOnly,
+  summaryOnlySalesFileMessage,
   rowsHaveAmountLikeColumns,
   rowsHaveStaffColumn,
   summarizeSalesRows,
@@ -218,6 +220,10 @@ async function parseDailyReplacementFile(file: File, store: { id: string; name: 
 
   if (!parsedRows.length) {
     return { ok: false as const, message: "No usable sales rows were found in this file." };
+  }
+
+  if (salesRowsAreSummaryOnly(parsedRows)) {
+    return { ok: false as const, message: summaryOnlySalesFileMessage };
   }
 
   const detectedDates = uniqueDates(parsedRows);
@@ -527,6 +533,10 @@ export async function bulkHistoricalSalesUpload(
 
   if (!parsedRows.length) {
     return { ok: false, message: "No usable sales rows were found." };
+  }
+
+  if (salesRowsAreSummaryOnly(parsedRows)) {
+    return { ok: false, message: summaryOnlySalesFileMessage };
   }
 
   const rowsWithoutDate = parsedRows.filter((row) => !row.saleDate);

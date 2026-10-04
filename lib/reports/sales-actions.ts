@@ -10,6 +10,8 @@ import { staffNameKey } from "@/lib/employees/utils";
 import {
   effectiveDiscount,
   parseSalesFileDetailed,
+  salesRowsAreSummaryOnly,
+  summaryOnlySalesFileMessage,
   matchesStoreName,
   missingStaffColumnWarning,
   rowsHaveAmountLikeColumns,
@@ -336,6 +338,10 @@ export async function uploadSalesReport(
       message:
         "No usable rows were found. Please check that the file has headers like BILL DATE, BILL NO., AGENT NAME and NET AMOUNT.",
     };
+  }
+
+  if (salesRowsAreSummaryOnly(parsedRows)) {
+    return { ok: false, message: summaryOnlySalesFileMessage };
   }
 
   const detectedDates = uniqueDates(parsedRows);

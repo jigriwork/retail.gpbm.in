@@ -42,6 +42,18 @@ export async function importReportFile(input: {
       if (staged.error) { failureCode = staged.error.code; throw new Error("Staging failed"); }
     }
     stagedMs = Date.now() - phaseStarted;
+    if (input.type === "stock") {
+      // Large stock files publish in parts of up to 10,000 rows, each well
+      // inside the 8-second request limit; the commit then makes it current.
+      phase = "publish"; phaseStarted = Date.now();
+      for (let part = 0; part < 1000; part += 1) {
+        const published = await client.rpc("publish_stock_import_part", { p_import: run.id });
+        if (published.error || !published.data) { failureCode = published.error?.code ?? "no_response"; throw new Error("Publish failed"); }
+        const status = published.data as unknown as { ok: boolean; remaining?: number; message?: string };
+        if (!status.ok) return { ok: false, message: status.message ?? "Import could not be published." };
+        if (!status.remaining) break;
+      }
+    }
     phase = "commit"; phaseStarted = Date.now();
     const committed = input.type === "stock"
       ? await client.rpc("commit_stock_report_import", { p_import: run.id })

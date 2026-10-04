@@ -32,6 +32,7 @@ export function reportRpcs(db, client) {
         return {data:clone(run),error:null};
       }
       if(name==='stage_report_chunk') { if(db.report_import_chunks.some(c=>c.import_id===args.p_import&&c.chunk_no===args.p_chunk))return {data:null,error:null}; db.report_import_chunks.push({import_id:args.p_import,chunk_no:args.p_chunk,rows:args.p_rows});return {data:null,error:null}; }
+      if(name==='publish_stock_import_part') return {data:{ok:true,remaining:0},error:null};
       if(name==='fail_report_import') { const run=db.report_imports.find(r=>r.id===args.p_import);if(run.status!=='processed')run.status='failed';return {data:null,error:null}; }
       if(name==='commit_report_import'||name==='commit_stock_report_import') {
         const run=db.report_imports.find(r=>r.id===args.p_import);

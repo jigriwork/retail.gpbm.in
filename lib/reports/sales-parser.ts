@@ -311,6 +311,19 @@ function hasSalesIdentity(row: ParsedSalesRow) {
   return [row.billNo, row.itemName, row.sku, row.barcode, row.brand, row.category, row.staffName].some(Boolean);
 }
 
+/**
+ * Logic's "DAILY SALE BOOK" lists totals by brand/category: no bill numbers
+ * and no items. It cannot give bills, staff sales or company workings, so
+ * uploads refuse it and ask for the "BILL WISE SALES REPORT" instead.
+ * (Brand Mark uploaded it by mistake for 28 Sep – 2 Oct 2026.)
+ */
+export const summaryOnlySalesFileMessage =
+  "This is a summary file (Logic \"DAILY SALE BOOK\": totals by brand and category, with no bill numbers or items). Upload the \"BILL WISE SALES REPORT\" for this day instead. It lists every bill and item, which staff sales and company accounts need.";
+
+export function salesRowsAreSummaryOnly(rows: Array<Pick<ParsedSalesRow, "billNo" | "itemName">>) {
+  return rows.length > 0 && !rows.some((row) => row.billNo || row.itemName);
+}
+
 function parseSalesRow(
   row: Record<string, unknown>,
   columnMap: Map<keyof Omit<ParsedSalesRow, "rawData">, string>,

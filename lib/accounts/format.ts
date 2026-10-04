@@ -76,7 +76,7 @@ export const paymentCycles = [
 
 export const coverageLabels: Record<string, string> = {
   bill_level: "Bill-level report",
-  summary_only: "Summary only (no bills)",
+  summary_only: "Summary only (no bills): replace with BILL WISE SALES REPORT",
   mixed: "Bills + summary lines",
   missing: "No report",
   zero_confirmed: "No sales (confirmed)",

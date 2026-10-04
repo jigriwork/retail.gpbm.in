@@ -152,7 +152,7 @@ export default async function AccountsOverviewPage() {
         </div>
       </Panel>
 
-      <Panel description="Company workings need bill-level sales for every day. Days with no report, or only a summary, make a working incomplete." title="Sales inputs this month">
+      <Panel description="Company workings need bill-level sales for every day. Days with no report, or only a summary (Logic &ldquo;DAILY SALE BOOK&rdquo;), make a working incomplete: replace them with the &ldquo;BILL WISE SALES REPORT&rdquo; in Data Correction Center." title="Sales inputs this month">
         <div className="grid gap-3 sm:grid-cols-2">
           {coverage.map((item) => (
             <Link className="rounded-2xl border border-border bg-background p-4 transition hover:border-primary" href={`/app/accounts/inputs?store=${item.store.id}`} key={item.store.id}>

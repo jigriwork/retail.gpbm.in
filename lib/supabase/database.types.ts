@@ -5270,16 +5270,19 @@ export type Database = {
         Row: {
           chunk_no: number
           import_id: string
+          published_at: string | null
           rows: Json
         }
         Insert: {
           chunk_no: number
           import_id: string
+          published_at?: string | null
           rows: Json
         }
         Update: {
           chunk_no?: number
           import_id?: string
+          published_at?: string | null
           rows?: Json
         }
         Relationships: [
@@ -5304,6 +5307,7 @@ export type Database = {
           is_bulk: boolean
           manifest: Json
           mode: string
+          publish_report_id: string | null
           report_type: string
           result: Json | null
           status: string
@@ -5320,6 +5324,7 @@ export type Database = {
           is_bulk?: boolean
           manifest: Json
           mode: string
+          publish_report_id?: string | null
           report_type: string
           result?: Json | null
           status?: string
@@ -5336,6 +5341,7 @@ export type Database = {
           is_bulk?: boolean
           manifest?: Json
           mode?: string
+          publish_report_id?: string | null
           report_type?: string
           result?: Json | null
           status?: string
@@ -6631,6 +6637,10 @@ export type Database = {
         Returns: Json
       }
       commit_stock_report_import: {
+        Args: { p_import: string }
+        Returns: Json
+      }
+      publish_stock_import_part: {
         Args: { p_import: string }
         Returns: Json
       }
