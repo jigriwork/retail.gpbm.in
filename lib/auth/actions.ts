@@ -145,14 +145,14 @@ export async function createUserAccount(formData: FormData) {
   const fullName = readString(formData, "fullName");
   const phone = readString(formData, "phone");
   const requestedRole = readString(formData, "role") || "manager";
-  const role = requestedRole === "owner" ? "owner" : requestedRole === "accountant" ? "accountant" : "manager";
+  const role = requestedRole === "owner" ? "owner" : requestedRole === "accountant" ? "accountant" : requestedRole === "cashier" ? "cashier" : "manager";
 
   if (!email || !password || !fullName) {
     return { ok: false, message: "Email, password, and full name are required." };
   }
 
-  if (!["manager", "owner", "accountant"].includes(role)) {
-    return { ok: false, message: "Choose Manager, Accountant or Owner role." };
+  if (!["manager", "owner", "accountant", "cashier"].includes(role)) {
+    return { ok: false, message: "Choose Manager, Cashier, Accountant or Owner role." };
   }
 
   const { data, error } = await admin.auth.admin.createUser({
@@ -194,10 +194,11 @@ export async function createUserAccount(formData: FormData) {
   });
 
   revalidatePath("/app/users");
-  const created = role === "owner" ? "Owner" : role === "accountant" ? "Accountant" : "Manager";
+  const created = role === "owner" ? "Owner" : role === "accountant" ? "Accountant" : role === "cashier" ? "Cashier" : "Manager";
   return {
     ok: true,
-    message: role === "accountant" ? "Accountant account created. Give access under Accounts → Access." : `${created} account created.`,
+    message: role === "accountant" ? "Accountant account created. Give access under Accounts → Access."
+      : role === "cashier" ? "Cashier account created. Tick their store below." : `${created} account created.`,
   };
 }
 
@@ -266,7 +267,7 @@ export async function updateManagerStoreAssignments(formData: FormData) {
     .from("profiles")
     .select("id,role")
     .eq("id", userId)
-    .eq("role", "manager")
+    .in("role", ["manager", "cashier"])
     .maybeSingle();
 
   if (!manager) {
@@ -285,7 +286,7 @@ export async function updateManagerStoreAssignments(formData: FormData) {
   if (validSelectedStoreIds.length) {
     const { error: upsertError } = await supabase.from("store_users").upsert(
       validSelectedStoreIds.map((storeId) => ({
-        role: "manager",
+        role: manager.role,
         store_id: storeId,
         user_id: userId,
       })),

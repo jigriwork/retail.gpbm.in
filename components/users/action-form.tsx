@@ -83,6 +83,7 @@ export function CreateManagerForm({
             onChange={(event) => setRole(event.target.value)}
           >
             <option value="manager">Manager</option>
+            <option value="cashier">Cashier</option>
             <option value="accountant">Accountant</option>
             <option value="owner">Owner</option>
           </select>
@@ -98,9 +99,14 @@ export function CreateManagerForm({
           Accountants only see Accounts, and only the firms and stores you allow under Accounts → Access.
         </p>
       ) : null}
+      {role === "cashier" ? (
+        <p className="rounded-2xl border border-border bg-background p-3 text-sm text-muted">
+          Cashiers close the day, record expenses, upload daily sales and stock, count stock and request new staff (you approve). They see only their own entries, never sales totals or shortages. Assign their store after creating.
+        </p>
+      ) : null}
       <Button disabled={disabled || pending}>
         {pending ? <Loader2 className="size-4 animate-spin" /> : null}
-        Create {role === "owner" ? "owner" : role === "accountant" ? "accountant" : "manager"}
+        Create {role === "owner" ? "owner" : role === "accountant" ? "accountant" : role === "cashier" ? "cashier" : "manager"}
       </Button>
       {disabled ? (
         <p className="text-sm leading-6 text-muted">

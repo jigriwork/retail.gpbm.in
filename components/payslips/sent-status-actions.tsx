@@ -1,15 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { CheckCircle2, Circle, CircleOff, XCircle } from "lucide-react";
-
-import {
-  markPayslipFailed,
-  markPayslipNotSent,
-  markPayslipSent,
-  markPayslipSkipped,
-} from "@/lib/payslips/actions";
 
 type SentStatusActionsProps = {
   generatedPayslipId: string;
@@ -52,13 +43,8 @@ function formatDateTime(value?: string | null) {
   }).format(new Date(value));
 }
 
-function buttonClass(active: boolean) {
-  return active
-    ? "inline-flex h-9 items-center justify-center rounded-xl bg-primary px-3 text-xs font-semibold text-white transition hover:bg-primary-deep disabled:pointer-events-none disabled:opacity-50"
-    : "inline-flex h-9 items-center justify-center rounded-xl border border-border bg-card px-3 text-xs font-semibold transition hover:bg-black/[0.03] disabled:pointer-events-none disabled:opacity-50";
-}
-
 function formatMethod(value?: string | null) {
+  if (value === "msg91_api") return "MSG91 API";
   if (value === "whatsapp_text") return "WhatsApp Text";
   if (value === "whatsapp_pdf_share") return "WhatsApp PDF Share";
   if (value === "copy_message") return "Copy Message";
@@ -69,7 +55,6 @@ function formatMethod(value?: string | null) {
 }
 
 export function PayslipSentStatusActions({
-  generatedPayslipId,
   lastShareAttemptAt,
   lastShareMethod,
   sentAt,
@@ -77,21 +62,9 @@ export function PayslipSentStatusActions({
   sentNote,
   sentStatus,
 }: SentStatusActionsProps) {
-  const router = useRouter();
-  const [message, setMessage] = useState("");
-  const [isPending, startTransition] = useTransition();
   const status = sentStatus && sentStatus in statusConfig ? sentStatus : "not_sent";
   const config = statusConfig[status as keyof typeof statusConfig];
   const Icon = config.icon;
-
-  function run(action: () => Promise<{ ok: boolean; message: string }>) {
-    setMessage("");
-    startTransition(async () => {
-      const result = await action();
-      setMessage(result.message);
-      if (result.ok) router.refresh();
-    });
-  }
 
   return (
     <div className="space-y-2">
@@ -105,43 +78,8 @@ export function PayslipSentStatusActions({
         {sentNote ? <p>Note {sentNote}</p> : null}
         {lastShareAttemptAt ? <p>Last attempt {formatDateTime(lastShareAttemptAt)}</p> : null}
         {lastShareMethod ? <p>Attempt method {formatMethod(lastShareMethod)}</p> : null}
-        <p>Opening WhatsApp records a share attempt only. Mark Sent after you confirm delivery.</p>
+        <p>Delivery status is recorded automatically by the MSG91 API send.</p>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <button
-          className={buttonClass(status === "sent")}
-          disabled={isPending}
-          onClick={() => run(() => markPayslipSent(generatedPayslipId, "whatsapp_manual"))}
-          type="button"
-        >
-          Mark Sent
-        </button>
-        <button
-          className={buttonClass(status === "not_sent")}
-          disabled={isPending}
-          onClick={() => run(() => markPayslipNotSent(generatedPayslipId))}
-          type="button"
-        >
-          Mark Not Sent
-        </button>
-        <button
-          className={buttonClass(status === "failed")}
-          disabled={isPending}
-          onClick={() => run(() => markPayslipFailed(generatedPayslipId))}
-          type="button"
-        >
-          Mark Failed
-        </button>
-        <button
-          className={buttonClass(status === "skipped")}
-          disabled={isPending}
-          onClick={() => run(() => markPayslipSkipped(generatedPayslipId))}
-          type="button"
-        >
-          Mark Skipped
-        </button>
-      </div>
-      {message ? <p className="text-xs font-medium text-muted">{message}</p> : null}
     </div>
   );
 }

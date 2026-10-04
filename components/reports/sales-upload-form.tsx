@@ -152,6 +152,20 @@ export function SalesUploadForm({
               <p className="mt-1 font-semibold">{state.summary.unmatchedStaffCount}</p>
             </div>
           </div>
+          {state.summary.customerMessages ? (
+            <div className="mt-5 rounded-2xl border border-border bg-background p-4">
+              <p className="text-sm font-semibold">Automatic customer WhatsApp</p>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                {state.summary.customerMessages.sent} accepted by MSG91 · {state.summary.customerMessages.duplicates} already sent · {state.summary.customerMessages.failed} failed
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                {state.summary.customerMessages.skippedWithoutConsent} skipped without recorded WhatsApp marketing consent · {state.summary.customerMessages.skippedDoNotContact} do-not-contact · {state.summary.customerMessages.skippedInvalidPhone} invalid phone rows
+              </p>
+              {state.summary.customerMessages.detail ? (
+                <p className="mt-2 text-xs font-medium text-warning">{state.summary.customerMessages.detail}</p>
+              ) : null}
+            </div>
+          ) : null}
           {state.summary.unmatchedStaffNames.length ? (
             <div className="mt-5 rounded-2xl border border-border p-4">
               <p className="text-sm font-semibold">Unmatched staff names</p>

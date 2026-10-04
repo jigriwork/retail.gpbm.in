@@ -12,10 +12,11 @@ import { stockCount } from "@/lib/buying/queries";
 
 export default async function StockCountPage({ params }: { params: Promise<{ countId: string }> }) {
   const { profile } = await requireProfile();
-  if (!profile || !["owner", "manager"].includes(profile.role)) return <AccessDenied message="Stock counts are for the owner and store managers." />;
+  if (!profile || !["owner", "manager", "cashier"].includes(profile.role)) return <AccessDenied message="Stock counts are for the owner, store managers and cashiers." />;
   const { countId } = await params;
   if (!/^[0-9a-f-]{36}$/.test(countId)) return <AccessDenied message="Count not found." />;
-  const [{ count, sheet, summary }, limited] = await Promise.all([stockCount(countId), isLimitedView(profile)]);
+  const [{ count, sheet, summary }, phone] = await Promise.all([stockCount(countId), isLimitedView(profile)]);
+  const limited = phone || profile.role === "cashier";
   if (!count) return <AccessDenied message="Count not found." />;
   const counting = count.status === "counting";
   const differences = counting ? [] : sheet.filter((line) => Number(line.counted_qty ?? 0) !== Number(line.expected_qty ?? 0));

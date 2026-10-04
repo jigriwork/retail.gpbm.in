@@ -11,13 +11,15 @@ import { dayCloseFor, listDayCloses, missingDayCloses, previousDayClose } from "
 
 export default async function DayClosePage({ searchParams }: { searchParams: Promise<{ store?: string; date?: string }> }) {
   const { profile } = await requireProfile();
-  if (!profile || !["owner", "manager"].includes(profile.role)) return <AccessDenied message="Day close is for the owner and store managers." />;
+  if (!profile || !["owner", "manager", "cashier"].includes(profile.role)) return <AccessDenied message="Day close is for the owner, store managers and cashiers." />;
   const stores = await getAccessibleStores(profile);
   const params = await searchParams;
   const store = stores.find((item) => item.id === params.store) ?? stores[0];
   if (!store) return <AccessDenied message="No store is assigned to you." />;
   const isOwner = profile.role === "owner";
-  const limited = await isLimitedView(profile);
+  const cashier = profile.role === "cashier";
+  // Cashiers and managers on a phone never see Logic's sale or the expected cash.
+  const limited = cashier || await isLimitedView(profile);
   const today = indiaToday();
   const earliest = isOwner ? addDays(today, -60) : addDays(today, -3);
   const date = params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) && params.date <= today && params.date >= earliest ? params.date : today;
@@ -81,7 +83,7 @@ export default async function DayClosePage({ searchParams }: { searchParams: Pro
                   <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2">
                     <span className="font-semibold">{shortDate(close.close_date)}</span>
                     <span className="flex flex-wrap gap-2">
-                      <Badge tone={result.tone}>{result.label}</Badge>
+                      {cashier ? null : <Badge tone={result.tone}>{result.label}</Badge>}
                       <Badge tone={close.status === "reviewed" ? "good" : close.status === "reopened" ? "warn" : "muted"}>{close.status === "reviewed" ? "Checked" : close.status === "reopened" ? "Reopened" : "Waiting for owner"}</Badge>
                     </span>
                   </summary>

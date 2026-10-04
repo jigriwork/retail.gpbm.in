@@ -83,6 +83,6 @@ export async function stockCount(countId: string) {
 /** Brands and categories in the store's latest stock report, for choosing what to count. */
 export async function countScopes(storeId: string) {
   const supabase = await createClient();
-  const { data } = await supabase.rpc("brand_sell_through", { p_store: storeId, p_days: 30 });
-  return (data ?? []).filter((row) => Number(row.on_hand) > 0).map((row) => row.brand).sort();
+  const { data } = await supabase.rpc("stock_count_brands", { p_store: storeId });
+  return ((data ?? []) as string[]).filter(Boolean);
 }

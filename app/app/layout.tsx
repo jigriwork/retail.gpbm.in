@@ -100,7 +100,7 @@ export default async function ProtectedAppLayout({
           <Link
             aria-label="Settings"
             className="flex size-9 shrink-0 items-center justify-center rounded-xl text-muted hover:text-foreground"
-            href={profile.role === "accountant" ? "/app/settings/account" : "/app/settings"}
+            href={["accountant", "cashier"].includes(profile.role) ? "/app/settings/account" : "/app/settings"}
           >
             <Settings className="size-4" />
           </Link>

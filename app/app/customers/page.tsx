@@ -9,6 +9,7 @@ import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { isLimitedView } from "@/lib/auth/view";
 import { saveReviewLink } from "@/lib/customers/actions";
 import { customerKpis, customerSegments, listCustomers } from "@/lib/customers/queries";
+import { whatsappBudgetSnapshot } from "@/lib/msg91/budget";
 import { addDays, monthStart } from "@/lib/money/format";
 
 const pageSize = 50;
@@ -30,6 +31,9 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
     listCustomers(store?.id ?? null, segment, search, page, pageSize),
     customerKpis(store?.id ?? null, monthStart(today), today),
   ]);
+  const whatsappBudgets = isOwner
+    ? await Promise.all(stores.map(async (item) => ({ item, snapshot: await whatsappBudgetSnapshot(item.id) })))
+    : [];
   const scopeParam = store?.id ?? "all";
   const segmentInfo = customerSegments.find((item) => item.value === segment)!;
   const capture = kpis?.bills ? Math.round((kpis.bills_with_mobile / kpis.bills) * 100) : 0;
@@ -67,6 +71,28 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         </section>
       ) : null}
       {kpis && capture < 90 ? <Notice>Ask the counter to enter the customer&apos;s mobile on every bill in Logic: only {capture}% of this month&apos;s bills have one.</Notice> : null}
+
+      {isOwner ? (
+        <Panel description="Each store has its own ₹1,500 monthly limit. GP usage never reduces BM's allowance, and BM usage never reduces GP's." title="WhatsApp budget by store">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {whatsappBudgets.map(({ item, snapshot }) => (
+              <div className="rounded-2xl border border-border bg-background p-4" key={item.id}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="font-semibold">{item.name}</p>
+                  <p className="text-sm font-semibold">{money(snapshot.spent)} / {money(snapshot.budget)}</p>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-border">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (snapshot.spent / snapshot.budget) * 100)}%` }} />
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted">
+                  {money(snapshot.remaining)} left · {snapshot.customerThankYous} thank-yous · {snapshot.payslips} payslips · {snapshot.followups}/{snapshot.followupLimit} follow-ups
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted">A ₹100 safety buffer and ₹25 salary-message reserve are kept inside each store&apos;s limit.</p>
+        </Panel>
+      ) : null}
 
       <Panel
         action={

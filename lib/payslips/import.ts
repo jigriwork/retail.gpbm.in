@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { getAccessibleStores, requireOwner } from "@/lib/auth/session";
 import { parsePayslipWorkbook } from "@/lib/payslips/parser";
+import { salaryMonthFromFileName } from "@/lib/payslips/month";
 import { createClient } from "@/lib/supabase/server";
 import { completeQuery } from "@/lib/supabase/complete-query";
 import type { Json } from "@/lib/supabase/database.types";
@@ -31,6 +32,13 @@ export async function processPayrollUpload(form: FormData): Promise<PayrollUploa
     const month = String(form.get("salaryMonth") ?? "");
     const file = form.get("file");
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || !(file instanceof File)) throw new Error("Invalid input");
+    const fileMonth = salaryMonthFromFileName(file.name);
+    if (fileMonth && fileMonth !== month) {
+      return {
+        ok: false,
+        message: `The filename says ${fileMonth}, but Salary month is ${month}. Select the correct month before uploading; no payroll was created.`,
+      };
+    }
     const stores = (await getAccessibleStores()).filter(store => store.is_active);
     if (file.size > 15 * 1024 * 1024) throw new Error("File too large");
     const buffer = await file.arrayBuffer();

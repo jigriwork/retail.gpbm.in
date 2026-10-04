@@ -7,6 +7,7 @@ import { SyncStaffButton } from "@/components/employees/sync-staff-button";
 import { bulkUpdateEmployeePhones, deactivateEmployeeContact, syncStaffFromPayslips } from "@/lib/employees/actions";
 import { getActiveEmployeeStores, getEmployeeContacts } from "@/lib/employees/queries";
 import { requireProfile } from "@/lib/auth/session";
+import { StaffRequests } from "@/components/employees/staff-requests";
 
 export default async function EmployeesPage({
   searchParams,
@@ -67,6 +68,7 @@ export default async function EmployeesPage({
 
   return (
     <div className="space-y-5">
+      {profile.role === "owner" ? <StaffRequests /> : null}
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>

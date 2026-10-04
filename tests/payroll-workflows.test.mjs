@@ -1,6 +1,25 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { fixture } from './helpers/app-fixture.mjs';
+test('salary month defaults to the previous India month, including January rollover',()=>{
+ const dates=fixture().load('@/lib/tasks/dates');
+ assert.equal(dates.getPreviousIndiaMonthInputValue('2026-10-04'),'2026-09');
+ assert.equal(dates.getPreviousIndiaMonthInputValue('2026-01-03'),'2025-12');
+});
+test('payroll filename month detection catches month selection mistakes',()=>{
+ const {salaryMonthFromFileName}=fixture().load('@/lib/payslips/month');
+ assert.equal(salaryMonthFromFileName('Go Planet & Brand Mark SEPTEMBER 2026 salary.xlsx'),'2026-09');
+ assert.equal(salaryMonthFromFileName('salary_2026-11.xlsx'),'2026-11');
+ assert.equal(salaryMonthFromFileName('salary 11-2026.xlsx'),'2026-11');
+ assert.equal(salaryMonthFromFileName('monthly salary.xlsx'),null);
+});
+test('payroll import refuses an explicit filename month that differs from the selected month',async()=>{
+ const f=fixture({role:'owner',modules:{'@/lib/payslips/parser':{parsePayslipWorkbook:async()=>{throw Error('Parser must not run');}}}});let calls=0;
+ f.client.rpc=async()=>{calls++;throw Error('Database must not run');};
+ const form=new FormData();form.set('salaryMonth','2026-10');form.set('file',new File(['fixture'],'Go Planet SEPTEMBER 2026 salary.xlsx'));
+ const result=await f.load('@/lib/payslips/import').processPayrollUpload(form);
+ assert.equal(result.ok,false);assert.match(result.message,/filename says 2026-09.*Salary month is 2026-10/);assert.equal(calls,0);
+});
 test('M05 opening WhatsApp records share opened without delivery confirmation',async()=>{
  const f=fixture({role:'owner'});const calls=[];f.client.rpc=async(name,args)=>{calls.push({name,args});return {error:null};};
  await f.load('@/lib/payslips/actions').markPayslipWhatsAppTextSent('pdf');

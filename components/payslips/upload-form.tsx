@@ -8,7 +8,7 @@ import { UploadCloud } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { Store } from "@/lib/auth/session";
-import { getIndiaMonthInputValue } from "@/lib/tasks/dates";
+import { getPreviousIndiaMonthInputValue } from "@/lib/tasks/dates";
 
 export function PayslipUploadForm({
   action,
@@ -45,11 +45,12 @@ export function PayslipUploadForm({
           <span className="mb-2 block text-sm font-medium text-muted">Salary month</span>
           <input
             className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
-            defaultValue={getIndiaMonthInputValue()}
+            defaultValue={getPreviousIndiaMonthInputValue()}
             name="salaryMonth"
             required
             type="month"
           />
+          <span className="mt-2 block text-xs leading-5 text-muted">Payslips use this selected month, not a date inside the workbook. It defaults to last month.</span>
         </label>
 
         <label className="block">

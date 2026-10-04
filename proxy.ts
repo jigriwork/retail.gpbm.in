@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { accountantAllows, handheldAllows, isHandheld, isManagerHours, pointerCookie } from "@/lib/auth/access";
+import { accountantAllows, cashierAllows, handheldAllows, isHandheld, isManagerHours, pointerCookie } from "@/lib/auth/access";
 import { isRemembered, rememberCookie, sessionCookieOptions } from "@/lib/auth/remember";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -52,6 +52,17 @@ export async function proxy(request: NextRequest) {
     if (access?.role === "accountant" && access.active && (path.startsWith("/api/tia") || !accountantAllows(path))) {
       if (request.method !== "GET" && request.method !== "HEAD") return new NextResponse(null, { status: 404 });
       return redirectKeepingCookies(response, new URL("/app/accounts", request.url));
+    }
+    if (access?.role === "cashier" && access.active) {
+      // Same store hours as managers; only the cashier's own pages.
+      if (!isManagerHours()) {
+        await supabase.auth.signOut({ scope: "local" });
+        return redirectKeepingCookies(response, new URL("/login?error=hours", request.url));
+      }
+      if (path.startsWith("/api/tia") || !cashierAllows(path)) {
+        if (request.method !== "GET" && request.method !== "HEAD") return new NextResponse(null, { status: 404 });
+        return redirectKeepingCookies(response, new URL("/app/money", request.url));
+      }
     }
     if (access?.role === "manager" && access.active) {
       // Outside store hours the manager's session on this device ends.

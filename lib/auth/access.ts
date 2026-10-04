@@ -66,6 +66,17 @@ const handheldPrefixes = [
   "/app/staff-accounts",
 ];
 
+/**
+ * Cashiers: day close and expenses, daily uploads, stock counts and staff
+ * requests (plus their own password page). Store profit stays owner-only.
+ */
+export function cashierAllows(pathname: string) {
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  if (path === "/app/money/profit" || path.startsWith("/app/money/profit/")) return false;
+  return ["/app/money", "/app/stock-counts", "/app/cashier"].some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+    || path === "/app/settings/account";
+}
+
 /** Accountants work only in Accounts (plus their own password page). */
 export function accountantAllows(pathname: string) {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;

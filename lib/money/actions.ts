@@ -34,7 +34,7 @@ function refresh() {
 
 async function storeFor(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!profile || profile.is_active !== true || !["owner", "manager"].includes(profile.role)) return null;
+  if (!profile || profile.is_active !== true || !["owner", "manager", "cashier"].includes(profile.role)) return null;
   const storeId = text(formData, "storeId", 60);
   if (!storeId || !(await canAccessStore(storeId, profile))) return null;
   return { profile, storeId };

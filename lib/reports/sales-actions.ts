@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 
 import { canAccessStore, getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { staffNameKey } from "@/lib/employees/utils";
+import { sendAutomaticCustomerThanks, type CustomerAutomationResult } from "@/lib/msg91/customer-automation";
 import {
   effectiveDiscount,
   parseSalesFileDetailed,
@@ -21,7 +22,7 @@ import {
   unmappedAmountColumnsError,
 } from "@/lib/reports/sales-parser";
 import { getKnownSalesStaffNameKeys } from "@/lib/reports/staff-name-matching";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { completeMatchingTasks } from "@/lib/tasks/auto-complete";
 import type { Json, TablesInsert } from "@/lib/supabase/database.types";
 
@@ -48,6 +49,7 @@ export type SalesUploadState = {
     missingStaffColumnWarning: string | null;
     topBrands: Array<{ name: string; sale: number }>;
     topCategories: Array<{ name: string; sale: number }>;
+    customerMessages?: CustomerAutomationResult;
   };
 };
 
@@ -264,14 +266,18 @@ function uniqueStaffNames(rows: ParsedSalesRow[]) {
   return [...new Set(rows.map((row) => row.staffName?.trim()).filter((name): name is string => Boolean(name)))].sort();
 }
 
-async function getUnmatchedSalesStaffNames(storeId: string, staffNames: string[]) {
+async function getUnmatchedSalesStaffNames(storeId: string, staffNames: string[], asServer = false) {
   const normalizedNames = [...new Set(staffNames.map(staffNameKey).filter(Boolean))];
 
   if (!normalizedNames.length) {
     return [];
   }
 
+  // A cashier cannot read the staff list, so the store's names are checked
+  // with server rights (the store was already authorised for this upload).
+  const admin = asServer ? createAdminClient() : null;
   const known = await getKnownSalesStaffNameKeys({
+    ...(admin ? { client: admin as unknown as Awaited<ReturnType<typeof createClient>> } : {}),
     staffNames: normalizedNames,
     storeIds: [storeId],
   });
@@ -382,7 +388,7 @@ export async function uploadSalesReport(
   }
 
   const staffNames = uniqueStaffNames(reportRows);
-  const unmatchedStaffNames = await getUnmatchedSalesStaffNames(storeId, staffNames);
+  const unmatchedStaffNames = await getUnmatchedSalesStaffNames(storeId, staffNames, profile.role === "cashier");
   const hasStaffColumn = rowsHaveStaffColumn(reportRows);
   const returnsCount = reportRows.filter(
     (row) => Number(row.quantity ?? 0) < 0 || Number(row.netSale ?? 0) < 0,
@@ -424,6 +430,42 @@ export async function uploadSalesReport(
   if (!committed.ok) return committed;
 
   await completeMatchingTasks(storeId, finalReportDate, ["sales report", "daily_sales"]);
+  const reportId = committed.report_ids?.[0];
+  let customerMessages: CustomerAutomationResult;
+  try {
+    customerMessages = reportId
+      ? await sendAutomaticCustomerThanks({
+          initiatedBy: profile.id,
+          reportDate: finalReportDate,
+          reportId,
+          rows: reportRows,
+          storeCode: store.code,
+          storeId,
+        })
+      : {
+          detail: "The saved report identifier was unavailable.",
+          duplicates: 0,
+          eligible: 0,
+          failed: 0,
+          sent: 0,
+          skippedDoNotContact: 0,
+          skippedInvalidPhone: 0,
+          skippedWithoutConsent: 0,
+        };
+  } catch {
+    // The report is already committed. Messaging must never turn a successful,
+    // complete sales import into a retry that could confuse the uploader.
+    customerMessages = {
+      detail: "The report was saved, but automatic messaging could not start. No duplicate retry was attempted.",
+      duplicates: 0,
+      eligible: 0,
+      failed: 0,
+      sent: 0,
+      skippedDoNotContact: 0,
+      skippedInvalidPhone: 0,
+      skippedWithoutConsent: 0,
+    };
+  }
   revalidatePath("/app/reports");
   revalidatePath("/app/reports/sales");
   revalidatePath("/app/today");
@@ -431,7 +473,9 @@ export async function uploadSalesReport(
 
   return {
     ok: true,
-    message: "Sales report uploaded and processed.",
+    message: customerMessages.sent
+      ? `Sales report uploaded. ${customerMessages.sent} customer WhatsApp message${customerMessages.sent === 1 ? "" : "s"} accepted by MSG91.`
+      : "Sales report uploaded and processed. No customer WhatsApp messages were sent.",
     summary: {
       storeName: store.name,
       reportDate: finalReportDate,
@@ -447,6 +491,7 @@ export async function uploadSalesReport(
       missingStaffColumnWarning: uploadMetadata.staffColumnWarning,
       topBrands: summary.topBrands,
       topCategories: summary.topCategories,
+      customerMessages,
     },
   };
   });

@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, FileDown, Loader2, Phone, RefreshCw } from "lucide-react";
+import { CheckCircle2, FileDown, Loader2, Phone, RefreshCw, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { PayslipActionState } from "@/lib/payslips/actions";
@@ -30,6 +30,39 @@ export function GenerateAllPayslipsForm({
       </Button>
       {state.message ? (
         <p className={state.ok ? "text-sm font-medium text-success" : "text-sm font-medium text-danger"}>
+          {state.message}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+export function SendAllPayslipsForm({
+  action,
+  batchId,
+}: {
+  action: (previous: PayslipActionState, formData: FormData) => Promise<PayslipActionState>;
+  batchId: string;
+}) {
+  const [state, formAction, pending] = useActionState(action, initialState);
+
+  return (
+    <form
+      action={formAction}
+      className="space-y-2"
+      onSubmit={(event) => {
+        if (!window.confirm("Send every eligible, not-yet-sent payslip through the correct brand WhatsApp number?")) {
+          event.preventDefault();
+        }
+      }}
+    >
+      <input name="batchId" type="hidden" value={batchId} />
+      <Button disabled={pending} size="md" variant="secondary">
+        {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+        {pending ? "Sending payslips…" : "Send payslips to all"}
+      </Button>
+      {state.message ? (
+        <p className={state.ok ? "max-w-xl text-sm font-medium text-success" : "max-w-xl text-sm font-medium text-warning"}>
           {state.message}
         </p>
       ) : null}

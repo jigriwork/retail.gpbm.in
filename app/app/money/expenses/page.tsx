@@ -10,7 +10,7 @@ import { listExpenses } from "@/lib/money/queries";
 
 export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ store?: string; month?: string }> }) {
   const { profile } = await requireProfile();
-  if (!profile || !["owner", "manager"].includes(profile.role)) return <AccessDenied message="Expenses are for the owner and store managers." />;
+  if (!profile || !["owner", "manager", "cashier"].includes(profile.role)) return <AccessDenied message="Expenses are for the owner, store managers and cashiers." />;
   const stores = await getAccessibleStores(profile);
   const params = await searchParams;
   const store = stores.find((item) => item.id === params.store) ?? stores[0];
@@ -62,7 +62,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
             <button className="h-11 rounded-xl border border-border px-4 text-sm font-semibold">Show</button>
           </form>
         }
-        description={`${counted.length} expense${counted.length === 1 ? "" : "s"} · rejected entries are not counted.`}
+        description={`${counted.length} expense${counted.length === 1 ? "" : "s"}${profile.role === "cashier" ? " entered by you" : ""} · rejected entries are not counted.`}
         title={`${monthLabel(month)}: ${money(total)}`}
       >
         {byCategory.length ? (

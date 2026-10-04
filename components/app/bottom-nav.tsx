@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpenCheck, CheckSquare, Home, MessageCircle, Store } from "lucide-react";
+import { BarChart3, BookOpenCheck, CheckSquare, ClipboardList, Home, MessageCircle, Receipt, Store, UploadCloud, UserPlus, Wallet } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
 
@@ -17,9 +17,18 @@ const navItems = [
 
 const accountantItems = navItems.filter((item) => item.href === "/app/accounts");
 
+const cashierItems = [
+  { label: "Day close", href: "/app/money", icon: Wallet, exact: true },
+  { label: "Expenses", href: "/app/money/expenses", icon: Receipt },
+  { label: "Uploads", href: "/app/cashier/uploads", icon: UploadCloud },
+  { label: "Counts", href: "/app/stock-counts", icon: ClipboardList },
+  { label: "Staff", href: "/app/cashier/staff", icon: UserPlus },
+];
+
 export function BottomNav({ role }: { role?: string }) {
   const pathname = usePathname();
-  const visibleItems = role === "accountant" ? accountantItems : role === "owner" ? navItems : navItems.filter((item) => !item.ownerOnly);
+  const visibleItems: Array<{ label: string; href: string; icon: typeof Home; exact?: boolean }> =
+    role === "accountant" ? accountantItems : role === "cashier" ? cashierItems : role === "owner" ? navItems : navItems.filter((item) => !item.ownerOnly);
   const columns = ["grid-cols-1", "grid-cols-1", "grid-cols-2", "grid-cols-3", "grid-cols-4", "grid-cols-5", "grid-cols-6"][visibleItems.length];
 
   return (
@@ -28,7 +37,7 @@ export function BottomNav({ role }: { role?: string }) {
         {visibleItems.map((item) => {
           const Icon = item.icon;
           const isActive =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+            pathname === item.href || (!item.exact && pathname.startsWith(`${item.href}/`));
 
           return (
             <Link

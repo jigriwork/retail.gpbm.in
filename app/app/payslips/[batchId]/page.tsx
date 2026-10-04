@@ -3,11 +3,11 @@ import { AlertTriangle, Download, Eye } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { AccessDenied } from "@/components/app/access-denied";
-import { GenerateBatchPayslipsProgress, GeneratePayslipRowForm, PayslipRowPhoneForm } from "@/components/payslips/action-buttons";
+import { GenerateBatchPayslipsProgress, GeneratePayslipRowForm, PayslipRowPhoneForm, SendAllPayslipsForm } from "@/components/payslips/action-buttons";
 import { PayslipSentStatusActions } from "@/components/payslips/sent-status-actions";
 import { PayslipWhatsAppActions } from "@/components/payslips/whatsapp-actions";
 import { requireProfile } from "@/lib/auth/session";
-import { generatePayslipForRow, updatePayslipRowPhone } from "@/lib/payslips/actions";
+import { generatePayslipForRow, sendAllPayslips, updatePayslipRowPhone } from "@/lib/payslips/actions";
 import { getPayslipBatch, getPayslipRows, getPayrollVersionsForBatch } from "@/lib/payslips/queries";
 import { formatMoney, formatMonth, payslipFileName } from "@/lib/payslips/utils";
 
@@ -169,6 +169,7 @@ export default async function PayslipBatchPage({
         </div>
         <div className="mt-5 flex flex-wrap items-start gap-3">
           <GenerateBatchPayslipsProgress action={generatePayslipForRow} rows={generatableRows} />
+          {(batch.generated_count ?? 0) > 0 ? <SendAllPayslipsForm action={sendAllPayslips} batchId={batch.id} /> : null}
           {(batch.generated_count ?? 0) > 0 ? (
             <Link
               className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 text-sm font-semibold transition hover:bg-black/[0.03]"

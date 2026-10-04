@@ -27,7 +27,7 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
       { id: "b1", batch_id: "jan", store_id: "gp", staff_name: "Bob", employee_phone: "old" },
       { id: "a3", batch_id: "jan", store_id: "bm", staff_name: "Alice", employee_phone: "old" },
     ],
-    upload_intents: [], generated_payslips: [], reports: [], sales_rows: [], sales_upload_batches: [], audit_logs: [], report_imports: [], report_import_chunks: [], staff_name_aliases: [], rack_reviews: [], cleaning_reviews: [], manager_updates: [], tasks: [], owner_notes: [],
+    upload_intents: [], generated_payslips: [], reports: [], sales_rows: [], sales_upload_batches: [], audit_logs: [], report_imports: [], report_import_chunks: [], staff_name_aliases: [], rack_reviews: [], cleaning_reviews: [], manager_updates: [], tasks: [], owner_notes: [], whatsapp_deliveries: [], customer_profiles: [], customer_messages: [],
   };
   db.generated_payslips = db.payslip_rows.map(row => ({ ...row, id: `pdf-${row.id}`, payslip_row_id: row.id }));
   const files = new Map();
@@ -45,6 +45,7 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
       eq(key, value) { predicates.push(row => row[key] === value); return this; },
       in(key, values) { predicates.push(row => values.includes(row[key])); return this; },
       gte(key, value) { predicates.push(row => row[key] >= value); return this; },
+      lt(key, value) { predicates.push(row => row[key] < value); return this; },
       lte(key, value) { predicates.push(row => row[key] <= value); return this; },
       order() { return this; },
       not(key, op, value) { predicates.push(row => value === null ? row[key] != null : row[key] !== value); return this; },
@@ -64,7 +65,9 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
           let selected = db[table].filter(row => predicates.every(predicate => predicate(row))).slice(start, end + 1);
           if (operation === "insert" || operation === "upsert") {
             selected = (Array.isArray(values) ? values : [values]).map(value => {
-              const existing = operation === "upsert" && db[table].find(row => row.store_id === value.store_id && row.normalized_staff_name === value.normalized_staff_name);
+              const existing = operation === "upsert" && db[table].find(row => table === "whatsapp_deliveries"
+                ? row.dedupe_key === value.dedupe_key
+                : row.store_id === value.store_id && row.normalized_staff_name === value.normalized_staff_name);
               if (existing) { Object.assign(existing, clone(value)); return existing; }
               const row = { id: `new-${++sequence}`, sales_upload_batch_id: null, ...clone(value) };
               db[table].push(row);
@@ -96,6 +99,7 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
         },
         async remove() { assert.fail("Physical deletion of recovery evidence is forbidden"); },
         async download(key) { return { data: files.has(key) ? new Blob([files.get(key)]) : null, error: files.has(key) ? null : { message: "Missing" } }; },
+        async createSignedUrl(key) { calls.push({ operation: "createSignedUrl", key }); return { data: { signedUrl: `https://example.invalid/${encodeURIComponent(key)}?signed=1` }, error: null }; },
       };
     } },
   };

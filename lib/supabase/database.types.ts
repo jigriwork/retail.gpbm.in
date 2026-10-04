@@ -9,6 +9,102 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      staff_requests: {
+        Row: {
+          id: string
+          store_id: string
+          staff_name: string
+          phone: string
+          designation: string | null
+          joining_date: string | null
+          note: string | null
+          status: string
+          requested_by: string
+          requested_at: string
+          decided_by: string | null
+          decided_at: string | null
+          decision_note: string | null
+          employee_contact_id: string | null
+        }
+        Insert: {
+          id?: string
+          store_id: string
+          staff_name: string
+          phone: string
+          designation?: string | null
+          joining_date?: string | null
+          note?: string | null
+          status?: string
+          requested_by?: string
+          requested_at?: string
+          decided_by?: string | null
+          decided_at?: string | null
+          decision_note?: string | null
+          employee_contact_id?: string | null
+        }
+        Update: {
+          id?: string
+          store_id?: string
+          staff_name?: string
+          phone?: string
+          designation?: string | null
+          joining_date?: string | null
+          note?: string | null
+          status?: string
+          requested_by?: string
+          requested_at?: string
+          decided_by?: string | null
+          decided_at?: string | null
+          decision_note?: string | null
+          employee_contact_id?: string | null
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "staff_requests_decided_by_fkey",
+            "columns": [
+              "decided_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "staff_requests_employee_contact_id_fkey",
+            "columns": [
+              "employee_contact_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "employee_contacts",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "staff_requests_requested_by_fkey",
+            "columns": [
+              "requested_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "staff_requests_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
       gstr2b_lines: {
         Row: {
           id: string
@@ -516,6 +612,93 @@ export type Database = {
               "id"
             ]
           }
+        ]
+      }
+      whatsapp_deliveries: {
+        Row: {
+          id: string
+          dedupe_key: string
+          kind: string
+          store_id: string
+          recipient: string
+          template_name: string
+          reference_id: string
+          status: string
+          provider_request_id: string | null
+          error_code: string | null
+          attempt_count: number
+          initiated_by: string | null
+          metadata: Json
+          accepted_at: string | null
+          delivered_at: string | null
+          read_at: string | null
+          failed_at: string | null
+          created_at: string
+          updated_at: string
+          unit_cost_inr: number
+          brand_code: string | null
+        }
+        Insert: {
+          id?: string
+          dedupe_key: string
+          kind: string
+          store_id: string
+          recipient: string
+          template_name: string
+          reference_id: string
+          status?: string
+          provider_request_id?: string | null
+          error_code?: string | null
+          attempt_count?: number
+          initiated_by?: string | null
+          metadata?: Json
+          accepted_at?: string | null
+          delivered_at?: string | null
+          read_at?: string | null
+          failed_at?: string | null
+          created_at?: string
+          updated_at?: string
+          unit_cost_inr?: number
+          brand_code?: string | null
+        }
+        Update: {
+          id?: string
+          dedupe_key?: string
+          kind?: string
+          store_id?: string
+          recipient?: string
+          template_name?: string
+          reference_id?: string
+          status?: string
+          provider_request_id?: string | null
+          error_code?: string | null
+          attempt_count?: number
+          initiated_by?: string | null
+          metadata?: Json
+          accepted_at?: string | null
+          delivered_at?: string | null
+          read_at?: string | null
+          failed_at?: string | null
+          created_at?: string
+          updated_at?: string
+          unit_cost_inr?: number
+          brand_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_deliveries_initiated_by_fkey"
+            columns: ["initiated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_deliveries_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
         ]
       }
       customer_profiles: {
@@ -7331,6 +7514,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      is_cashier: { Args: Record<PropertyKey, never>; Returns: boolean }
+      can_work_store: { Args: { p_store: string }; Returns: boolean }
+      stock_count_brands: { Args: { p_store: string }; Returns: string[] }
       supplier_dues: { Args: { p_until: string }; Returns: { voucher_id: string; firm_name: string; party_id: string; party_name: string; voucher_no: string; reference_no: string | null; voucher_date: string; due_date: string; open_amount: number; days_overdue: number }[] }
       gstr2b_reconcile: { Args: { p_firm: string; p_period: string }; Returns: { status: string; supplier_gstin: string; supplier_name: string | null; doc_no: string; doc_date: string | null; invoice_id: string | null; books_taxable: number | null; books_tax: number | null; portal_taxable: number | null; portal_tax: number | null; itc_available: boolean | null; other_period: string | null }[] }
       import_gstr2b: { Args: { p_document: string; p_firm: string; p_period: string; p_rows: Json }; Returns: number }
@@ -7351,6 +7537,7 @@ export type Database = {
       customer_visible: { Args: { p_mobile: string }; Returns: boolean }
       customer_purchases: { Args: { p_mobile: string }; Returns: { sale_date: string; store_name: string; bill_no: string | null; item_name: string | null; brand: string | null; size: string | null; quantity: number | null; net_sale: number | null; staff_name: string | null; customer_name: string | null }[] }
       customer_kpis: { Args: { p_store: string | null; p_from: string; p_to: string }; Returns: Json }
+      customer_followup_candidates: { Args: { p_store: string; p_limit?: number }; Returns: { mobile: string; name: string; last_visit: string; bills: number; spend: number }[] }
       customer_list: { Args: { p_store: string | null; p_segment: string; p_search: string | null; p_limit: number; p_offset: number }; Returns: { mobile: string; name: string | null; first_visit: string; last_visit: string; bills: number; items: number; spend: number; store_count: number; marketing_consent: boolean; do_not_contact: boolean; birthday: string | null; last_message_at: string | null; total_count: number }[] }
       log_customer_message: { Args: { p_mobile: string; p_store: string; p_kind: string }; Returns: undefined }
       save_customer_profile: { Args: { p_mobile: string; p_name: string | null; p_birthday: string | null; p_anniversary: string | null; p_consent: boolean; p_source: string | null; p_do_not_contact: boolean; p_note: string | null }; Returns: undefined }

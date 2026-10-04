@@ -88,6 +88,17 @@ test('H08 regeneration retains original PDF and delivery events; M05 share opene
  delete from storage.objects where bucket_id='payslips';
  ${check("(select count(*) from storage.objects where bucket_id='payslips')=3")}rollback;`);
 });
+test('MSG91 payslip delivery is recorded and the idempotency ledger is owner-only',()=>{
+ sql(`${start}${prepare()}${commit}${pdfStart}${pdfCommit}
+ select record_payslip_delivery(:'job_id','sent','msg91_api','MSG91 accepted');
+ ${check("(select sent_status='sent' and sent_method='msg91_api' from generated_payslips where id=:'job_id'::uuid)")}
+ reset role;
+ insert into whatsapp_deliveries(dedupe_key,kind,store_id,recipient,template_name,reference_id,status,initiated_by)
+ values('payslip:'||:'job_id','payslip',${q(gp)},'919876543210','salary_slip_gp_v1',:'job_id','accepted',${q(owner)});
+ ${as(owner)}${check("(select count(*) from whatsapp_deliveries)=1")}
+ ${as(manager)}${check("(select count(*) from whatsapp_deliveries)=0")}rollback;`);
+ assert.throws(()=>sql(`begin;${as(manager)}insert into whatsapp_deliveries(dedupe_key,kind,store_id,recipient,template_name,reference_id) values('blocked','payslip',${q(gp)},'919876543210','salary_slip_gp_v1','00000000-0000-0000-0000-000000000099');rollback;`),/permission denied/);
+});
 for(const failure of ['missing PDF','row changed','audit'])test(`H08 failed regeneration (${failure}) preserves the last valid PDF`,()=>{
  const action=failure==='row changed'?`update payslip_rows set warning_message='changed' where id=:'row_id'::uuid;`:
  failure==='audit'?`reset role;create function pg_temp.pdf_failure() returns trigger language plpgsql as $$begin raise exception 'Injected audit failure';end$$;create trigger pdf_failure before insert on audit_logs for each row execute function pg_temp.pdf_failure();${as(owner)}`:'';

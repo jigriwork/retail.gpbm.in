@@ -4,9 +4,12 @@ import { staffNameKey } from "@/lib/employees/utils";
 import { createClient } from "@/lib/supabase/server";
 
 export async function getKnownSalesStaffNameKeys({
+  client,
   staffNames,
   storeIds,
 }: {
+  /** Server-only client to use instead of the viewer's (cashiers cannot read staff lists). */
+  client?: Awaited<ReturnType<typeof createClient>>;
   staffNames: string[];
   storeIds: string[];
 }) {
@@ -17,7 +20,7 @@ export async function getKnownSalesStaffNameKeys({
     return new Set<string>();
   }
 
-  const supabase = await createClient();
+  const supabase = client ?? await createClient();
   const [aliasesResult, contactsResult] = await Promise.all([
     completeQuery(supabase
       .from("staff_name_aliases")

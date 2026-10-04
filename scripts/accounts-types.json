@@ -54,7 +54,8 @@
   "stock_count_lines",
   "incentive_schemes",
   "staff_targets",
-  "gstr2b_lines"
+  "gstr2b_lines",
+  "staff_requests"
  ],
  "functions": {
   "finance_can": [
@@ -352,6 +353,18 @@
   "supplier_dues": [
    "p_until: string",
    "{ voucher_id: string; firm_name: string; party_id: string; party_name: string; voucher_no: string; reference_no: string | null; voucher_date: string; due_date: string; open_amount: number; days_overdue: number }[]"
+  ],
+  "stock_count_brands": [
+   "p_store: string",
+   "string[]"
+  ],
+  "can_work_store": [
+   "p_store: string",
+   "boolean"
+  ],
+  "is_cashier": [
+   "",
+   "boolean"
   ]
  }
 }

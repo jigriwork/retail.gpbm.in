@@ -1186,8 +1186,16 @@ export default async function TodayPage({
   const displayName = profile?.full_name ?? profile?.email?.split("@")[0] ?? null;
   const limited = await isLimitedView(profile);
 
+  const pendingStaff = isOwner ? await pendingStaffRequestCount() : 0;
+
   return (
     <div className="space-y-5">
+      {pendingStaff ? (
+        <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-accent/40 bg-accent-soft p-4 text-sm font-semibold text-accent-ink" href="/app/employees">
+          <span>{pendingStaff} new staff member{pendingStaff === 1 ? "" : "s"} waiting for your approval</span>
+          <span aria-hidden>→</span>
+        </Link>
+      ) : null}
       {isOwner ? (
         <OwnerToday
           displayName={displayName}
@@ -1258,4 +1266,10 @@ export default async function TodayPage({
       {showMore && !limited ? <MoreDetailsSection profileRole={profile?.role ?? "manager"} stores={stores} /> : null}
     </div>
   );
+}
+
+async function pendingStaffRequestCount() {
+  const supabase = await createClient();
+  const { count } = await supabase.from("staff_requests").select("id", { count: "exact", head: true }).eq("status", "pending");
+  return count ?? 0;
 }

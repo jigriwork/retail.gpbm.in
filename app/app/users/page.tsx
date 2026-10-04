@@ -119,7 +119,7 @@ export default async function UsersPage() {
                       <p>No store assignments.</p>
                     )}
                   </div>
-                  {userProfile.role === "manager" ? (
+                  {userProfile.role === "manager" || userProfile.role === "cashier" ? (
                     <div className="mt-4">
                       <ManagerStoreAssignmentsForm
                         action={updateManagerStoreAssignments}
@@ -132,7 +132,7 @@ export default async function UsersPage() {
                     </div>
                   ) : null}
                 </div>
-                {userProfile.role === "manager" || userProfile.role === "accountant" ? (
+                {userProfile.role === "manager" || userProfile.role === "accountant" || userProfile.role === "cashier" ? (
                   <div className="grid gap-3 sm:min-w-72">
                     <ProfileActiveForm
                       action={setProfileActive}

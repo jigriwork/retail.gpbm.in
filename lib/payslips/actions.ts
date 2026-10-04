@@ -5,14 +5,18 @@ import { redirect } from "next/navigation";
 
 import { requireOwner } from "@/lib/auth/session";
 import { propagateContactPhone, requirePhoneActor, requirePhoneStore, validatedEmployeePhone } from "@/lib/employees/phone-propagation";
-import { staffNameKey } from "@/lib/employees/utils";
+import { normalizePhone, staffNameKey } from "@/lib/employees/utils";
+import { whatsappBudgetAllowance, whatsappUnitCost } from "@/lib/msg91/budget";
+import { getMsg91TemplateStatus, sendMsg91Template, type Msg91Recipient } from "@/lib/msg91/client";
+import { getMsg91Config, type Msg91BrandCode, type Msg91BrandConfig } from "@/lib/msg91/config";
+import { claimWhatsAppDeliveries, finishWhatsAppDeliveries } from "@/lib/msg91/deliveries";
 import { processPayrollUpload, type PayrollUploadState } from "@/lib/payslips/import";
 import type { Tables } from "@/lib/supabase/database.types";
 import { completeQuery } from "@/lib/supabase/complete-query";
 import { renderPayslipPdf } from "@/lib/payslips/pdf";
 import { autoSyncReceivablesForBatch } from "@/lib/payslips/receivables";
-import { payslipFileName } from "@/lib/payslips/utils";
-import { createClient } from "@/lib/supabase/server";
+import { formatMonth, payslipFileName } from "@/lib/payslips/utils";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 export type PayslipActionState = {
   ok: boolean;
@@ -141,6 +145,261 @@ export async function generateAllPayslips(
 
   await refreshPayslipPaths(batchId);
   return { ok: generated === validRows.length, message: `Generated ${generated} of ${validRows.length} payslips. ${validRows.length - generated} failed; previous PDFs remain available.` };
+}
+
+type PreparedPayslipDelivery = {
+  config: Msg91BrandConfig;
+  dedupeKey: string;
+  documentUrl: string;
+  generatedId: string;
+  recipient: string;
+  salaryMonth: string;
+  staffName: string;
+  storeId: string;
+};
+
+function batches<T>(items: T[], size: number) {
+  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) => items.slice(index * size, (index + 1) * size));
+}
+
+export async function sendAllPayslips(
+  _previous: PayslipActionState,
+  formData: FormData,
+): Promise<PayslipActionState> {
+  const session = await requireOwner();
+  if (!session?.profile) return { ok: false, message: "Only the owner can send payslips." };
+  const batchId = readString(formData, "batchId");
+  if (!batchId) return { ok: false, message: "Payslip batch is required." };
+
+  const client = await createClient();
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, message: "Secure server delivery is unavailable." };
+  const { data: generated, error: generatedError } = await completeQuery(client
+    .from("generated_payslips")
+    .select("id,store_id,staff_name,salary_month,pdf_file_name,pdf_file_path,whatsapp_phone,sent_status,is_current", { count: "exact" })
+    .eq("batch_id", batchId)
+    .eq("is_current", true));
+  if (generatedError || !generated?.length) return { ok: false, message: "Generate payslip PDFs before sending them." };
+
+  const storeIds = [...new Set(generated.flatMap((item) => item.store_id ? [item.store_id] : []))];
+  const { data: stores, error: storesError } = await admin.from("stores").select("id,code").in("id", storeIds);
+  if (storesError) return { ok: false, message: "Store routing could not be loaded." };
+  const storeCodes = new Map((stores ?? []).map((store) => [store.id, store.code.toUpperCase()]));
+  const configurations = new Map<Msg91BrandCode, Msg91BrandConfig>();
+  const unavailable = new Map<string, string>();
+  for (const code of ["GP", "BM"] as const) {
+    const config = getMsg91Config(code);
+    if (!config) {
+      unavailable.set(code, "not configured");
+      continue;
+    }
+    const status = await getMsg91TemplateStatus(config, config.payslipTemplate);
+    if (status !== "approved") {
+      unavailable.set(code, status);
+      continue;
+    }
+    configurations.set(code, config);
+  }
+
+  let alreadySent = 0;
+  let missingPhone = 0;
+  let missingPdf = 0;
+  let unavailableCount = 0;
+  const prepared: PreparedPayslipDelivery[] = [];
+  for (const payslip of generated) {
+    if (payslip.sent_status === "sent") {
+      alreadySent += 1;
+      continue;
+    }
+    const phone = normalizePhone(payslip.whatsapp_phone);
+    if (!phone.isValid) {
+      missingPhone += 1;
+      continue;
+    }
+    if (!payslip.store_id || !payslip.pdf_file_path) {
+      missingPdf += 1;
+      continue;
+    }
+    const code = storeCodes.get(payslip.store_id);
+    const config = code === "GP" || code === "BM" ? configurations.get(code) : null;
+    if (!config) {
+      unavailableCount += 1;
+      continue;
+    }
+    const { data: signed, error: signedError } = await admin.storage.from("payslips").createSignedUrl(
+      payslip.pdf_file_path,
+      3600,
+      { download: payslip.pdf_file_name ?? `salary-slip-${payslip.id}.pdf` },
+    );
+    if (signedError || !signed?.signedUrl) {
+      missingPdf += 1;
+      continue;
+    }
+    prepared.push({
+      config,
+      dedupeKey: `payslip:${payslip.id}`,
+      documentUrl: signed.signedUrl,
+      generatedId: payslip.id,
+      recipient: phone.whatsappPhone,
+      salaryMonth: payslip.salary_month,
+      staffName: payslip.staff_name,
+      storeId: payslip.store_id,
+    });
+  }
+
+  let reservation: Awaited<ReturnType<typeof claimWhatsAppDeliveries>>;
+  let budgetSkipped = 0;
+  try {
+    const budgeted: PreparedPayslipDelivery[] = [];
+    for (const storeId of [...new Set(prepared.map((payslip) => payslip.storeId))]) {
+      const storeRows = prepared.filter((payslip) => payslip.storeId === storeId);
+      const allowance = await whatsappBudgetAllowance(storeId, "payslip", storeRows.length);
+      budgeted.push(...storeRows.slice(0, allowance.allowed));
+      budgetSkipped += storeRows.length - allowance.allowed;
+    }
+    reservation = await claimWhatsAppDeliveries(budgeted.map((payslip) => ({
+      brandCode: payslip.config.brand,
+      dedupeKey: payslip.dedupeKey,
+      initiatedBy: session.profile.id,
+      kind: "payslip",
+      metadata: { batch_id: batchId },
+      recipient: payslip.recipient,
+      referenceId: payslip.generatedId,
+      storeId: payslip.storeId,
+      templateName: payslip.config.payslipTemplate,
+      unitCostInr: whatsappUnitCost("payslip"),
+    })));
+  } catch {
+    return { ok: false, message: "Payslip delivery could not start. Nothing was sent; please retry." };
+  }
+  const claimByKey = new Map(reservation.claims.map((claim) => [claim.dedupeKey, claim.id]));
+  const claimed = prepared.filter((payslip) => claimByKey.has(payslip.dedupeKey));
+  let sentCount = 0;
+  let failedCount = 0;
+  for (const code of ["GP", "BM"] as const) {
+    const brandRows = claimed.filter((payslip) => payslip.config.brand === code);
+    for (const batch of batches(brandRows, 50)) {
+      const recipients: Msg91Recipient[] = batch.map((payslip) => ({
+        components: {
+          header_1: { type: "document", value: payslip.documentUrl },
+          body_1: { type: "text", value: payslip.staffName.slice(0, 100) },
+          body_2: { type: "text", value: formatMonth(payslip.salaryMonth) },
+        },
+        to: payslip.recipient,
+      }));
+      const delivery = await sendMsg91Template(batch[0].config, batch[0].config.payslipTemplate, recipients);
+      await finishWhatsAppDeliveries(batch.map((payslip) => claimByKey.get(payslip.dedupeKey)!).filter(Boolean), delivery);
+      await Promise.all(batch.map((payslip) => client.rpc("record_payslip_delivery", {
+        p_generated: payslip.generatedId,
+        p_kind: delivery.ok ? "sent" : "failed",
+        p_method: "msg91_api",
+        p_note: delivery.ok ? `MSG91 accepted${delivery.requestId ? ` (${delivery.requestId})` : ""}` : delivery.errorCode ?? "MSG91 rejected",
+      })));
+      if (delivery.ok) sentCount += batch.length;
+      else failedCount += batch.length;
+    }
+  }
+
+  await refreshPayslipPaths(batchId);
+  const unavailableDetails = [...unavailable.entries()].map(([code, status]) => `${code} template ${status}`).join("; ");
+  const details = [
+    `${sentCount} accepted by MSG91`,
+    `${alreadySent + reservation.skipped} already sent or in progress`,
+    `${missingPhone} missing phone`,
+    `${missingPdf} missing PDF`,
+    `${budgetSkipped} held by store budget`,
+    `${failedCount} failed`,
+    ...(unavailableCount ? [`${unavailableCount} unavailable (${unavailableDetails || "store not configured"})`] : []),
+  ];
+  return {
+    ok: sentCount > 0 && failedCount === 0 && unavailableCount === 0,
+    message: `Payslip sending complete: ${details.join(" · ")}.`,
+  };
+}
+
+export async function sendPayslip(
+  generatedPayslipId: string,
+): Promise<PayslipActionState> {
+  const session = await requireOwner();
+  if (!session?.profile) return { ok: false, message: "Only the owner can send payslips." };
+  if (!generatedPayslipId) return { ok: false, message: "Payslip is required." };
+
+  const client = await createClient();
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, message: "Secure server delivery is unavailable." };
+
+  const { data: payslip, error: payslipError } = await client
+    .from("generated_payslips")
+    .select("id,batch_id,payslip_row_id,store_id,staff_name,salary_month,pdf_file_name,pdf_file_path,whatsapp_phone,sent_status,is_current")
+    .eq("id", generatedPayslipId)
+    .eq("is_current", true)
+    .maybeSingle();
+  if (payslipError || !payslip) return { ok: false, message: "Current payslip was not found." };
+  if (payslip.sent_status === "sent") return { ok: false, message: "This payslip is already marked as sent." };
+
+  const phone = normalizePhone(payslip.whatsapp_phone);
+  if (!phone.isValid) return { ok: false, message: "Add a valid 10-digit Indian mobile number before sending." };
+  if (!payslip.store_id || !payslip.pdf_file_path) return { ok: false, message: "Store or generated PDF is missing." };
+
+  const { data: store, error: storeError } = await admin.from("stores").select("code").eq("id", payslip.store_id).maybeSingle();
+  if (storeError || !store) return { ok: false, message: "Store routing could not be loaded." };
+  const code = store.code.toUpperCase();
+  const config = code === "GP" || code === "BM" ? getMsg91Config(code) : null;
+  if (!config) return { ok: false, message: "MSG91 is not configured for this staff member's brand." };
+  const templateStatus = await getMsg91TemplateStatus(config, config.payslipTemplate);
+  if (templateStatus !== "approved") return { ok: false, message: `The ${code} payslip template is ${templateStatus}; nothing was sent.` };
+
+  const { data: signed, error: signedError } = await admin.storage.from("payslips").createSignedUrl(
+    payslip.pdf_file_path,
+    3600,
+    { download: payslip.pdf_file_name ?? `salary-slip-${payslip.id}.pdf` },
+  );
+  if (signedError || !signed?.signedUrl) return { ok: false, message: "The payslip PDF could not be prepared; nothing was sent." };
+
+  const dedupeKey = `payslip:${payslip.id}`;
+  let reservation: Awaited<ReturnType<typeof claimWhatsAppDeliveries>>;
+  try {
+    const allowance = await whatsappBudgetAllowance(payslip.store_id, "payslip", 1);
+    if (!allowance.allowed) {
+      return { ok: false, message: `The ${code} store's monthly WhatsApp budget is reserved or exhausted; nothing was sent.` };
+    }
+    reservation = await claimWhatsAppDeliveries([{
+      brandCode: config.brand,
+      dedupeKey,
+      initiatedBy: session.profile.id,
+      kind: "payslip",
+      metadata: { batch_id: payslip.batch_id },
+      recipient: phone.whatsappPhone,
+      referenceId: payslip.id,
+      storeId: payslip.store_id,
+      templateName: config.payslipTemplate,
+      unitCostInr: whatsappUnitCost("payslip"),
+    }]);
+  } catch {
+    return { ok: false, message: "Payslip delivery could not start. Nothing was sent; please retry." };
+  }
+  const claim = reservation.claims.find((item) => item.dedupeKey === dedupeKey);
+  if (!claim) return { ok: false, message: "This payslip was already sent or is currently being sent." };
+
+  const delivery = await sendMsg91Template(config, config.payslipTemplate, [{
+    components: {
+      header_1: { type: "document", value: signed.signedUrl },
+      body_1: { type: "text", value: payslip.staff_name.slice(0, 100) },
+      body_2: { type: "text", value: formatMonth(payslip.salary_month) },
+    },
+    to: phone.whatsappPhone,
+  }]);
+  await finishWhatsAppDeliveries([claim.id], delivery);
+  await client.rpc("record_payslip_delivery", {
+    p_generated: payslip.id,
+    p_kind: delivery.ok ? "sent" : "failed",
+    p_method: "msg91_api",
+    p_note: delivery.ok ? `MSG91 accepted${delivery.requestId ? ` (${delivery.requestId})` : ""}` : delivery.errorCode ?? "MSG91 rejected",
+  });
+  await refreshPayslipPaths(payslip.batch_id, payslip.payslip_row_id);
+  return delivery.ok
+    ? { ok: true, message: `Payslip accepted by MSG91 and sent through the ${code} WhatsApp number.` }
+    : { ok: false, message: `MSG91 did not accept the payslip (${delivery.errorCode ?? "unknown error"}). You can retry.` };
 }
 
 export async function updatePayslipRowPhone(

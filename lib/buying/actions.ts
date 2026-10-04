@@ -48,7 +48,7 @@ export async function deleteBudget(_state: State, formData: FormData): Promise<S
 export async function startStockCount(_state: State, formData: FormData): Promise<State> {
   const { profile } = await requireProfile();
   const storeId = text(formData, "storeId", 60);
-  if (!profile || !["owner", "manager"].includes(profile.role) || !(await canAccessStore(storeId, profile))) {
+  if (!profile || !["owner", "manager", "cashier"].includes(profile.role) || !(await canAccessStore(storeId, profile))) {
     return { ok: false, message: "You cannot count this store." };
   }
   const supabase = await createClient();

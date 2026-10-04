@@ -14,7 +14,8 @@ function admin() { const client = createAdminClient(); if (!client) throw new Er
 export async function authorizeUpload(kind: UploadKind, form: FormData) {
   metadataOnly(form);
   const { profile } = await requireProfile();
-  if (!profile || profile.is_active !== true || !["owner", "manager"].includes(profile.role)) throw new Error("An active signed-in account is required.");
+  if (!profile || profile.is_active !== true || !["owner", "manager", "cashier"].includes(profile.role)) throw new Error("An active signed-in account is required.");
+  if (profile.role === "cashier" && !["sales", "stock"].includes(kind)) throw new Error("Cashiers upload daily sales and stock reports only.");
   if (["payroll", "sales-bulk", "sales-replacement"].includes(kind) && profile.role !== "owner") throw new Error("This upload requires the owner.");
   let storeId = String(form.get("storeId") ?? form.get("fallbackStoreId") ?? "");
   const client = await createClient();

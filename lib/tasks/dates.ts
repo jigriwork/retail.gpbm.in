@@ -39,3 +39,11 @@ export function getIndiaMonthStart(dateText = getIndiaToday()) {
 export function getIndiaMonthInputValue(dateText = getIndiaToday()) {
   return dateText.slice(0, 7);
 }
+
+/** Salary processed this month normally belongs to the previous calendar month. */
+export function getPreviousIndiaMonthInputValue(dateText = getIndiaToday()) {
+  const [year, month] = getIndiaMonthInputValue(dateText).split("-").map(Number);
+  return month === 1
+    ? `${year - 1}-12`
+    : `${year}-${String(month - 1).padStart(2, "0")}`;
+}

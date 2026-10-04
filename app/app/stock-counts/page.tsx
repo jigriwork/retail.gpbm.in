@@ -18,11 +18,11 @@ const statusLabel: Record<string, { label: string; tone: "muted" | "warn" | "goo
 
 export default async function StockCountsPage({ searchParams }: { searchParams: Promise<{ store?: string }> }) {
   const { profile } = await requireProfile();
-  if (!profile || !["owner", "manager"].includes(profile.role)) return <AccessDenied message="Stock counts are for the owner and store managers." />;
+  if (!profile || !["owner", "manager", "cashier"].includes(profile.role)) return <AccessDenied message="Stock counts are for the owner, store managers and cashiers." />;
   const stores = await getAccessibleStores(profile);
   const store = pickStore(stores, (await searchParams).store);
   if (!store) return <AccessDenied message="No store is assigned to you." />;
-  const limited = await isLimitedView(profile);
+  const limited = profile.role === "cashier" || await isLimitedView(profile);
   await refreshStockPositions([store.id]);
   const [counts, brands] = await Promise.all([listStockCounts(store.id), countScopes(store.id)]);
 
