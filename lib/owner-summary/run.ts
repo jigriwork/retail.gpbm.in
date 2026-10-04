@@ -4,7 +4,7 @@ import { whatsappUnitCost } from "@/lib/msg91/budget";
 import { getMsg91TemplateStatus, sendMsg91Template } from "@/lib/msg91/client";
 import { getMsg91Config } from "@/lib/msg91/config";
 import { claimWhatsAppDeliveries, finishWhatsAppDeliveries } from "@/lib/msg91/deliveries";
-import { formatOwnerSummary, renderOwnerSummary, type OwnerSummaryFacts } from "@/lib/owner-summary/format";
+import { OWNER_SUMMARY_TEMPLATES, type OwnerSummaryFacts } from "@/lib/owner-summary/format";
 import { createAdminClient } from "@/lib/supabase/server";
 
 // Sent from the Go Planet number; covers every store in one message.
@@ -38,18 +38,31 @@ export async function runOwnerDailySummary({ now = new Date(), preview = false }
 
   const { data, error } = await admin.rpc("owner_daily_summary_facts", { p_day: day });
   if (error || !data) throw new Error("Summary figures could not be loaded.");
-  const values = formatOwnerSummary(data as unknown as OwnerSummaryFacts);
-  if (preview) return { day, preview: renderOwnerSummary(values), sent: 0 };
+  const facts = data as unknown as OwnerSummaryFacts;
+  if (preview) {
+    const [detailed, short] = OWNER_SUMMARY_TEMPLATES.map((template) => template.render(template.format(facts)));
+    return { day, preview: detailed, previewShort: short, sent: 0 };
+  }
 
   // pg_cron calls at 9:00; the Vercel backup runs later. Never send early.
   if (india.minutes < 8 * 60 + 55) return { day, detail: "Before 9:00 AM IST; not sent.", sent: 0 };
 
-  const template = process.env.MSG91_OWNER_SUMMARY_TEMPLATE?.trim();
+  // MSG91_OWNER_SUMMARY_TEMPLATE switches the summary on; the detailed
+  // template is used once WhatsApp approves it, the short one until then.
+  const enabled = Boolean(process.env.MSG91_OWNER_SUMMARY_TEMPLATE?.trim());
   const recipients = ownerSummaryRecipients();
   const config = getMsg91Config(SENDER);
-  if (!template || !recipients.length || !config) return { day, detail: "Owner summary is not configured.", sent: 0 };
-  const status = await getMsg91TemplateStatus(config, template);
-  if (status !== "approved") return { day, detail: `Summary template is ${status}.`, sent: 0 };
+  if (!enabled || !recipients.length || !config) return { day, detail: "Owner summary is not configured.", sent: 0 };
+  let chosen: (typeof OWNER_SUMMARY_TEMPLATES)[number] | undefined;
+  const statuses: string[] = [];
+  for (const candidate of OWNER_SUMMARY_TEMPLATES) {
+    const status = await getMsg91TemplateStatus(config, candidate.name);
+    statuses.push(`${candidate.name}: ${status}`);
+    if (status === "approved") { chosen = candidate; break; }
+  }
+  if (!chosen) return { day, detail: `No approved summary template (${statuses.join(", ")}).`, sent: 0 };
+  const template = chosen.name;
+  const values = chosen.format(facts);
 
   const [{ data: store }, { data: owner }] = await Promise.all([
     admin.from("stores").select("id").eq("code", SENDER).maybeSingle(),

@@ -23,6 +23,12 @@ insert into sales_rows(report_id,store_id,sale_date,bill_no,item_name,brand,quan
   select id, store_id, report_date, x.bill, x.item, x.brand, x.qty, x.net, x.staff, '{}'::jsonb
   from reports, (values ('X1','Polo','US POLO',1,3000,'SHABAZ'), ('X2','Polo','US POLO',1,4000,'  shabaz   s '), ('RET','Jeans','MUFTI',-1,-2500,'NIL')) x(bill,item,brand,qty,net,staff)
   where report_type='sales' and report_date='2099-05-20';
+-- MRP on the 20th's lines (discount), a day close and a cash expense.
+update sales_rows set mrp = 2500 where sale_date = '2099-05-20' and bill_no = 'R2099-05-20';
+insert into auth.users(id,email) values ('00000000-0000-0000-0000-0000000000a1','summary-owner@example.invalid') on conflict do nothing;
+insert into store_day_closes(store_id,close_date,opening_cash,cash_counted,upi_amount) values ((select id from stores where code='GP'),'2099-05-20',1000,5500,2000);
+insert into store_expenses(store_id,expense_date,category,amount,paid_from,created_by) values ((select id from stores where code='GP'),'2099-05-20','tea_snacks',300,'cash','00000000-0000-0000-0000-0000000000a1');
+insert into staff_targets(store_id,month,staff_name,target) values ((select id from stores where code='GP'),'2099-05-01','RAHIM',200000),((select id from stores where code='GP'),'2099-05-01','SHABAZ',100000);
 insert into staff_name_aliases(store_id,canonical_staff_name,normalized_canonical_staff_name,source_name,normalized_source_name,source_type,is_active)
   values ((select id from stores where code='GP'),'SHABAZ','shabaz','SHABAZ S','shabaz s','sales_report',true);
 `;
@@ -48,6 +54,15 @@ rollback;`);
   assert.deepEqual(gp.top_brands.map((b) => [b.name, Number(b.sale)]), [["US POLO", 7000], ["PEPE", 2500]]);
   assert.deepEqual({ ...gp.attention, recent_per_day: Number(gp.attention.recent_per_day), usual_per_day: Number(gp.attention.usual_per_day) },
     { name: "RAHIM", recent_per_day: 2000, usual_per_day: 10000 });
+  // Detail: discount on lines with MRP (2,500 MRP sold for 2,000), cash
+  // counted 5,500 vs expected 1,000 + (7,000 - 2,000 UPI) - 300 = 5,700.
+  assert.equal(Number(gp.qty), 3); // 4 sold, 1 returned
+  assert.equal(Number(gp.discount_pct), 20);
+  assert.deepEqual({ status: gp.day_close.status, difference: Number(gp.day_close.difference) }, { status: "submitted", difference: -200 });
+  assert.equal(gp.month_days, 20);
+  assert.equal(Number(gp.last_month_same_days_sale), 52500);
+  assert.equal(Number(gp.month_target), 300000);
+  assert.deepEqual(gp.top_staffs.map((p) => [p.name, Number(p.sale)]), [["SHABAZ", 7000], ["RAHIM", 2000]]);
   assert.equal(bm.status, "missing");
   assert.equal(bm.sale, null);
   assert.equal(bm.top_staff, null);
