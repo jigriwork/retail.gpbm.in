@@ -51,7 +51,9 @@
   "customer_messages",
   "buying_budgets",
   "stock_counts",
-  "stock_count_lines"
+  "stock_count_lines",
+  "incentive_schemes",
+  "staff_targets"
  ],
  "functions": {
   "finance_can": [

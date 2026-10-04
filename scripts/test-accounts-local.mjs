@@ -15,7 +15,7 @@ try{execFileSync('pg_isready',['-h','127.0.0.1','-p','55439'],{env,stdio:'ignore
 if(occupied)throw new Error('Port 55439 is occupied. Refusing to touch an existing database.');
 const temp=mkdtempSync(path.join(tmpdir(),'retail-accounts-'));
 const data=path.join(temp,'pgdata');let started=false;
-const tests=process.argv.slice(2).length?process.argv.slice(2):['tests/database-safety.test.mjs','tests/accounts-database.test.mjs','tests/accounts-ledger-database.test.mjs','tests/accounts-stock-database.test.mjs','tests/accounts-workings-database.test.mjs','tests/accounts-fixtures.test.mjs','tests/accounts-periods-database.test.mjs','tests/store-money-database.test.mjs','tests/customers-database.test.mjs','tests/buying-database.test.mjs'];
+const tests=process.argv.slice(2).length?process.argv.slice(2):['tests/database-safety.test.mjs','tests/accounts-database.test.mjs','tests/accounts-ledger-database.test.mjs','tests/accounts-stock-database.test.mjs','tests/accounts-workings-database.test.mjs','tests/accounts-fixtures.test.mjs','tests/accounts-periods-database.test.mjs','tests/store-money-database.test.mjs','tests/customers-database.test.mjs','tests/buying-database.test.mjs','tests/incentives-database.test.mjs'];
 try{
  run('initdb',['-D',data,'-A','trust','--no-locale','--encoding=UTF8'],{stdio:'ignore'});
  run('pg_ctl',['-D',data,'-l',path.join(temp,'postgres.log'),'-o',`-h 127.0.0.1 -p 55439 -k ${temp}`,'-w','start'],{stdio:'ignore'});started=true;

@@ -9,6 +9,124 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      staff_targets: {
+        Row: {
+          id: string
+          store_id: string
+          month: string
+          staff_name: string
+          target: number
+          set_by: string | null
+          set_at: string
+        }
+        Insert: {
+          id?: string
+          store_id: string
+          month: string
+          staff_name: string
+          target: number
+          set_by?: string | null
+          set_at?: string
+        }
+        Update: {
+          id?: string
+          store_id?: string
+          month?: string
+          staff_name?: string
+          target?: number
+          set_by?: string | null
+          set_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "staff_targets_set_by_fkey",
+            "columns": [
+              "set_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "staff_targets_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+      incentive_schemes: {
+        Row: {
+          id: string
+          store_id: string | null
+          name: string
+          valid_from: string
+          valid_to: string | null
+          basis: string
+          payout: string
+          slabs: Json
+          min_bills: number
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          store_id?: string | null
+          name: string
+          valid_from: string
+          valid_to?: string | null
+          basis: string
+          payout?: string
+          slabs: Json
+          min_bills?: number
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          store_id?: string | null
+          name?: string
+          valid_from?: string
+          valid_to?: string | null
+          basis?: string
+          payout?: string
+          slabs?: Json
+          min_bills?: number
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "incentive_schemes_created_by_fkey",
+            "columns": [
+              "created_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "incentive_schemes_store_id_fkey",
+            "columns": [
+              "store_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "stores",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
       stock_count_lines: {
         Row: {
           id: string

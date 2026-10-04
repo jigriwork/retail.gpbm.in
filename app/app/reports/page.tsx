@@ -12,6 +12,7 @@ import {
   Phone,
   ShieldAlert,
   ShoppingBag,
+  Trophy,
   UploadCloud,
   UserRoundCheck,
   UserRoundCog,
@@ -119,6 +120,21 @@ export default async function ReportsPage() {
           <span className="block text-sm leading-5 text-muted">Sell-through, reorder by size, transfers between stores, markdown list, budgets and stock counts.</span>
         </span>
       </Link>
+
+      {limited ? null : (
+        <Link
+          className="flex items-center gap-4 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
+          href="/app/reports/incentives"
+        >
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+            <Trophy className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Staff incentives</span>
+            <span className="block text-sm leading-5 text-muted">Leaderboard with average bill, items per bill, targets and incentive per salesperson.</span>
+          </span>
+        </Link>
+      )}
 
       <section className="grid gap-3 lg:grid-cols-3">
         <div className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm lg:col-span-2">
