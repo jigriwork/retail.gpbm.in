@@ -110,7 +110,7 @@ test("detailed summary: target progress, day not closed, missing report, and the
   assert.ok(renderOwnerSummaryDetailed(values).length <= OWNER_SUMMARY_MAX_LENGTH);
 });
 
-test("the detailed template is preferred; the short one remains the fallback", () => {
+test("only the detailed template is ever sent (no short fallback)", () => {
   const { OWNER_SUMMARY_TEMPLATES } = load();
-  assert.deepEqual(Array.from(OWNER_SUMMARY_TEMPLATES, (template) => template.name), ["gpbm_owner_daily_summary_v2", "gpbm_owner_daily_summary_v1"]);
+  assert.deepEqual(Array.from(OWNER_SUMMARY_TEMPLATES, (template) => template.name), ["gpbm_owner_daily_summary_v2"]);
 });

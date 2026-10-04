@@ -48,15 +48,15 @@ export async function runOwnerDailySummary({ day: requestedDay, now = new Date()
   if (error || !data) throw new Error("Summary figures could not be loaded.");
   const facts = data as unknown as OwnerSummaryFacts;
   if (preview) {
-    const [detailed, short] = OWNER_SUMMARY_TEMPLATES.map((template) => template.render(template.format(facts)));
-    return { day, preview: detailed, previewShort: short, sent: 0 };
+    const [detailed] = OWNER_SUMMARY_TEMPLATES.map((template) => template.render(template.format(facts)));
+    return { day, preview: detailed, sent: 0 };
   }
 
   // pg_cron calls at 9:00; the Vercel backup runs later. Never send early.
   if (!requestedDay && india.minutes < 8 * 60 + 55) return { day, detail: "Before 9:00 AM IST; not sent.", sent: 0 };
 
-  // MSG91_OWNER_SUMMARY_TEMPLATE switches the summary on; the detailed
-  // template is used once WhatsApp approves it, the short one until then.
+  // MSG91_OWNER_SUMMARY_TEMPLATE switches the summary on; only the detailed
+  // template is sent, once WhatsApp approves it.
   const enabled = Boolean(process.env.MSG91_OWNER_SUMMARY_TEMPLATE?.trim());
   const recipients = ownerSummaryRecipients();
   const config = getMsg91Config(SENDER);

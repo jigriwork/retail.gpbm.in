@@ -346,8 +346,10 @@ export function renderOwnerSummaryDetailed(values: string[]) {
   return OWNER_SUMMARY_DETAILED_TEMPLATE_BODY.replace(/\{\{(\d+)\}\}/g, (_, index: string) => values[Number(index) - 1] ?? "");
 }
 
-/** Preferred first; the first one WhatsApp has approved is used. */
+/**
+ * Only the detailed message is sent (owner's choice, 4 Oct 2026): until
+ * WhatsApp approves it, nothing is sent. The short v1 is kept for reference.
+ */
 export const OWNER_SUMMARY_TEMPLATES = [
   { format: formatOwnerSummaryDetailed, name: "gpbm_owner_daily_summary_v2", render: renderOwnerSummaryDetailed },
-  { format: formatOwnerSummary, name: "gpbm_owner_daily_summary_v1", render: renderOwnerSummary },
 ] as const;
