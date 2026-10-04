@@ -9,6 +9,107 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      gstr2b_lines: {
+        Row: {
+          id: string
+          firm_id: string
+          return_period: string
+          document_id: string | null
+          supplier_gstin: string
+          supplier_name: string | null
+          doc_type: string
+          doc_no: string
+          doc_no_key: string | null
+          doc_date: string | null
+          doc_value: number | null
+          taxable: number
+          igst: number
+          cgst: number
+          sgst: number
+          cess: number
+          itc_available: boolean | null
+          reason: string | null
+          imported_by: string | null
+          imported_at: string
+        }
+        Insert: {
+          id?: string
+          firm_id: string
+          return_period: string
+          document_id?: string | null
+          supplier_gstin: string
+          supplier_name?: string | null
+          doc_type: string
+          doc_no: string
+          doc_date?: string | null
+          doc_value?: number | null
+          taxable?: number
+          igst?: number
+          cgst?: number
+          sgst?: number
+          cess?: number
+          itc_available?: boolean | null
+          reason?: string | null
+          imported_by?: string | null
+          imported_at?: string
+        }
+        Update: {
+          id?: string
+          firm_id?: string
+          return_period?: string
+          document_id?: string | null
+          supplier_gstin?: string
+          supplier_name?: string | null
+          doc_type?: string
+          doc_no?: string
+          doc_date?: string | null
+          doc_value?: number | null
+          taxable?: number
+          igst?: number
+          cgst?: number
+          sgst?: number
+          cess?: number
+          itc_available?: boolean | null
+          reason?: string | null
+          imported_by?: string | null
+          imported_at?: string
+        }
+        Relationships: [
+          {
+            "foreignKeyName": "gstr2b_lines_document_id_fkey",
+            "columns": [
+              "document_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "finance_documents",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "gstr2b_lines_firm_id_fkey",
+            "columns": [
+              "firm_id"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "billing_firms",
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "foreignKeyName": "gstr2b_lines_imported_by_fkey",
+            "columns": [
+              "imported_by"
+            ],
+            "isOneToOne": false,
+            "referencedRelation": "profiles",
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
       staff_targets: {
         Row: {
           id: string
@@ -7230,6 +7331,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      supplier_dues: { Args: { p_until: string }; Returns: { voucher_id: string; firm_name: string; party_id: string; party_name: string; voucher_no: string; reference_no: string | null; voucher_date: string; due_date: string; open_amount: number; days_overdue: number }[] }
+      gstr2b_reconcile: { Args: { p_firm: string; p_period: string }; Returns: { status: string; supplier_gstin: string; supplier_name: string | null; doc_no: string; doc_date: string | null; invoice_id: string | null; books_taxable: number | null; books_tax: number | null; portal_taxable: number | null; portal_tax: number | null; itc_available: boolean | null; other_period: string | null }[] }
+      import_gstr2b: { Args: { p_document: string; p_firm: string; p_period: string; p_rows: Json }; Returns: number }
       stock_position_store_ids: { Args: Record<PropertyKey, never>; Returns: string[] }
       stock_count_summary: { Args: { p_count: string }; Returns: Json }
       review_stock_count: { Args: { p_count: string; p_note: string | null }; Returns: undefined }

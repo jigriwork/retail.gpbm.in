@@ -16,6 +16,7 @@ export function AccountsNav({ active, session }: { active: string; session: Fina
     { href: "/app/accounts/transfers", label: "Transfers", show: session.can.view },
     { href: "/app/accounts/daybook", label: "Day book", show: session.can.view },
     { href: "/app/accounts/reconciliation", label: "Reconciliation", show: session.can.view },
+    { href: "/app/accounts/gst", label: "GST (2B)", show: session.can.view },
     { href: "/app/accounts/statements", label: "Statements", show: session.can.view },
     { href: "/app/accounts/summary", label: "Summary", show: session.can.view },
     { href: "/app/accounts/periods", label: "Months", show: session.can.view },

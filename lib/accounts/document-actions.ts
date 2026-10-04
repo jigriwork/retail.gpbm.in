@@ -13,7 +13,7 @@ export type DocumentReservation =
 
 const allowedMime = new Set([
   "application/pdf", "image/jpeg", "image/png", "image/webp",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel", "text/csv",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel", "text/csv", "application/json",
 ]);
 
 function clean(value: unknown, max = 200) {
@@ -32,7 +32,7 @@ export async function reserveFinanceDocument(input: {
   const session = await getFinanceSession();
   if (!session.canSubmitDocuments) return { ok: false, message: "You cannot submit accounts documents." };
   if (!documentKinds.some((kind) => kind.value === input.kind)) return { ok: false, message: "Choose what kind of document this is." };
-  if (!allowedMime.has(input.mime)) return { ok: false, message: "Upload a PDF, photo (JPG, PNG, WebP), Excel or CSV file." };
+  if (!allowedMime.has(input.mime)) return { ok: false, message: "Upload a PDF, photo (JPG, PNG, WebP), Excel or CSV file, or the GST portal JSON for GST returns." };
   if (!Number.isInteger(input.size) || input.size < 1 || input.size > 20 * 1024 * 1024) return { ok: false, message: "Files must be 20 MB or smaller." };
   if (!/^[a-f0-9]{64}$/.test(input.sha256)) return { ok: false, message: "The file could not be read. Choose it again." };
   const docDate = clean(input.docDate) ? isoDateOrNull(clean(input.docDate)) : null;
@@ -65,6 +65,8 @@ const signatures: Record<string, (bytes: Uint8Array) => boolean> = {
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": (b) => b[0] === 0x50 && b[1] === 0x4b,
   "application/vnd.ms-excel": (b) => (b[0] === 0xd0 && b[1] === 0xcf) || b[0] === 0x50 || b[0] === 0x3c,
   "text/csv": (b) => !b.slice(0, 4096).includes(0),
+  // GST portal JSON: text starting with { (after an optional byte-order mark and spaces).
+  "application/json": (b) => !b.slice(0, 4096).includes(0) && /^\uFEFF?\s*\{/.test(Buffer.from(b.slice(0, 64)).toString("utf8")),
 };
 
 /** Step 2: after the browser upload, check the stored bytes before accepting. */

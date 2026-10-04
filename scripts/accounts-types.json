@@ -53,7 +53,8 @@
   "stock_counts",
   "stock_count_lines",
   "incentive_schemes",
-  "staff_targets"
+  "staff_targets",
+  "gstr2b_lines"
  ],
  "functions": {
   "finance_can": [
@@ -339,6 +340,18 @@
   "stock_position_store_ids": [
    "",
    "string[]"
+  ],
+  "import_gstr2b": [
+   "p_document: string; p_firm: string; p_period: string; p_rows: Json",
+   "number"
+  ],
+  "gstr2b_reconcile": [
+   "p_firm: string; p_period: string",
+   "{ status: string; supplier_gstin: string; supplier_name: string | null; doc_no: string; doc_date: string | null; invoice_id: string | null; books_taxable: number | null; books_tax: number | null; portal_taxable: number | null; portal_tax: number | null; itc_available: boolean | null; other_period: string | null }[]"
+  ],
+  "supplier_dues": [
+   "p_until: string",
+   "{ voucher_id: string; firm_name: string; party_id: string; party_name: string; voucher_no: string; reference_no: string | null; voucher_date: string; due_date: string; open_amount: number; days_overdue: number }[]"
   ]
  }
 }

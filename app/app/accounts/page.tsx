@@ -5,11 +5,11 @@ import { AccountsHeader, AccountsNav } from "@/components/accounts/accounts-nav"
 import { Badge, Notice, Panel } from "@/components/accounts/fields";
 import { getFinanceSession } from "@/lib/accounts/access";
 import { indiaToday } from "@/lib/accounts/format";
-import { partyBalances, partyNames, type PartyBalance } from "@/lib/accounts/ledger-queries";
+import { partyBalances, partyNames, supplierDues, type PartyBalance } from "@/lib/accounts/ledger-queries";
 import { returnCreditPending } from "@/lib/accounts/stock-queries";
 import { settlementBalances } from "@/lib/accounts/working-queries";
 import { listFirms, listStoreFirmPeriods, mastersSummary, salesCoverage, storesWithFirmToday } from "@/lib/accounts/queries";
-import { drCr, money } from "@/lib/accounts/format";
+import { drCr, money, shortDate } from "@/lib/accounts/format";
 
 const figureKeys = [
   ["ledger_balance", "Ledger balance"], ["due_now", "Due for payment"], ["overdue", "Overdue"], ["due_unknown", "Due date not set"],
@@ -47,9 +47,11 @@ export default async function AccountsOverviewPage() {
 
   const today = indiaToday();
   const monthStart = `${today.slice(0, 7)}-01`;
-  const [summary, stores, periods, firms, balances, returnPending, settlementsDue] = await Promise.all([
+  const [summary, stores, periods, firms, balances, returnPending, settlementsDue, dues] = await Promise.all([
     mastersSummary(), storesWithFirmToday(), listStoreFirmPeriods(), listFirms(), partyBalances(null), returnCreditPending(null), settlementBalances(null),
+    supplierDues(new Date(Date.parse(`${today}T00:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10)),
   ]);
+  const overdue = dues.filter((row) => row.days_overdue > 0);
   const names = await partyNames(balances.map((row) => row.party_id));
   const coverage = await Promise.all(stores.map(async (store) => {
     const days = await salesCoverage(store.id, monthStart, today);
@@ -69,6 +71,19 @@ export default async function AccountsOverviewPage() {
         description="Supplier accounts and company settlements for each billing firm. This is for managing suppliers; it does not replace your statutory books or GST filing."
         title="Accounts overview"
       />
+      {dues.length ? (
+        <Panel description={`${overdue.length} overdue (${money(overdue.reduce((sum, row) => sum + Number(row.open_amount), 0))}) · ${dues.length - overdue.length} due in the next 7 days (${money(dues.filter((row) => !row.days_overdue).reduce((sum, row) => sum + Number(row.open_amount), 0))})`} title="Bills to pay">
+          <ul className="space-y-1 text-sm">
+            {dues.slice(0, 12).map((row) => (
+              <li className="flex flex-wrap justify-between gap-2 border-b border-border/60 py-1.5" key={row.voucher_id}>
+                <span><Link className="font-semibold underline" href={`/app/accounts/vouchers/${row.voucher_id}`}>{row.party_name}</Link> · {row.reference_no ?? row.voucher_no} · {row.firm_name}</span>
+                <span className={row.days_overdue ? "font-semibold text-danger" : "text-muted"}>{money(row.open_amount)} · {row.days_overdue ? `${row.days_overdue} days overdue` : `due ${shortDate(row.due_date)}`}</span>
+              </li>
+            ))}
+          </ul>
+          {dues.length > 12 ? <p className="mt-2 text-xs text-muted">And {dues.length - 12} more. Open Payments to pay against them.</p> : null}
+        </Panel>
+      ) : null}
       <Notice tone="info">
         Ledger figures come only from posted entries. “CN expected”, “CN pending” and “Settlement due” come from approved company workings and never change the ledger
         until the real credit note or payment is posted.

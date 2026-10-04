@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 const byExtension: Record<string, string> = {
   csv: "text/csv", jpeg: "image/jpeg", jpg: "image/jpeg", pdf: "application/pdf", png: "image/png", webp: "image/webp",
   xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  json: "application/json",
 };
 
 const knownTypes = new Set(Object.values(byExtension));
@@ -112,8 +113,8 @@ export function DocumentUploader({
         <Field label="Document number"><input className={inputClass} name="docNo" placeholder="PJ-26" /></Field>
         <Field label="Document date"><input className={inputClass} name="docDate" type="date" /></Field>
       </div>
-      <Field hint="PDF, photo, Excel or CSV, up to 20 MB. The original is kept permanently." label="File">
-        <input accept=".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.csv" className="block w-full text-sm" name="file" type="file" />
+      <Field hint={`${allowedKinds.length === 1 && allowedKinds[0] === "gst_return" ? "The JSON file from the GST portal" : "PDF, photo, Excel or CSV"}, up to 20 MB. The original is kept permanently.`} label="File">
+        <input accept={allowedKinds.length === 1 && allowedKinds[0] === "gst_return" ? ".json" : ".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.csv"} className="block w-full text-sm" name="file" type="file" />
       </Field>
       <div className="flex flex-wrap items-center gap-3">
         <Button disabled={busy}>{busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}Upload document</Button>

@@ -50,6 +50,7 @@ export const documentKinds = [
   { value: "return_acknowledgement", label: "Return acknowledgement" },
   { value: "terms_agreement", label: "Terms / MOU" },
   { value: "opening_balance_evidence", label: "Opening balance evidence" },
+  { value: "gst_return", label: "GST return (GSTR-2B JSON)" },
   { value: "other", label: "Other" },
 ] as const;
 

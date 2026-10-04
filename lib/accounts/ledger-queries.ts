@@ -124,3 +124,29 @@ export function monthRange(month?: string) {
   const [year, monthNumber] = value.split("-").map(Number);
   return { from: `${value}-01`, month: value, to: new Date(Date.UTC(year, monthNumber, 0)).toISOString().slice(0, 10) };
 }
+
+export async function supplierDues(until: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("supplier_dues", { p_until: until });
+  return data ?? [];
+}
+
+export async function gstr2bMatch(firmId: string, period: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("gstr2b_reconcile", { p_firm: firmId, p_period: period });
+  if (error) throw new Error("GST matching could not be loaded. Please retry.");
+  return data ?? [];
+}
+
+export async function gstReturnDocuments() {
+  const supabase = await createClient();
+  const { data } = await supabase.from("finance_documents").select("id,file_name,created_at,status,firm_id")
+    .eq("kind", "gst_return").in("status", ["stored", "reviewed"]).order("created_at", { ascending: false }).limit(24);
+  return data ?? [];
+}
+
+export async function gstImportedPeriods(firmId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("gstr2b_lines").select("return_period").eq("firm_id", firmId).limit(5000);
+  return [...new Set((data ?? []).map((row) => row.return_period))].sort((a, b) => `${b.slice(2)}${b.slice(0, 2)}`.localeCompare(`${a.slice(2)}${a.slice(0, 2)}`));
+}

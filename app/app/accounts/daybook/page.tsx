@@ -28,6 +28,7 @@ export default async function DayBookPage({ searchParams }: { searchParams: Prom
           <input className={`${inputClass} max-w-40`} defaultValue={month} name="month" type="month" />
           <select className={`${inputClass} max-w-48`} defaultValue={type} name="type"><option value="">All entries</option>{voucherTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
           <button className="h-11 rounded-xl border border-border px-4 text-sm font-semibold">Show</button>
+          {firm ? <a className="inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold" href={`/app/accounts/daybook/export?firm=${firm.id}&month=${month}`}>Download for CA / Tally (CSV)</a> : <span className="self-center text-xs text-muted">Choose a firm to download its day book.</span>}
         </form>
       </Panel>
       <Panel title={`${month}${firm ? ` · ${firm.name}` : " · all firms (each firm's books stay separate)"}`}>
