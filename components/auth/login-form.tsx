@@ -116,9 +116,12 @@ export function LoginForm() {
         </div>
       </label>
 
-      <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-muted">
-        <input className="size-4 accent-primary" defaultChecked name="remember" type="checkbox" />
-        Remember me
+      <label className="flex w-fit cursor-pointer items-start gap-2.5 text-sm font-medium text-muted">
+        <input className="mt-0.5 size-4 accent-primary" defaultChecked name="remember" type="checkbox" />
+        <span>
+          Remember me
+          <span className="block text-xs font-normal">Stay logged in on this device, even after closing the browser. Untick on a shared phone.</span>
+        </span>
       </label>
 
       {error ? (

@@ -11,12 +11,31 @@ export type StoreAssignment = Tables<"store_users"> & {
   stores: Store | null;
 };
 
+/** Thrown when the login could not be checked (network, server busy); the person is still signed in. */
+export class SessionCheckError extends Error {
+  constructor() {
+    super("Your login could not be checked because of a connection problem. You are still logged in; please try again.");
+    this.name = "SessionCheckError";
+  }
+}
+
+// A brief network or server problem must never look like being logged out:
+// only a missing or rejected session (401/403) counts as "not signed in".
+function isTemporaryFailure(error: { name?: string; status?: number } | null) {
+  if (!error) return false;
+  return error.name === "AuthRetryableFetchError" || !error.status || error.status >= 500 || error.status === 429;
+}
+
 export const getCurrentUser = cache(async function getCurrentUser() {
   const supabase = await createClient();
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
+  if (!user && error && error.name !== "AuthSessionMissingError" && isTemporaryFailure(error)) {
+    throw new SessionCheckError();
+  }
   return user;
 });
 
@@ -28,12 +47,13 @@ export const getCurrentProfile = cache(async function getCurrentProfile() {
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
 
+  if (error) throw new SessionCheckError();
   return data;
 });
 
@@ -45,12 +65,14 @@ export const requireProfile = cache(async function requireProfile() {
   }
 
   const supabase = await createClient();
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
 
+  // A failed read is a connection problem, not an inactive account.
+  if (error) throw new SessionCheckError();
   if (!profile || profile.is_active !== true) redirect("/login?error=inactive");
   return { user, profile };
 });

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/app/access-denied";
+import { Celebration } from "@/components/app/celebration";
 import { StoreChecklistCard } from "@/components/app/store-checklist";
 import { ActionForm } from "@/components/accounts/action-form";
 import { Badge, Empty, Field, inputClass, Notice, Panel } from "@/components/accounts/fields";
@@ -76,6 +77,14 @@ export default async function CashBookPage({ searchParams }: { searchParams: Pro
   const closed = day.status === "closed" || day.status === "reviewed";
   const difference = closed && day.counted !== null && day.closing !== null ? Number(day.counted) - Number(day.closing) : null;
   const hasDeposit = day.entries.some((entry) => entry.type === "bank_deposit");
+  // Consecutive closed days (latest first) where the counted cash matched the book.
+  let matchedStreak = 0;
+  for (const item of history) {
+    if (item.status === "open") continue;
+    if (item.difference === null || Math.abs(Number(item.difference)) > CASH_TOLERANCE) break;
+    matchedStreak += 1;
+  }
+  const celebrate = closed && difference !== null && Math.abs(difference) <= CASH_TOLERANCE && date >= addDays(today, -1);
   const hidden = { date, store: store.id };
 
   return (
@@ -110,6 +119,12 @@ export default async function CashBookPage({ searchParams }: { searchParams: Pro
           description={day.bank_day ? "Bank day: deposit the cash in the bank." : "No bank deposit today (Saturday, Sunday or bank holiday)."}
           title={`${store.name} · ${shortDate(date)}`}
         >
+          {celebrate ? <Celebration id={`cash:${store.id}:${date}`} /> : null}
+          {celebrate ? (
+            <p className="pop-in mb-3 rounded-2xl border border-success/40 bg-success/10 px-4 py-3 text-sm font-semibold">
+              🎉 Cash matched{matchedStreak >= 2 ? ` · 🔥 ${matchedStreak} days in a row` : ""}. Well done{profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}!
+            </p>
+          ) : matchedStreak >= 2 ? <p className="mb-3 text-sm font-semibold text-success">🔥 {matchedStreak} days in a row cash matched</p> : null}
           <div className="mb-3 flex flex-wrap gap-2">
             <Badge tone={closed ? "good" : "warn"}>{day.status === "reviewed" ? "Closed · checked" : closed ? "Closed" : "Open"}</Badge>
             {closed ? differenceBadge(difference) : null}

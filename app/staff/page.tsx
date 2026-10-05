@@ -1,14 +1,23 @@
 import Link from "next/link";
 import { Bell, CheckSquare, FileText, TrendingUp } from "lucide-react";
 
+import { Celebration } from "@/components/app/celebration";
+import { StarsList, shortDay } from "@/components/app/store-stars";
 import { TodayHero } from "@/components/app/today-hero";
-import { getStaffHomeSummary, getStaffProfileSummary } from "@/lib/staff/portal";
+import { getMyWeek, getStaffHomeSummary, getStaffProfileSummary } from "@/lib/staff/portal";
 
 function money(value: number) { return new Intl.NumberFormat("en-IN", { currency: "INR", maximumFractionDigits: 0, style: "currency" }).format(value); }
 
 export default async function StaffHomePage() {
-  const [profile, home] = await Promise.all([getStaffProfileSummary(), getStaffHomeSummary()]);
+  const [profile, home, week] = await Promise.all([getStaffProfileSummary(), getStaffHomeSummary(), getMyWeek()]);
   if (!profile || !home) return null;
+  // Am I one of this week's stars? (my names as the sales reports spell them)
+  const mine = new Set(week?.names ?? []);
+  const myAwards = week?.linked ? [
+    week.stars.top[0] && mine.has(week.stars.top[0].name) ? "top seller" : "",
+    week.stars.best_bill && mine.has(week.stars.best_bill.name) ? "best average bill" : "",
+    week.stars.most_items && mine.has(week.stars.most_items.name) ? "most items per bill" : "",
+  ].filter(Boolean) : [];
   const verified = home.sales.linkage_verified;
   const payslip = home.latest_payslip_month
     ? new Date(`${home.latest_payslip_month}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })
@@ -24,6 +33,24 @@ export default async function StaffHomePage() {
         ]}
         title={`${profile.designation ?? "Staff"} · ${profile.store.name}`}
       />
+      {week ? (
+        <section className={`rounded-2xl border p-4 shadow-sm ${myAwards.length ? "pop-in border-success/40 bg-success/10" : "border-border bg-card"}`}>
+          {myAwards.length ? <Celebration id={`star:${week.to}`} /> : null}
+          <p className="text-xs text-muted">My week{week.from && week.to ? ` · ${shortDay(week.from)} – ${shortDay(week.to)}` : ""}</p>
+          {myAwards.length ? <p className="mt-1 text-lg font-semibold">⭐ You are this week&apos;s star: {myAwards.join(", ")}! Great work!</p> : null}
+          {week.linked ? (
+            <p className="mt-1 text-sm">
+              <span className="text-lg font-semibold">{money(week.sale ?? 0)}</span> · {week.bills ?? 0} bills
+              {week.rank ? ` · #${week.rank} of ${week.of} in the store` : ""}
+              {week.rank && week.rank > 1 && week.rank <= 5 ? " · keep going, the top is close!" : ""}
+            </p>
+          ) : <p className="mt-1 text-sm text-muted">Your sales name is not verified yet; ask the owner to link it.</p>}
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="mb-2 text-sm font-semibold">⭐ Stars of the week</p>
+            <StarsList amounts={false} stars={week.stars} />
+          </div>
+        </section>
+      ) : null}
       <section className="grid grid-cols-2 gap-3">
         <Link className="rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:border-primary" href="/staff/sales">
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary"><TrendingUp className="size-4" /></span>

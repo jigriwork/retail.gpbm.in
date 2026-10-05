@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { Celebration } from "@/components/app/celebration";
+
 import { getStoreChecklist, type StoreChecklist } from "@/lib/cash-book/queries";
 
 type Day = StoreChecklist["days"][number];
@@ -47,7 +49,8 @@ export async function StoreChecklistCard({ firstName, storeId, storeName }: { fi
   const { allDone, notes, pending, streak } = checklistStatus(checklist);
   const week = checklist.days.slice(0, 7).reverse();
   return (
-    <section className={`rounded-[1.35rem] border p-5 shadow-sm ${allDone ? "border-success/40 bg-success/10" : "border-accent/40 bg-accent-soft"}`}>
+    <section className={`rounded-[1.35rem] border p-5 shadow-sm ${allDone ? "pop-in border-success/40 bg-success/10" : "border-accent/40 bg-accent-soft"}`}>
+      {allDone ? <Celebration id={`checklist:${storeId}:${checklist.days[0].day}`} /> : null}
       <p className="text-sm font-medium text-muted">{storeName} · daily checklist</p>
       {allDone ? (
         <p className="mt-2 text-lg font-semibold">

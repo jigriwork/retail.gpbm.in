@@ -108,3 +108,23 @@ export async function getMyPayslips() {
     salary_month: string;
   }>;
 }
+
+export type MyWeek = {
+  bills?: number;
+  from?: string;
+  linked: boolean;
+  names?: string[];
+  of?: number;
+  rank?: number | null;
+  sale?: number;
+  stars: import("@/components/app/store-stars").WeekStars;
+  to?: string;
+};
+
+/** The staff member's own last 7 days and the store's stars (names only for others). */
+export async function getMyWeek() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_week_highlights");
+  if (error) return null;
+  return data as unknown as MyWeek;
+}
