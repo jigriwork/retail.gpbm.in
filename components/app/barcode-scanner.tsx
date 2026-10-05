@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, X } from "lucide-react";
+import { Camera, Flashlight, X } from "lucide-react";
+
+import { readCounts } from "@/lib/scan/repeat";
 
 type Detector = { detect(source: HTMLVideoElement): Promise<Array<{ rawValue: string }>> };
 type DetectorClass = {
@@ -10,57 +12,66 @@ type DetectorClass = {
 };
 
 const formats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "code_93", "codabar", "itf", "qr_code"];
-const repeatGapMs = 1500;
+const video = { facingMode: { ideal: "environment" }, height: { ideal: 1080 }, width: { ideal: 1920 } } as const;
 
-function feedback() {
-  try { navigator.vibrate?.(60); } catch { /* not supported */ }
+function feedback(ok: boolean) {
+  try { navigator.vibrate?.(ok ? 50 : [40, 60, 40]); } catch { /* not supported */ }
   try {
     const AudioContextClass = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
     const context = new AudioContextClass();
     const tone = context.createOscillator();
     const gain = context.createGain();
-    tone.frequency.value = 1200;
+    tone.frequency.value = ok ? 1250 : 420;
     gain.gain.value = 0.08;
     tone.connect(gain).connect(context.destination);
     tone.start();
-    tone.stop(context.currentTime + 0.08);
+    tone.stop(context.currentTime + (ok ? 0.07 : 0.18));
     tone.onended = () => void context.close();
   } catch { /* sound is optional */ }
 }
 
 /**
- * Full-screen camera scanner. Uses the phone's built-in barcode reader when
- * it has one (Chrome on Android) and the ZXing reader otherwise (iPhone).
- * The same code is ignored for 1.5 s so one tag is not read twice.
+ * Full-screen camera scanner that stays open: every read calls `onCode`, and
+ * the caller shows the result in `status` (with its own buttons). Uses the
+ * phone's built-in barcode reader when available (Chrome on Android) and the
+ * ZXing reader otherwise (iPhone). `onCode` returns false for a "not found"
+ * sound and buzz.
  */
 export function BarcodeScanner({ onClose, onCode, status, title = "Scan a barcode" }: {
   onClose: () => void;
-  onCode: (code: string) => void;
+  onCode: (code: string) => boolean | void | Promise<boolean | void>;
   status?: React.ReactNode;
   title?: string;
 }) {
-  const video = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const handler = useRef(onCode);
+  const torchRef = useRef<((on: boolean) => Promise<void>) | null>(null);
   const [error, setError] = useState("");
-  const [engine, setEngine] = useState("");
+  const [torch, setTorch] = useState<boolean | null>(null);
 
   useEffect(() => { handler.current = onCode; }, [onCode]);
 
   useEffect(() => {
     let stopped = false;
     let stream: MediaStream | null = null;
-    let frame = 0;
-    let zxingControls: { stop: () => void } | null = null;
-    let last = { code: "", at: 0 };
-    const emit = (raw: string) => {
+    let timer = 0;
+    let zxingControls: { stop: () => void; switchTorch?: (on: boolean) => Promise<void> } | null = null;
+    let last = { code: "", seen: 0 };
+    const seen = (raw: string) => {
       const code = raw.trim();
       if (!code) return;
-      const now = Date.now();
-      if (code === last.code && now - last.at < repeatGapMs) return;
-      last = { code, at: now };
-      feedback();
-      handler.current(code);
+      const read = readCounts(last, code, Date.now());
+      last = read.last;
+      if (!read.counts) return;
+      void Promise.resolve(handler.current(code)).then((ok) => feedback(ok !== false));
+    };
+    const enableTorch = (track: MediaStreamTrack | undefined) => {
+      const capabilities = track?.getCapabilities?.() as { torch?: boolean } | undefined;
+      if (track && capabilities?.torch) {
+        torchRef.current = (on) => track.applyConstraints({ advanced: [{ torch: on } as MediaTrackConstraintSet] });
+        setTorch(false);
+      }
     };
 
     async function start() {
@@ -73,32 +84,39 @@ export function BarcodeScanner({ onClose, onCode, status, title = "Scan a barcod
       const usable = formats.filter((format) => supported.includes(format));
       try {
         if (Native && usable.length) {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" } } });
-          if (stopped || !video.current) return;
-          video.current.srcObject = stream;
-          await video.current.play();
-          setEngine("built-in reader");
+          stream = await navigator.mediaDevices.getUserMedia({ audio: false, video });
+          if (stopped || !videoRef.current) return;
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+          enableTorch(stream.getVideoTracks()[0]);
           const detector = new Native({ formats: usable });
           const tick = async () => {
-            if (stopped || !video.current) return;
-            if (video.current.readyState >= 2) {
-              const found = await detector.detect(video.current).catch(() => []);
-              if (found[0]?.rawValue) emit(found[0].rawValue);
+            if (stopped || !videoRef.current) return;
+            if (videoRef.current.readyState >= 2) {
+              const found = await detector.detect(videoRef.current).catch(() => []);
+              if (found[0]?.rawValue) seen(found[0].rawValue);
             }
-            frame = window.setTimeout(tick, 120);
+            timer = window.setTimeout(tick, 80);
           };
           void tick();
         } else {
-          const { BrowserMultiFormatReader } = await import("@zxing/browser");
-          if (stopped || !video.current) return;
-          const reader = new BrowserMultiFormatReader();
-          setEngine("ZXing reader");
-          zxingControls = await reader.decodeFromConstraints(
-            { audio: false, video: { facingMode: { ideal: "environment" } } },
-            video.current,
-            (result) => { if (result) emit(result.getText()); },
-          );
-          if (stopped) zxingControls.stop();
+          const [{ BrowserMultiFormatReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all([import("@zxing/browser"), import("@zxing/library")]);
+          if (stopped || !videoRef.current) return;
+          const hints = new Map();
+          hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+            BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.CODE_128,
+            BarcodeFormat.CODE_39, BarcodeFormat.CODE_93, BarcodeFormat.CODABAR, BarcodeFormat.ITF, BarcodeFormat.QR_CODE,
+          ]);
+          hints.set(DecodeHintType.TRY_HARDER, true);
+          const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 60, delayBetweenScanSuccess: 120 });
+          zxingControls = await reader.decodeFromConstraints({ audio: false, video }, videoRef.current, (result) => {
+            if (result) seen(result.getText());
+          });
+          if (stopped) { zxingControls.stop(); return; }
+          if (zxingControls.switchTorch) {
+            torchRef.current = (on) => zxingControls!.switchTorch!(on);
+            setTorch(false);
+          }
         }
       } catch (reason) {
         const name = reason instanceof Error ? reason.name : "";
@@ -110,26 +128,39 @@ export function BarcodeScanner({ onClose, onCode, status, title = "Scan a barcod
     void start();
     return () => {
       stopped = true;
-      window.clearTimeout(frame);
+      window.clearTimeout(timer);
       zxingControls?.stop();
       stream?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
+  async function toggleTorch() {
+    if (!torchRef.current || torch === null) return;
+    try { await torchRef.current(!torch); setTorch(!torch); } catch { setTorch(null); }
+  }
+
   return (
     <div aria-modal className="fixed inset-0 z-50 flex flex-col bg-black text-white" role="dialog">
-      <div className="flex items-center justify-between gap-3 p-4">
+      <div className="flex items-center justify-between gap-3 p-3">
         <p className="flex items-center gap-2 font-semibold"><Camera className="size-5" /> {title}</p>
-        <button aria-label="Close scanner" className="inline-flex size-10 items-center justify-center rounded-full bg-white/15" onClick={onClose} type="button"><X className="size-5" /></button>
+        <div className="flex items-center gap-2">
+          {torch !== null ? (
+            <button aria-label={torch ? "Torch off" : "Torch on"} className={`inline-flex size-10 items-center justify-center rounded-full ${torch ? "bg-accent text-black" : "bg-white/15"}`} onClick={toggleTorch} type="button">
+              <Flashlight className="size-5" />
+            </button>
+          ) : null}
+          <button className="inline-flex h-10 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-semibold text-black" onClick={onClose} type="button">
+            <X className="size-4" /> Done
+          </button>
+        </div>
       </div>
-      <div className="relative flex-1 overflow-hidden">
-        <video className="absolute inset-0 size-full object-cover" muted playsInline ref={video} />
-        <div aria-hidden className="pointer-events-none absolute inset-x-8 top-1/2 h-40 -translate-y-1/2 rounded-3xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <video className="absolute inset-0 size-full object-cover" muted playsInline ref={videoRef} />
+        <div aria-hidden className="pointer-events-none absolute inset-x-6 top-1/2 h-36 -translate-y-1/2 rounded-3xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
         {error ? <p className="absolute inset-x-4 top-4 rounded-2xl bg-danger/90 p-4 text-sm font-semibold">{error}</p> : null}
       </div>
-      <div className="space-y-2 p-4 text-sm">
-        <div aria-live="polite" className="min-h-12 rounded-2xl bg-white/10 p-3">{status ?? "Point the camera at the barcode on the tag."}</div>
-        {engine ? <p className="text-xs text-white/60">Using the {engine}.</p> : null}
+      <div aria-live="polite" className="max-h-[45dvh] overflow-y-auto p-3 text-sm">
+        {status ?? <p className="rounded-2xl bg-white/10 p-3">Point the camera at the barcode on the tag. Keep scanning; it stays open.</p>}
       </div>
     </div>
   );

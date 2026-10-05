@@ -33,7 +33,24 @@ export function ItemScan() {
       {scanning ? (
         <BarcodeScanner
           onClose={() => setScanning(false)}
-          onCode={(value) => { setScanning(false); search(value); }}
+          onCode={(value) => { search(value); }}
+          status={
+            pending ? <p className="rounded-2xl bg-white/10 p-3">Looking up {code}…</p>
+              : !result ? <p className="rounded-2xl bg-white/10 p-3">Point the camera at any tag. It stays open: scan the next tag whenever you like.</p>
+              : result.message ? <p className="rounded-2xl bg-danger p-3 font-semibold">{result.message}</p>
+              : result.items.length ? (
+                <div key={result.code} className="pop-in space-y-1.5 rounded-2xl bg-white p-3 text-black">
+                  <p className="font-semibold">{result.items[0].item ?? "Item"}{result.items[0].size ? ` · ${result.items[0].size}` : ""}</p>
+                  <p className="text-xs text-black/60">{[result.items[0].brand, `MRP ${result.items[0].mrp === null ? "—" : `₹${Number(result.items[0].mrp).toLocaleString("en-IN")}`}`].filter(Boolean).join(" · ")}</p>
+                  {result.items.map((item) => (
+                    <p className="flex justify-between gap-2 text-sm" key={`${item.store}-${item.lot_code}`}>
+                      <span>{item.store}{result.items.length > 1 && item.size !== result.items[0].size ? ` · ${item.size ?? ""}` : ""}</span>
+                      <span className="font-semibold">{units(item.on_hand)} in stock · sold {units(item.sold_30)} in 30 days</span>
+                    </p>
+                  ))}
+                </div>
+              ) : <p className="rounded-2xl bg-accent p-3 font-semibold text-black">No item found for {result.code} in the latest stock reports.</p>
+          }
           title="Scan an item"
         />
       ) : null}
