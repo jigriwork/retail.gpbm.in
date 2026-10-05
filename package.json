@@ -1,6 +1,6 @@
 {
   "name": "retail.gpbm.in",
-  "version": "9.24.0",
+  "version": "9.24.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -18,7 +18,7 @@
     "date-fns-tz": "^3.2.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.17.0",
-    "next": "16.3.3",
+    "next": "16.3.8",
     "pdf-lib": "^1.17.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -35,7 +35,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.3",
+    "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
