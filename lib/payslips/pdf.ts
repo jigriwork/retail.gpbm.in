@@ -136,9 +136,13 @@ export async function renderPayslipPdf(row: PayslipRow) {
     top = y;
   }
 
-  const footerY = 95;
-  const footer = "Prepared By __________ | Verified By __________ | Received By __________";
-  drawCenteredText({ font: regular, page, size: 10.5, text: footer, y: footerY });
+  drawCenteredText({
+    font: bold,
+    page,
+    size: 10.5,
+    text: "This is a system-generated salary slip. No signature is required.",
+    y: 95,
+  });
 
   return pdf.save();
 }

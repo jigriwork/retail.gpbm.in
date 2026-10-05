@@ -190,10 +190,10 @@ export async function deactivateEmployeeContact(formData: FormData) {
     redirect("/app/employees?error=access");
   }
 
-  await supabase
-    .from("employee_contacts")
-    .update(existing.is_active === false ? { is_active: true, left_on: null } : { is_active: false })
-    .eq("id", employeeId);
+  if (existing.is_active === false) {
+    const { error } = await supabase.rpc("restore_staff", { p_employee: employeeId });
+    if (error) redirect(`/app/employees?error=${encodeURIComponent(error.message)}`);
+  }
   revalidatePath("/app/employees");
   revalidatePath(`/app/employees/${employeeId}`);
 }

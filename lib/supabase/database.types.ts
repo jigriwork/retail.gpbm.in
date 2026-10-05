@@ -7744,6 +7744,7 @@ export type Database = {
       decide_payslip_link: { Args: { p_approve: boolean; p_request: string }; Returns: undefined }
       payslip_link_overview: { Args: { p_store: string }; Returns: Json }
       remove_staff: { Args: { p_employee: string; p_reason: string }; Returns: string }
+      restore_staff: { Args: { p_employee: string }; Returns: undefined }
       stock_lookup: { Args: { p_code: string }; Returns: Json }
       my_week_highlights: { Args: Record<PropertyKey, never>; Returns: Json }
       publish_stock_import_part: { Args: { p_import: string }; Returns: Json }
