@@ -70,5 +70,8 @@ insert into employee_auth_links(employee_contact_id, auth_user_id, store_id, log
   assert.deepEqual(asCashier[0].stores.map((s) => [s.store, s.sizes.map((z) => `${z.size}:${z.on_hand}`).join(",")]), [["Go Planet", "L:2,M:0,S:1"]]);
   assert.deepEqual(view(staffUser)[0].stores.map((s) => s.store), ["Go Planet"]);
   assert.deepEqual(view(owner)[0].stores.map((s) => s.store), ["Brand Mark", "Go Planet"]);
+  // A Logic tag printing the ITEM CODE (stock "sku") finds the item too.
+  const byItemCode = JSON.parse(last(sql(`${sizesSeed} update stock_rows set sku = 'Q12445' where report_id = 'f0000000-0000-0000-0000-0000000000e8'; ${as(cashier)} select stock_sizes('q12445'); rollback;`)));
+  assert.deepEqual([byItemCode[0]?.item, byItemCode[0]?.scanned_size], ["TEE 100", "M"]);
   assert.equal(sql("select has_function_privilege('anon','public.stock_sizes(text)','EXECUTE') or has_function_privilege('authenticated','public.auto_link_all_staff_names()','EXECUTE');"), "f");
 });

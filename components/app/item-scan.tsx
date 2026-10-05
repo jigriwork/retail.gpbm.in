@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Camera, Loader2, Search } from "lucide-react";
 
 import { BarcodeScanner, unlockScanSound } from "@/components/app/barcode-scanner";
@@ -21,11 +21,23 @@ export function ItemScan() {
   const [result, setResult] = useState<{ code: string; items: LookupItem[]; message?: string } | null>(null);
   const [pending, start] = useTransition();
 
+  const latest = useRef(0);
+
+  // Connection problems show "scan again" (never the error page); only the newest answer is shown.
   function search(value: string) {
     const clean = value.trim();
     if (!clean) return;
     setCode(clean);
-    start(async () => setResult({ code: clean, ...(await lookupItem(clean)) }));
+    const request = ++latest.current;
+    start(async () => {
+      let next: { code: string; items: LookupItem[]; message?: string };
+      try {
+        next = { code: clean, ...(await lookupItem(clean)) };
+      } catch {
+        next = { code: clean, items: [], message: "Connection problem. Scan again." };
+      }
+      if (request === latest.current) setResult(next);
+    });
   }
 
   return (

@@ -26,3 +26,25 @@ test("identical tags on several pieces all count once the camera moves between t
 test("a different tag counts immediately", () => {
   assert.deepEqual(run([["A1", 0], ["B2", 100], ["A1", 200]]), [true, true, true]);
 });
+
+const { acceptRead, emptyReadState, validEanUpc } = fixture().load("@/lib/scan/repeat");
+
+function feed(reads) {
+  let state = emptyReadState;
+  return reads.map(([code, format, at]) => { const result = acceptRead(state, code, format, at); state = result.state; return result.accept; });
+}
+
+test("EAN/UPC: a correct check digit counts at once, a misread is dropped", () => {
+  assert.equal(validEanUpc("8909329430968"), true);
+  assert.equal(validEanUpc("8909329430961"), false);
+  assert.deepEqual(feed([["8909329430961", "ean_13", 0], ["8909329430968", "ean_13", 100]]), [false, true]);
+});
+
+test("Code 128 / Code 39 count only after two identical reads within a second", () => {
+  assert.deepEqual(feed([["Q12446", "code_128", 0], ["Q12446", "code_128", 120], ["Q12446", "code_128", 240]]), [false, true, false]);
+  assert.deepEqual(feed([["Q1Z44", "code_39", 0], ["Q12446", "code_39", 1500]]), [false, false], "a single stray read never counts");
+});
+
+test("very short reads are ignored", () => {
+  assert.deepEqual(feed([["12", "code_128", 0], ["12", "code_128", 50]]), [false, false]);
+});

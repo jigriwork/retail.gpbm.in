@@ -52,7 +52,8 @@ export function CountSheet({ codes = [], countId, editable, expectedPieces = nul
     current.current = { ...current.current, [line.id]: String(next) };
     setValues((v) => ({ ...v, [line.id]: String(next) }));
     setState((s) => ({ ...s, [line.id]: "saving" }));
-    const result = await recordCount(line.id, next);
+    // A connection problem is reported on the line, never as an error page.
+    const result = await recordCount(line.id, next).catch(() => ({ ok: false, message: "Connection problem: not saved. Scan again." }));
     setState((s) => ({ ...s, [line.id]: result.ok ? "saved" : result.message }));
     return result;
   }, []);
@@ -89,7 +90,7 @@ export function CountSheet({ codes = [], countId, editable, expectedPieces = nul
     update(entry.key, { kind: "adding" });
     const form = new FormData();
     form.set("countId", countId); form.set("code", entry.code); form.set("qty", "1");
-    const result = await addExtraItem({ ok: false, message: "" }, form);
+    const result = await addExtraItem({ ok: false, message: "" }, form).catch(() => ({ ok: false, message: "Connection problem. Try again." }));
     if (result.ok) {
       update(entry.key, { kind: "added" });
       setSessionCount((n) => n + 1);
@@ -143,7 +144,7 @@ export function CountSheet({ codes = [], countId, editable, expectedPieces = nul
     const quantity = raw === "" ? null : Number(raw);
     if (raw !== "" && (!Number.isFinite(quantity) || (quantity ?? 0) < 0)) { setState((s) => ({ ...s, [line.id]: "Enter a number" })); return; }
     setState((s) => ({ ...s, [line.id]: "saving" }));
-    const result = await recordCount(line.id, quantity);
+    const result = await recordCount(line.id, quantity).catch(() => ({ ok: false, message: "Connection problem: not saved. Try again." }));
     setState((s) => ({ ...s, [line.id]: result.ok ? "saved" : result.message }));
   }
 

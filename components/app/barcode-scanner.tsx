@@ -3,15 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, Flashlight, X } from "lucide-react";
 
-import { readCounts } from "@/lib/scan/repeat";
+import { acceptRead, emptyReadState } from "@/lib/scan/repeat";
 
-type Detector = { detect(source: HTMLVideoElement): Promise<Array<{ rawValue: string }>> };
+type Detector = { detect(source: HTMLVideoElement): Promise<Array<{ format?: string; rawValue: string }>> };
 type DetectorClass = {
   new (options: { formats: string[] }): Detector;
   getSupportedFormats?: () => Promise<string[]>;
 };
 
-const formats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "code_93", "codabar", "itf", "qr_code"];
+// Only the barcodes used on tags: fewer types = fewer misreads.
+const formats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39"];
 const video = { facingMode: { ideal: "environment" }, height: { ideal: 1080 }, width: { ideal: 1920 } } as const;
 
 // One shared sound context. iPhones only allow sound when it is started by a
@@ -79,19 +80,33 @@ export function BarcodeScanner({ onClose, onCode, status, title = "Scan a barcod
 
   useEffect(() => { handler.current = onCode; }, [onCode]);
 
+  // Phone Back (or an edge swipe) closes the scanner instead of leaving the
+  // page: opening adds a "#scanner" history step; Done removes it again.
+  const closeRef = useRef(onClose);
+  useEffect(() => { closeRef.current = onClose; }, [onClose]);
+  useEffect(() => {
+    let closedByBack = false;
+    window.history.pushState(null, "", `${window.location.pathname}${window.location.search}#scanner`);
+    const onPop = () => { closedByBack = true; closeRef.current(); };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      if (!closedByBack && window.location.hash === "#scanner") window.history.back();
+    };
+  }, []);
+
   useEffect(() => {
     let stopped = false;
     let stream: MediaStream | null = null;
     let timer = 0;
     let zxingControls: { stop: () => void; switchTorch?: (on: boolean) => Promise<void> } | null = null;
-    let last = { code: "", seen: 0 };
-    const seen = (raw: string) => {
-      const code = raw.trim();
-      if (!code) return;
-      const read = readCounts(last, code, Date.now());
-      last = read.last;
-      if (!read.counts) return;
-      void Promise.resolve(handler.current(code)).then((ok) => feedback(ok !== false));
+    let reads = emptyReadState;
+    // Check-digit and double-read rules (lib/scan/repeat) keep misreads out.
+    const seen = (raw: string, format: string) => {
+      const result = acceptRead(reads, raw, format, Date.now());
+      reads = result.state;
+      if (!result.accept) return;
+      void Promise.resolve(handler.current(raw.trim())).then((ok) => feedback(ok !== false), () => feedback(false));
     };
     const enableTorch = (track: MediaStreamTrack | undefined) => {
       const capabilities = track?.getCapabilities?.() as { torch?: boolean } | undefined;
@@ -121,7 +136,7 @@ export function BarcodeScanner({ onClose, onCode, status, title = "Scan a barcod
             if (stopped || !videoRef.current) return;
             if (videoRef.current.readyState >= 2) {
               const found = await detector.detect(videoRef.current).catch(() => []);
-              if (found[0]?.rawValue) seen(found[0].rawValue);
+              if (found[0]?.rawValue) seen(found[0].rawValue, found[0].format ?? "");
             }
             timer = window.setTimeout(tick, 50);
           };
@@ -131,13 +146,12 @@ export function BarcodeScanner({ onClose, onCode, status, title = "Scan a barcod
           if (stopped || !videoRef.current) return;
           const hints = new Map();
           hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-            BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.CODE_128,
-            BarcodeFormat.CODE_39, BarcodeFormat.CODE_93, BarcodeFormat.CODABAR, BarcodeFormat.ITF, BarcodeFormat.QR_CODE,
+            BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.CODE_128, BarcodeFormat.CODE_39,
           ]);
           hints.set(DecodeHintType.TRY_HARDER, true);
           const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 30, delayBetweenScanSuccess: 80 });
           zxingControls = await reader.decodeFromConstraints({ audio: false, video }, videoRef.current, (result) => {
-            if (result) seen(result.getText());
+            if (result) seen(result.getText(), BarcodeFormat[result.getBarcodeFormat()] ?? "");
           });
           if (stopped) { zxingControls.stop(); return; }
           if (zxingControls.switchTorch) {
