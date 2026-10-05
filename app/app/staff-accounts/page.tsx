@@ -1,4 +1,5 @@
-import { ShieldCheck, UserCheck, UserRoundPlus, UsersRound } from "lucide-react";
+import Link from "next/link";
+import { Search, ShieldCheck, UserCheck, UserRoundPlus, UsersRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { AccessDenied } from "@/components/app/access-denied";
@@ -8,7 +9,6 @@ import {
   createStaffAccount,
   decideStaffRequest,
   hasCredentialManagementGrant,
-  linkPayrollRow,
   requestStaffAccount,
   resetStaffTemporaryPassword,
   setStaffAccountActive,
@@ -17,8 +17,9 @@ import {
 } from "@/lib/staff/actions";
 import { getStaffAccountAdminData } from "@/lib/staff/admin";
 
-export default async function StaffAccountsPage() {
+export default async function StaffAccountsPage({ searchParams }: { searchParams: Promise<{ q?: string; show?: string }> }) {
   const { profile } = await requireProfile();
+  const { q = "", show = "" } = await searchParams;
   if (!profile || !["owner", "manager"].includes(profile.role)) return <AccessDenied />;
   const data = await getStaffAccountAdminData(profile);
   const credentialActionsUnlocked = await hasCredentialManagementGrant();
@@ -32,6 +33,14 @@ export default async function StaffAccountsPage() {
   const active = data.links.filter((link) => link.status === "active").length;
   const inactive = data.links.filter((link) => link.status === "inactive").length;
   const pending = data.requests.filter((request) => request.status === "pending").length;
+  // Staff who left are hidden unless asked for; search matches every word of the name or login email.
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const showLeft = show === "left";
+  const shownEmployees = data.employees.filter((employee) => {
+    if (!showLeft && employee.is_active === false) return false;
+    const haystack = `${employee.staff_name} ${linkByEmployee.get(employee.id)?.login_email ?? ""}`.toLowerCase();
+    return words.every((word) => haystack.includes(word));
+  });
 
   return (
     <div className="space-y-5">
@@ -90,7 +99,20 @@ export default async function StaffAccountsPage() {
 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Employees</h2>
-        {data.employees.map((employee) => {
+        <form action="/app/staff-accounts" className="flex flex-wrap gap-2">
+          <label className="relative min-w-56 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
+            <input className="h-11 w-full rounded-2xl border border-border bg-card pl-10 pr-3 text-sm outline-none focus:border-primary" defaultValue={q} name="q" placeholder="Search staff name or email" type="search" />
+          </label>
+          <label className="flex h-11 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-sm font-semibold">
+            <input className="size-4 accent-black" defaultChecked={showLeft} name="show" type="checkbox" value="left" /> Show staff who left
+          </label>
+          <button className="h-11 rounded-2xl bg-primary px-5 text-sm font-semibold text-white" type="submit">Search</button>
+          {q || showLeft ? <Link className="inline-flex h-11 items-center rounded-2xl border border-border px-4 text-sm font-semibold" href="/app/staff-accounts">Clear</Link> : null}
+        </form>
+        <p className="text-xs text-muted">{shownEmployees.length} of {data.employees.length} staff shown</p>
+        {!shownEmployees.length ? <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted">No staff found{q ? ` for “${q}”` : ""}.</p> : null}
+        {shownEmployees.map((employee) => {
           const link = linkByEmployee.get(employee.id);
           const request = openRequestByEmployee.get(employee.id);
           const employeeAliases = aliasesByEmployee.get(employee.id) ?? [];
@@ -100,7 +122,7 @@ export default async function StaffAccountsPage() {
             <details className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm" key={employee.id}>
               <summary className="cursor-pointer list-none">
                 <div className="flex items-start justify-between gap-3">
-                  <div><p className="font-semibold">{employee.staff_name}</p><p className="mt-1 text-xs text-muted">{store?.name ?? "No store"} · {employee.designation ?? "Designation not set"}</p></div>
+                  <div><p className="font-semibold">{employee.staff_name}{employee.is_active === false ? <span className="ml-2 text-xs font-semibold text-danger">Left</span> : null}</p><p className="mt-1 text-xs text-muted">{store?.name ?? "No store"} · {employee.designation ?? "Designation not set"}</p></div>
                   <div className="text-right text-xs font-semibold"><p>{link ? (link.status === "active" ? "Active account" : "Inactive account") : request ? `${request.status} request` : "Account not created"}</p><p className={verifiedAliasCount ? "mt-1 text-success" : "mt-1 text-warning"}>{verifiedAliasCount ? `${verifiedAliasCount} verified sales alias${verifiedAliasCount === 1 ? "" : "es"}` : "Sales linkage requires owner verification"}</p></div>
                 </div>
               </summary>
@@ -155,17 +177,10 @@ export default async function StaffAccountsPage() {
               </form>
             ))}
           </section>
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">Unlinked payroll rows</h2>
-            <p className="text-sm text-muted">Link only after exact owner review. No name-based automatic authorization is used.</p>
-            {data.payrollRows.slice(0, 100).map((row) => (
-              <form action={linkPayrollRow} className="grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" key={row.id}>
-                <div><p className="font-semibold">{row.staff_name ?? "Unnamed"}</p><p className="text-xs text-muted">{row.salary_month}</p></div>
-                <select className="h-11 rounded-xl border border-border bg-background px-3 text-sm" name="employeeId" required><option value="">Select exact employee</option>{data.employees.filter((employee) => employee.store_id === row.store_id).map((employee) => <option key={employee.id} value={employee.id}>{employee.staff_name}</option>)}</select>
-                <input name="payslipRowId" type="hidden" value={row.id} /><button className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white">Link payroll</button>
-              </form>
-            ))}
-          </section>
+          <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-primary" href="/app/staff-match">
+            <span>🔗 Salary slips not matched to staff: {data.payrollRows.length}{data.payrollRows.length === 250 ? "+" : ""} rows. Same names match automatically; match or approve the rest here.</span>
+            <span aria-hidden>→</span>
+          </Link>
           <section className="space-y-3"><h2 className="text-xl font-semibold">Security history</h2>{data.events.slice(0, 50).map((event) => <div className="rounded-2xl border border-border bg-card p-4 text-sm" key={event.id}><p className="font-semibold">{event.event_type.replaceAll("_", " ")}</p><p className="mt-1 text-xs text-muted">{new Date(event.created_at).toLocaleString("en-IN")} · {event.outcome}</p></div>)}</section>
         </>
       ) : null}

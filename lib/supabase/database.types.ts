@@ -5625,6 +5625,7 @@ export type Database = {
       }
       employee_contacts: {
         Row: {
+          left_on: string | null
           created_at: string | null
           created_by: string | null
           designation: string | null
@@ -5633,6 +5634,7 @@ export type Database = {
           normalized_phone: string | null
           normalized_staff_name: string
           notes: string | null
+          removed_by: string | null
           phone: string | null
           staff_name: string
           store_id: string | null
@@ -5640,6 +5642,7 @@ export type Database = {
           whatsapp_phone: string | null
         }
         Insert: {
+          left_on?: string | null
           created_at?: string | null
           created_by?: string | null
           designation?: string | null
@@ -5648,6 +5651,7 @@ export type Database = {
           normalized_phone?: string | null
           normalized_staff_name: string
           notes?: string | null
+          removed_by?: string | null
           phone?: string | null
           staff_name: string
           store_id?: string | null
@@ -5655,6 +5659,7 @@ export type Database = {
           whatsapp_phone?: string | null
         }
         Update: {
+          left_on?: string | null
           created_at?: string | null
           created_by?: string | null
           designation?: string | null
@@ -5663,6 +5668,7 @@ export type Database = {
           normalized_phone?: string | null
           normalized_staff_name?: string
           notes?: string | null
+          removed_by?: string | null
           phone?: string | null
           staff_name?: string
           store_id?: string | null
@@ -7733,6 +7739,11 @@ export type Database = {
       staff_match_overview: { Args: { p_store: string }; Returns: Json }
       link_staff_name: { Args: { p_employee: string; p_source: string; p_store: string }; Returns: undefined }
       auto_link_staff_names: { Args: { p_store: string }; Returns: number }
+      auto_link_payslip_names: { Args: { p_store?: string }; Returns: number }
+      link_payslip_name: { Args: { p_employee: string; p_name: string; p_store: string }; Returns: string }
+      decide_payslip_link: { Args: { p_approve: boolean; p_request: string }; Returns: undefined }
+      payslip_link_overview: { Args: { p_store: string }; Returns: Json }
+      remove_staff: { Args: { p_employee: string; p_reason: string }; Returns: string }
       stock_lookup: { Args: { p_code: string }; Returns: Json }
       my_week_highlights: { Args: Record<PropertyKey, never>; Returns: Json }
       publish_stock_import_part: { Args: { p_import: string }; Returns: Json }

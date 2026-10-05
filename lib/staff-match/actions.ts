@@ -42,3 +42,38 @@ export async function linkStaffName(_state: State, formData: FormData): Promise<
   revalidatePath("/app/staff-match");
   return { ok: true, message: "Matched." };
 }
+
+/** Salary slip name → staff member. The owner links at once; a manager or cashier sends it to the owner. */
+export async function linkPayslipName(_state: State, formData: FormData): Promise<State> {
+  const storeId = await access(formData);
+  if (!storeId) return { ok: false, message: "You cannot match staff for this store." };
+  const employee = text(formData, "employeeId", 60);
+  if (!employee) return { ok: false, message: "Choose the staff member." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("link_payslip_name", { p_employee: employee, p_name: text(formData, "source"), p_store: storeId });
+  if (error) return { ok: false, message: error.code === "P0001" ? error.message : "Could not save. Please retry." };
+  revalidatePath("/app/staff-match");
+  return { ok: true, message: data === "linked" ? "Matched." : "Sent to the owner for approval." };
+}
+
+/** Owner: approve or reject a suggested salary slip match. */
+export async function decidePayslipLink(_state: State, formData: FormData): Promise<State> {
+  const { profile } = await requireProfile();
+  if (profile.role !== "owner") return { ok: false, message: "Only the owner approves salary slip matches." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("decide_payslip_link", { p_approve: formData.get("decision") === "approve", p_request: text(formData, "requestId", 60) });
+  if (error) return { ok: false, message: error.code === "P0001" ? error.message : "Could not save. Please retry." };
+  revalidatePath("/app/staff-match");
+  return { ok: true, message: formData.get("decision") === "approve" ? "Approved." : "Rejected." };
+}
+
+/** Link every salary slip whose name is exactly a staff member of the store. */
+export async function autoMatchPayslips(_state: State, formData: FormData): Promise<State> {
+  const storeId = await access(formData);
+  if (!storeId) return { ok: false, message: "You cannot match staff for this store." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("auto_link_payslip_names", { p_store: storeId });
+  if (error) return { ok: false, message: error.code === "P0001" ? error.message : "Could not match. Please retry." };
+  revalidatePath("/app/staff-match");
+  return { ok: true, message: Number(data) ? `${data} salary slip${Number(data) === 1 ? "" : "s"} matched.` : "Nothing new to match." };
+}

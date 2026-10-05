@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { List, PencilLine, Plus, Search, UserMinus, UserRoundPen } from "lucide-react";
+import { List, PencilLine, Plus, Search, UserMinus, UserRoundCheck, UserRoundPen } from "lucide-react";
 
+import { ActionForm } from "@/components/accounts/action-form";
+import { inputClass } from "@/components/accounts/fields";
 import { AccessDenied } from "@/components/app/access-denied";
 import { BulkPhoneEditor } from "@/components/employees/bulk-phone-editor";
 import { SyncStaffButton } from "@/components/employees/sync-staff-button";
-import { bulkUpdateEmployeePhones, deactivateEmployeeContact, syncStaffFromPayslips } from "@/lib/employees/actions";
+import { bulkUpdateEmployeePhones, deactivateEmployeeContact, removeStaff, syncStaffFromPayslips } from "@/lib/employees/actions";
 import { getActiveEmployeeStores, getEmployeeContacts } from "@/lib/employees/queries";
 import { requireProfile } from "@/lib/auth/session";
 import { MyStaffRequests, StaffRequests } from "@/components/employees/staff-requests";
@@ -71,7 +73,7 @@ export default async function EmployeesPage({
       {profile.role === "owner" ? <StaffRequests /> : null}
       {profile.role === "cashier" ? <MyStaffRequests userId={profile.id} /> : null}
       <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-primary" href="/app/staff-match">
-        <span>🔗 Match sales names to staff (so each login shows its own sales)</span>
+        <span>🔗 Match sales and salary slip names to staff (so each login shows its own sales and salary)</span>
         <span aria-hidden>→</span>
       </Link>
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
@@ -162,7 +164,7 @@ export default async function EmployeesPage({
           name="status"
         >
           <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="inactive">Left / inactive</option>
           <option value="all">All status</option>
         </select>
         <label className="flex min-h-11 items-center gap-2 rounded-2xl border border-border bg-background px-3 text-sm font-semibold">
@@ -211,7 +213,7 @@ export default async function EmployeesPage({
                     {employee.whatsapp_phone ? "Phone Ready" : "Phone Missing"}
                   </p>
                   <p className={employee.is_active === false ? "mt-1 text-xs font-semibold text-danger" : "mt-1 text-xs font-semibold text-success"}>
-                    {employee.is_active === false ? "Inactive" : "Active"}
+                    {employee.is_active === false ? (employee.left_on ? `Left · ${employee.left_on.split("-").reverse().join("/")}` : "Inactive") : "Active"}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -222,16 +224,29 @@ export default async function EmployeesPage({
                     <UserRoundPen className="size-4" />
                     Edit Phone
                   </Link>
-                  {profile.role !== "cashier" ? <form action={deactivateEmployeeContact}>
+                  {profile.role !== "cashier" && employee.is_active === false ? <form action={deactivateEmployeeContact}>
                     <input name="employeeId" type="hidden" value={employee.id} />
                     <button
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
                       type="submit"
                     >
-                      <UserMinus className="size-4" />
-                      {employee.is_active !== false ? "Deactivate" : "Activate"}
+                      <UserRoundCheck className="size-4" />
+                      Activate again
                     </button>
                   </form> : null}
+                  {profile.role !== "cashier" && employee.is_active !== false ? (
+                    <details className="group w-full sm:w-auto">
+                      <summary className="inline-flex h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-danger/40 px-3 text-xs font-semibold text-danger transition hover:bg-danger/5">
+                        <UserMinus className="size-4" />
+                        Remove (left)
+                      </summary>
+                      <ActionForm action={removeStaff} className="mt-2 grid gap-2 rounded-2xl border border-border bg-background p-3" submitLabel={`Remove ${employee.staff_name}`}>
+                        <input name="employeeId" type="hidden" value={employee.id} />
+                        <input className={inputClass} maxLength={200} minLength={3} name="reason" placeholder="Why? e.g. left on 30 Sep" required />
+                        <p className="text-xs leading-5 text-muted">Their login stops at once. Old payslips and sales stay. Staff with no history are deleted.</p>
+                      </ActionForm>
+                    </details>
+                  ) : null}
                 </div>
               </div>
             </div>

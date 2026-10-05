@@ -192,7 +192,7 @@ export async function deactivateEmployeeContact(formData: FormData) {
 
   await supabase
     .from("employee_contacts")
-    .update({ is_active: existing.is_active === false })
+    .update(existing.is_active === false ? { is_active: true, left_on: null } : { is_active: false })
     .eq("id", employeeId);
   revalidatePath("/app/employees");
   revalidatePath(`/app/employees/${employeeId}`);
@@ -386,4 +386,23 @@ export async function syncStaffFromPayslips(
     ok: true,
     message: `Sync complete. Created ${created}. Already existed ${existed}. Updated with phone ${updated}. Rows skipped ${skipped}.`,
   };
+}
+
+/**
+ * Staff who left: the owner or the store manager removes them. Their login
+ * stops at once. With no history they are deleted; otherwise kept as "left"
+ * so old payslips and sales stay correct.
+ */
+export async function removeStaff(_state: { ok: boolean; message: string }, formData: FormData): Promise<{ ok: boolean; message: string }> {
+  const { profile } = await requireProfile();
+  if (!profile || !["owner", "manager"].includes(profile.role)) return { ok: false, message: "Only the owner or the store manager can remove staff." };
+  const employeeId = readString(formData, "employeeId");
+  if (!employeeId) return { ok: false, message: "Choose the staff member." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("remove_staff", { p_employee: employeeId, p_reason: readString(formData, "reason").slice(0, 200) });
+  if (error) return { ok: false, message: error.code === "P0001" ? error.message : "Could not remove. Please retry." };
+  revalidatePath("/app/employees");
+  revalidatePath("/app/staff-accounts");
+  revalidatePath("/app/staff-match");
+  return { ok: true, message: data === "deleted" ? "Deleted (no salary or sales history)." : "Removed. Their login no longer works; old payslips and sales are kept." };
 }
