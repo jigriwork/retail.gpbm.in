@@ -10,7 +10,8 @@ import { listExpenses } from "@/lib/money/queries";
 
 export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ store?: string; month?: string }> }) {
   const { profile } = await requireProfile();
-  if (!profile || !["owner", "manager", "cashier"].includes(profile.role)) return <AccessDenied message="Expenses are for the owner, store managers and cashiers." />;
+  if (profile?.role === "cashier") return <AccessDenied message="Cash paid from the counter goes in the Cash book." />;
+  if (!profile || !["owner", "manager"].includes(profile.role)) return <AccessDenied message="Other expenses are for the owner and store managers." />;
   const stores = await getAccessibleStores(profile);
   const params = await searchParams;
   const store = stores.find((item) => item.id === params.store) ?? stores[0];
@@ -29,8 +30,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   return (
     <div className="space-y-5">
       <MoneyHeader
-        description="Every rupee spent by the store: tea, transport, repairs, bags and so on. Cash paid from the counter is taken into the day close; everything counts in the store's monthly profit."
-        title="Expenses"
+        description="Store expenses paid by UPI, bank transfer or by the owner: rent, electricity, repairs and so on. Cash paid from the counter goes in the Cash book instead."
+        title="Other expenses"
       />
       <MoneyNav active="/app/money/expenses" extra={{ month: month.slice(0, 7) }} isOwner={isOwner} storeId={store.id} stores={stores} />
 

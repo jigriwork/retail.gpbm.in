@@ -16,8 +16,8 @@ export const expenseCategories = [
   { value: "other", label: "Other" },
 ] as const;
 
+// Cash from the counter goes in the cash book, so it is not offered here.
 export const paidFromOptions = [
-  { value: "cash", label: "Cash from the counter" },
   { value: "upi", label: "UPI" },
   { value: "bank", label: "Bank transfer" },
   { value: "owner", label: "Paid by owner" },

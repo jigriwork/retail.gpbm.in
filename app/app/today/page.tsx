@@ -40,6 +40,7 @@ import { TodayHero, type HeroStat } from "@/components/app/today-hero";
 import { UploadStreaks } from "@/components/app/upload-streaks";
 import { handheldAllows } from "@/lib/auth/access";
 import { ReviewStatusCard } from "@/components/reviews/review-status-card";
+import { StoreChecklistCard } from "@/components/app/store-checklist";
 import { getAccessibleStores, requireProfile, type Store as RetailStore } from "@/lib/auth/session";
 import { isLimitedView } from "@/lib/auth/view";
 import { getAccessibleChecklists } from "@/lib/checklist/queries";
@@ -1196,6 +1197,12 @@ export default async function TodayPage({
           <span aria-hidden>→</span>
         </Link>
       ) : null}
+      {/* Daily checklist per store: cheer when everything is done, otherwise what is pending. */}
+      <div className={stores.filter((store) => store.is_active).length > 1 ? "grid gap-4 lg:grid-cols-2" : ""}>
+        {stores.filter((store) => store.is_active).map((store) => (
+          <StoreChecklistCard firstName={isOwner ? null : profile?.full_name?.split(" ")[0]} key={store.id} storeId={store.id} storeName={store.name} />
+        ))}
+      </div>
       {isOwner ? (
         <OwnerToday
           displayName={displayName}

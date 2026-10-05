@@ -51,7 +51,7 @@ type ContactSession = Awaited<ReturnType<typeof requireProfile>> & {
 
 async function requireContactUserOrRedirect(): Promise<ContactSession> {
   const session = await requirePhoneActor();
-  if (!session.profile || !["owner", "manager"].includes(session.profile.role)) {
+  if (!session.profile || !["owner", "manager", "cashier"].includes(session.profile.role)) {
     redirect("/app/employees");
   }
 
@@ -71,6 +71,8 @@ async function canWriteEmployeeStore(storeId: string, profile: Profile) {
 
 export async function createEmployeeContact(formData: FormData) {
   const session = await requireContactUserOrRedirect();
+  // A cashier's new staff go to the owner for approval (Add staff page).
+  if (session.profile.role === "cashier") redirect("/app/employees/new?error=approval");
   const supabase = await createClient();
   const staffName = normalizeStaffName(readString(formData, "staffName"));
   const storeId = readString(formData, "storeId");
@@ -140,18 +142,21 @@ export async function updateEmployeeContact(formData: FormData) {
     redirect(`/app/employees/${employeeId}?error=access`);
   }
 
-  if (!(await canWriteEmployeeStore(storeId, session.profile))) {
+  // A cashier edits name, phone and notes only; active status and store stay.
+  const cashier = session.profile.role === "cashier";
+  const targetStore = cashier ? existing.store_id : storeId;
+  if (!(await canWriteEmployeeStore(targetStore, session.profile))) {
     redirect(`/app/employees/${employeeId}?error=store`);
   }
 
   const { error } = await supabase
     .from("employee_contacts")
     .update({
-      is_active: readBoolean(formData, "isActive"),
+      ...(cashier ? {} : { is_active: readBoolean(formData, "isActive") }),
       normalized_staff_name: staffNameKey(staffName),
       notes: notes || null,
       staff_name: staffName,
-      store_id: storeId,
+      store_id: targetStore,
     })
     .eq("id", employeeId);
 
@@ -167,6 +172,7 @@ export async function updateEmployeeContact(formData: FormData) {
 
 export async function deactivateEmployeeContact(formData: FormData) {
   const session = await requireContactUserOrRedirect();
+  if (session.profile.role === "cashier") redirect("/app/employees?error=access");
   const employeeId = readString(formData, "employeeId");
   const supabase = await createClient();
 

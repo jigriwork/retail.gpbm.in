@@ -33,12 +33,13 @@ test("managers can close the day and record expenses on a phone; accountants can
   assert.equal(accountantAllows("/app/customers"), false);
 });
 
-test("cashiers reach only day close, expenses, uploads, stock counts, staff requests and their password page", () => {
+test("cashiers reach only the cash book, uploads, stock counts, the staff list and their password page", () => {
   const { cashierAllows } = fixture().load("@/lib/auth/access");
-  for (const path of ["/app/money", "/app/money/expenses", "/app/cashier/uploads", "/app/cashier/staff", "/app/stock-counts", "/app/stock-counts/abc", "/app/settings/account"]) {
+  // The staff list is the same as the manager's (owner, 5 Oct 2026); adding needs owner approval.
+  for (const path of ["/app/money", "/app/cashier/uploads", "/app/cashier/staff", "/app/stock-counts", "/app/stock-counts/abc", "/app/employees", "/app/employees/new", "/app/settings/account"]) {
     assert.equal(cashierAllows(path), true, path);
   }
-  for (const path of ["/app/money/profit", "/app/today", "/app/reports", "/app/reports/sales", "/app/customers", "/app/buying", "/app/accounts", "/app/employees", "/app/users", "/app/payslips"]) {
+  for (const path of ["/app/money/profit", "/app/today", "/app/reports", "/app/reports/sales", "/app/customers", "/app/buying", "/app/accounts", "/app/users", "/app/payslips"]) {
     assert.equal(cashierAllows(path), false, path);
   }
 });

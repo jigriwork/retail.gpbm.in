@@ -13,12 +13,13 @@ export function MoneyHeader({ description, title }: { description: string; title
 }
 
 /** Tabs for the money pages, keeping the chosen store; the store switch shows when there is more than one. */
-export function MoneyNav({ active, isOwner, storeId, stores, extra = {} }: {
-  active: string; isOwner: boolean; storeId: string; stores: Pick<Store, "id" | "name">[]; extra?: Record<string, string>;
+export function MoneyNav({ active, isCashier = false, isOwner, storeId, stores, extra = {} }: {
+  active: string; isCashier?: boolean; isOwner: boolean; storeId: string; stores: Pick<Store, "id" | "name">[]; extra?: Record<string, string>;
 }) {
+  // Cash goes in the cash book; "Other expenses" are bank/UPI/owner-paid. Profit is owner-only.
   const links = [
-    { href: "/app/money", label: "Day close" },
-    { href: "/app/money/expenses", label: "Expenses" },
+    { href: "/app/money", label: "Cash book" },
+    ...(isCashier ? [] : [{ href: "/app/money/expenses", label: "Other expenses" }]),
     ...(isOwner ? [{ href: "/app/money/profit", label: "Profit" }] : []),
   ];
   const query = (params: Record<string, string>) => `?${new URLSearchParams(params)}`;

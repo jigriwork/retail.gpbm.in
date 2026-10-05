@@ -67,13 +67,13 @@ const handheldPrefixes = [
 ];
 
 /**
- * Cashiers: day close and expenses, daily uploads, stock counts and staff
- * requests (plus their own password page). Store profit stays owner-only.
+ * Cashiers: cash book, daily uploads, stock counts and the staff list (adding
+ * needs owner approval), plus their own password page. Profit stays owner-only.
  */
 export function cashierAllows(pathname: string) {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
   if (path === "/app/money/profit" || path.startsWith("/app/money/profit/")) return false;
-  return ["/app/money", "/app/stock-counts", "/app/cashier"].some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+  return ["/app/money", "/app/stock-counts", "/app/cashier", "/app/employees"].some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
     || path === "/app/settings/account";
 }
 

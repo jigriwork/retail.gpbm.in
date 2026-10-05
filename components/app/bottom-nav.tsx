@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpenCheck, CheckSquare, ClipboardList, Home, MessageCircle, Receipt, Store, UploadCloud, UserPlus, Wallet } from "lucide-react";
+import { BarChart3, BookOpenCheck, CheckSquare, ClipboardList, Home, MessageCircle, Store, UploadCloud, UserPlus, Wallet } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
 
@@ -18,11 +18,10 @@ const navItems = [
 const accountantItems = navItems.filter((item) => item.href === "/app/accounts");
 
 const cashierItems = [
-  { label: "Day close", href: "/app/money", icon: Wallet, exact: true },
-  { label: "Expenses", href: "/app/money/expenses", icon: Receipt },
+  { label: "Cash book", href: "/app/money", icon: Wallet },
   { label: "Uploads", href: "/app/cashier/uploads", icon: UploadCloud },
   { label: "Counts", href: "/app/stock-counts", icon: ClipboardList },
-  { label: "Staff", href: "/app/cashier/staff", icon: UserPlus },
+  { label: "Staff", href: "/app/employees", icon: UserPlus },
 ];
 
 export function BottomNav({ role }: { role?: string }) {

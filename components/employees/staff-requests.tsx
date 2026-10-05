@@ -49,3 +49,26 @@ export async function StaffRequests() {
     </section>
   );
 }
+
+/** Cashier: the staff they sent for approval, with the owner's decision. */
+export async function MyStaffRequests({ userId }: { userId: string }) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("staff_requests").select("id,staff_name,designation,status,requested_at,decision_note,stores(name)")
+    .eq("requested_by", userId).order("requested_at", { ascending: false }).limit(20);
+  if (!data?.length) return null;
+  return (
+    <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+      <h2 className="text-xl font-semibold">Staff you added</h2>
+      <ul className="mt-3 space-y-2 text-sm">
+        {data.map((request) => (
+          <li className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-background p-3" key={request.id}>
+            <span><span className="font-semibold">{request.staff_name}</span> · {request.designation ?? "Staff"} · {request.stores?.name} · sent {shortDate(request.requested_at.slice(0, 10))}{request.decision_note ? ` · “${request.decision_note}”` : ""}</span>
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${request.status === "approved" ? "bg-success text-white" : request.status === "rejected" ? "bg-danger text-white" : "bg-accent-soft text-accent-ink"}`}>
+              {request.status === "approved" ? "Approved" : request.status === "rejected" ? "Rejected" : "Waiting for owner"}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}

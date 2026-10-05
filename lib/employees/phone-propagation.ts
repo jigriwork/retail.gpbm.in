@@ -11,8 +11,8 @@ export async function requirePhoneActor() {
   const { data: { user }, error: authError } = await client.auth.getUser();
   if (authError || !user) throw new Error("Authentication required.");
   const { data: profile, error } = await client.from("profiles").select("*").eq("id", user.id).maybeSingle();
-  if (error || !profile || profile.is_active !== true || !["owner", "manager"].includes(profile.role)) {
-    throw new Error("An active owner or assigned manager is required.");
+  if (error || !profile || profile.is_active !== true || !["owner", "manager", "cashier"].includes(profile.role)) {
+    throw new Error("An active owner, assigned manager or cashier is required.");
   }
   return { client, user, profile };
 }

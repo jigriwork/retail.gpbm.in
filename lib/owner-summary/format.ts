@@ -34,7 +34,8 @@ export type OwnerSummaryStore = {
   top_brands: Array<{ name: string; sale: Money }> | null;
   top_staff: { bills: Money; name: string; sale: Money } | null;
   // Added for the detailed version (older facts may not have them).
-  day_close?: { difference: Money; status: string } | null;
+  // The cashier's cash book for the day (null when not started that day).
+  cash?: { bank_day: boolean; book: Money; counted: Money; deposit: boolean; status: string } | null;
   discount_pct?: Money;
   last_month_same_days_sale?: Money;
   month_days?: Money;
@@ -235,13 +236,15 @@ function billsDetail(store: OwnerSummaryStore | undefined) {
 }
 
 function cashDetail(store: OwnerSummaryStore | undefined) {
-  const close = store?.day_close;
-  if (!close) return "cash opening/closing not done ❌";
-  if (close.difference === null || close.difference === undefined) return "closed, waiting for the sales report";
-  const difference = Math.round(num(close.difference));
-  const checked = close.status === "reviewed" ? " (checked)" : "";
-  if (Math.abs(difference) < 50) return `matched ✅${checked}`;
-  return `${difference < 0 ? "short" : "excess"} ${rupees(Math.abs(difference))} ⚠️${checked}`;
+  const cash = store?.cash;
+  if (!cash || cash.status === "open") return "cash opening/closing not done ❌";
+  const difference = Math.round(num(cash.counted) - num(cash.book));
+  const parts = [`CB ${rupees(cash.book)}`];
+  if (Math.abs(difference) <= 10) parts.push("counted, matched ✅");
+  else parts.push(`counted ${rupees(cash.counted)}, ${difference < 0 ? "short" : "excess"} ${rupees(Math.abs(difference))} ⚠️`);
+  if (cash.status === "reviewed") parts.push("checked");
+  if (cash.bank_day && !cash.deposit) parts.push("no bank deposit ⚠️");
+  return parts.join(" · ");
 }
 
 function monthDetail(store: OwnerSummaryStore | undefined, day: string) {
@@ -322,11 +325,11 @@ export function formatOwnerSummaryDetailed(facts: OwnerSummaryFacts) {
     templateValue(date, 40),
     templateValue(salesDetail(gp, facts.day), 90),
     templateValue(billsDetail(gp), 90),
-    templateValue(cashDetail(gp), 60),
+    templateValue(cashDetail(gp), 110),
     templateValue(monthDetail(gp, facts.day), 90),
     templateValue(salesDetail(bm, facts.day), 90),
     templateValue(billsDetail(bm), 90),
-    templateValue(cashDetail(bm), 60),
+    templateValue(cashDetail(bm), 110),
     templateValue(monthDetail(bm, facts.day), 90),
     templateValue(best.join(" · ") || "No bill-wise sales yesterday", 160),
     templateValue(attention.join(" · ") || "Nothing unusual 👍", 200),

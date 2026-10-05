@@ -14,7 +14,7 @@ export default async function EditEmployeePage({
   searchParams: Promise<{ error?: string; returnTo?: string; saved?: string }>;
 }) {
   const { profile } = await requireProfile();
-  if (!profile || !["owner", "manager"].includes(profile.role)) {
+  if (!profile || !["owner", "manager", "cashier"].includes(profile.role)) {
     return <AccessDenied message="Staff phone directory is available to owner and assigned managers." />;
   }
 
@@ -47,15 +47,19 @@ export default async function EditEmployeePage({
         <input name="returnTo" type="hidden" value={backHref} />
         {saved ? <p className="text-sm font-semibold text-success">Employee saved.</p> : null}
         {error ? <p className="text-sm font-semibold text-danger">{error}</p> : null}
-        <label className="block">
-          <span className="text-sm font-semibold">Store</span>
-          <select className="mt-2 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" defaultValue={employee.store_id ?? ""} name="storeId" required>
-            <option value="">Select store</option>
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>{store.name}</option>
-            ))}
-          </select>
-        </label>
+        {profile.role === "cashier" ? (
+          <input name="storeId" type="hidden" value={employee.store_id ?? ""} />
+        ) : (
+          <label className="block">
+            <span className="text-sm font-semibold">Store</span>
+            <select className="mt-2 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" defaultValue={employee.store_id ?? ""} name="storeId" required>
+              <option value="">Select store</option>
+              {stores.map((store) => (
+                <option key={store.id} value={store.id}>{store.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="block">
           <span className="text-sm font-semibold">Staff Name</span>
           <input className="mt-2 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" defaultValue={employee.staff_name} name="staffName" required />
@@ -68,10 +72,14 @@ export default async function EditEmployeePage({
           <span className="text-sm font-semibold">Notes</span>
           <textarea className="mt-2 min-h-28 w-full rounded-2xl border border-border bg-background px-3 py-3 text-sm outline-none focus:border-primary" defaultValue={employee.notes ?? ""} name="notes" />
         </label>
-        <label className="flex items-center gap-3 text-sm font-semibold">
-          <input className="size-4 accent-black" defaultChecked={employee.is_active !== false} name="isActive" type="checkbox" />
-          Active
-        </label>
+        {profile.role === "cashier" ? (
+          <p className="text-sm text-muted">{employee.is_active !== false ? "Active" : "Inactive"} · only the owner or the manager can remove or move staff.</p>
+        ) : (
+          <label className="flex items-center gap-3 text-sm font-semibold">
+            <input className="size-4 accent-black" defaultChecked={employee.is_active !== false} name="isActive" type="checkbox" />
+            Active
+          </label>
+        )}
         <div className="flex flex-wrap gap-2">
           <button className="h-11 rounded-2xl bg-primary px-5 text-sm font-semibold text-white" type="submit">
             Save and Back

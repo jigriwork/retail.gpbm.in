@@ -59,11 +59,11 @@ const detailedFacts = {
   day: "2026-10-03",
   stores: [
     { ...facts.stores[0], qty: 59, discount_pct: "11.2", usual_discount_pct: "10.4", month_days: 3, last_month_same_days_sale: null, month_target: null,
-      day_close: { status: "submitted", difference: "-200" },
+      cash: { status: "closed", book: "40312", counted: "40112", bank_day: false, deposit: false },
       top_staffs: [{ name: "G NAYAK", sale: "9943.12", bills: 5 }, { name: "ROJI", sale: "8761", bills: 2 }],
       top_brands: [{ name: "JACK&JONES", sale: "4049" }, { name: "CAMPUS", sale: "2941" }, { name: "SWISH", sale: "2879" }] },
     { ...facts.stores[1], returns: "15100", return_brands: ["MUFTI", "BLACKBERRYS"], qty: 82, discount_pct: "22.4", usual_discount_pct: "14.1",
-      month_days: 3, last_month_same_days_sale: "333000", month_target: null, day_close: { status: "reviewed", difference: "20" },
+      month_days: 3, last_month_same_days_sale: "333000", month_target: null, cash: { status: "reviewed", book: "12000", counted: "12005", bank_day: true, deposit: false },
       top_staffs: [{ name: "MD RAHIM", sale: "24545", bills: 2 }, { name: "AKSHAYA SAHU", sale: "17907", bills: 4 }],
       top_brands: [{ name: "PEPE", sale: "17458" }, { name: "US POLO.", sale: "15675" }, { name: "JOCKEY", sale: "9078" }] },
   ],
@@ -76,11 +76,11 @@ test("detailed summary: each store's sales, bills, cash and month, then staff, a
     "Sat, 3 Oct 2026",
     "₹1,13,848 after ₹15.1k returns · ↓11% vs last Sat",
     "39 bills · avg ₹2,919 · 2.1 items/bill · discount 22%",
-    "matched ✅ (checked)",
+    "CB ₹12,000 · counted, matched ✅ · checked · no bank deposit ⚠️",
     "₹3.73 lakh in 3 days · ↑12% vs same days Sep",
     "₹34,207 · 4× last Sat",
     "16 bills · avg ₹2,138 · 3.7 items/bill · discount 11%",
-    "short ₹200 ⚠️",
+    "CB ₹40,312 · counted ₹40,112, short ₹200 ⚠️",
     "₹34.2k in 3 days",
     "GP: Md Rahim ₹24.5k (2 bills), Akshaya Sahu ₹17.9k (4 bills) · BM: G Nayak ₹9.9k (5 bills), Roji ₹8.8k (2 bills)",
     "Kalia Dash S (GP) ₹2.9k/day this week, usual ₹6.8k · GP returns ₹15.1k (MUFTI, BLACKBERRYS) · GP discount 22%, usual 14%",
@@ -96,16 +96,16 @@ test("detailed summary: target progress, day not closed, missing report, and the
   const { formatOwnerSummaryDetailed, renderOwnerSummaryDetailed, OWNER_SUMMARY_MAX_LENGTH } = load();
   const busy = structuredClone(detailedFacts);
   busy.stores[1].month_target = "1200000";
-  busy.stores[1].day_close = null;
+  busy.stores[1].cash = null;
   busy.stores[0].status = "missing";
-  busy.stores[0].day_close = { status: "submitted", difference: null };
+  busy.stores[0].cash = { status: "open", book: null, counted: null, bank_day: true, deposit: false };
   busy.stores[1].top_brands = Array.from({ length: 3 }, (_, i) => ({ name: `A VERY LONG BRAND NAME NUMBER ${i} WITH MANY WORDS`, sale: "99999" }));
   busy.stores[1].return_brands = ["ANOTHER VERY LONG BRAND NAME", "AND ONE MORE VERY LONG BRAND NAME"];
   const values = Array.from(formatOwnerSummaryDetailed(busy));
   assert.equal(values[4], "₹3.73 lakh in 3 days · 31% of ₹12 lakh target");
   assert.equal(values[3], "cash opening/closing not done ❌");
   assert.equal(values[5], "report not received ❌");
-  assert.equal(values[7], "closed, waiting for the sales report");
+  assert.equal(values[7], "cash opening/closing not done ❌");
   assert.match(values[12], /^BM report missing ❌/);
   assert.ok(renderOwnerSummaryDetailed(values).length <= OWNER_SUMMARY_MAX_LENGTH);
 });

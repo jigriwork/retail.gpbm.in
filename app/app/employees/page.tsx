@@ -7,7 +7,7 @@ import { SyncStaffButton } from "@/components/employees/sync-staff-button";
 import { bulkUpdateEmployeePhones, deactivateEmployeeContact, syncStaffFromPayslips } from "@/lib/employees/actions";
 import { getActiveEmployeeStores, getEmployeeContacts } from "@/lib/employees/queries";
 import { requireProfile } from "@/lib/auth/session";
-import { StaffRequests } from "@/components/employees/staff-requests";
+import { MyStaffRequests, StaffRequests } from "@/components/employees/staff-requests";
 
 export default async function EmployeesPage({
   searchParams,
@@ -22,7 +22,7 @@ export default async function EmployeesPage({
   }>;
 }) {
   const { profile } = await requireProfile();
-  if (!profile || !["owner", "manager"].includes(profile.role)) {
+  if (!profile || !["owner", "manager", "cashier"].includes(profile.role)) {
     return <AccessDenied message="Staff phone directory is available to owner and assigned managers." />;
   }
 
@@ -69,6 +69,7 @@ export default async function EmployeesPage({
   return (
     <div className="space-y-5">
       {profile.role === "owner" ? <StaffRequests /> : null}
+      {profile.role === "cashier" ? <MyStaffRequests userId={profile.id} /> : null}
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -217,7 +218,7 @@ export default async function EmployeesPage({
                     <UserRoundPen className="size-4" />
                     Edit Phone
                   </Link>
-                  <form action={deactivateEmployeeContact}>
+                  {profile.role !== "cashier" ? <form action={deactivateEmployeeContact}>
                     <input name="employeeId" type="hidden" value={employee.id} />
                     <button
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
@@ -226,7 +227,7 @@ export default async function EmployeesPage({
                       <UserMinus className="size-4" />
                       {employee.is_active !== false ? "Deactivate" : "Activate"}
                     </button>
-                  </form>
+                  </form> : null}
                 </div>
               </div>
             </div>

@@ -2,6 +2,10 @@ import Link from "next/link";
 
 import { AccessDenied } from "@/components/app/access-denied";
 import { requireProfile } from "@/lib/auth/session";
+import { ActionForm } from "@/components/accounts/action-form";
+import { Field, inputClass } from "@/components/accounts/fields";
+import { indiaToday } from "@/lib/accounts/format";
+import { requestStaffMember } from "@/lib/cashier/actions";
 import { createEmployeeContact } from "@/lib/employees/actions";
 import { getActiveEmployeeStores } from "@/lib/employees/queries";
 
@@ -11,12 +15,40 @@ export default async function NewEmployeePage({
   searchParams: Promise<{ error?: string; returnTo?: string }>;
 }) {
   const { profile } = await requireProfile();
-  if (!profile || !["owner", "manager"].includes(profile.role)) {
-    return <AccessDenied message="Staff phone directory is available to owner and assigned managers." />;
+  if (!profile || !["owner", "manager", "cashier"].includes(profile.role)) {
+    return <AccessDenied message="Staff phone directory is available to owner, assigned managers and cashiers." />;
   }
 
   const { error, returnTo = "" } = await searchParams;
   const stores = await getActiveEmployeeStores(profile);
+  // A cashier's new staff go to the owner for approval before they are added.
+  if (profile.role === "cashier") {
+    return (
+      <div className="space-y-5">
+        <div>
+          <Link className="text-sm font-semibold text-muted" href="/app/employees">Back to staff</Link>
+          <h1 className="mt-2 text-3xl font-semibold">Add a staff member</h1>
+          <p className="mt-2 text-sm leading-6 text-muted">The owner approves every new staff member before they appear in the staff list and payroll.</p>
+        </div>
+        {!stores.length ? <p className="text-sm text-muted">No store assigned. Please contact owner.</p> : (
+          <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
+            <ActionForm action={requestStaffMember} className="grid gap-4 sm:grid-cols-2" submitLabel="Send for approval">
+              {stores.length > 1 ? (
+                <Field label="Store">
+                  <select className={inputClass} name="storeId">{stores.map((store) => <option key={store.id} value={store.id}>{store.name}</option>)}</select>
+                </Field>
+              ) : <input name="storeId" type="hidden" value={stores[0].id} />}
+              <Field label="Full name"><input className={inputClass} name="staffName" required /></Field>
+              <Field label="Mobile number"><input className={inputClass} inputMode="tel" name="phone" placeholder="98765 43210" required /></Field>
+              <Field label="Designation"><input className={inputClass} name="designation" placeholder="Salesman, Helper, Tailor…" /></Field>
+              <Field label="Joining date"><input className={inputClass} defaultValue={indiaToday()} name="joiningDate" type="date" /></Field>
+              <div className="sm:col-span-2"><Field label="Note (optional)"><input className={inputClass} name="note" placeholder="Salary agreed, reference…" /></Field></div>
+            </ActionForm>
+          </section>
+        )}
+      </div>
+    );
+  }
   const singleStore = stores.length === 1 ? stores[0] : null;
   const backHref = returnTo.startsWith("/app/employees") ? returnTo : "/app/employees";
 
