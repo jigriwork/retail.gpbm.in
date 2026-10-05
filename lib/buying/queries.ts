@@ -2,12 +2,17 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 
-/** Recalculate the saved stock position of each store if its reports changed (one request per store). */
+/**
+ * Recalculate the saved stock position of each store if its reports changed.
+ * A large store can take longer than a request may run; the background job
+ * (every 30 minutes) rebuilds it, so a slow refresh falls back to the last
+ * saved position instead of failing the page.
+ */
 export async function refreshStockPositions(storeIds: string[]) {
   const supabase = await createClient();
   for (const storeId of storeIds) {
     const { error } = await supabase.rpc("refresh_stock_position", { p_store: storeId });
-    if (error) throw new Error("Stock position could not be updated. Please retry.");
+    if (error) console.warn("stock_position_refresh_deferred", { code: error.code });
   }
 }
 
@@ -85,4 +90,11 @@ export async function countScopes(storeId: string) {
   const supabase = await createClient();
   const { data } = await supabase.rpc("stock_count_brands", { p_store: storeId });
   return ((data ?? []) as string[]).filter(Boolean);
+}
+
+/** Codes each count line can be scanned by (lot code, EAN barcode, article code). */
+export async function stockCountCodes(countId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("stock_count_codes", { p_count: countId });
+  return (data ?? []) as unknown as Array<{ codes: string[]; line: string }>;
 }

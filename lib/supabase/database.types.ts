@@ -7726,6 +7726,8 @@ export type Database = {
       bank_holiday_list: { Args: { p_from: string }; Returns: Json }
       store_checklist: { Args: { p_days?: number; p_store: string }; Returns: Json }
       store_week_stars: { Args: { p_store: string }; Returns: Json }
+      stock_count_codes: { Args: { p_count: string }; Returns: Json }
+      stock_lookup: { Args: { p_code: string }; Returns: Json }
       my_week_highlights: { Args: Record<PropertyKey, never>; Returns: Json }
       publish_stock_import_part: { Args: { p_import: string }; Returns: Json }
       fail_report_import: {

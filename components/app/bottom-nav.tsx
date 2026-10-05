@@ -41,8 +41,8 @@ export function BottomNav({ role }: { role?: string }) {
           return (
             <Link
               className={cn(
-                "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[0.7rem] font-semibold text-muted transition",
-                isActive && "bg-primary text-white",
+                "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[0.7rem] font-semibold text-muted transition-all duration-200 active:scale-95",
+                isActive && "bg-primary text-white shadow-md shadow-primary/25",
               )}
               href={item.href}
               key={item.href}

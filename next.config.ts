@@ -28,7 +28,8 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self), payment=(), usb=()" },
+  // Camera only for this site (barcode scanning); no other site may use it.
+  { key: "Permissions-Policy", value: "camera=(self), geolocation=(), microphone=(self), payment=(), usb=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
 ];
 

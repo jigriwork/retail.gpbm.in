@@ -875,6 +875,7 @@ async function MoreDetailsSection({
 function OwnerToday({
   displayName,
   handledPriorities,
+  highlights,
   historicalImport,
   missingPhoneCount,
   notes,
@@ -891,6 +892,8 @@ function OwnerToday({
 }: {
   displayName: string | null;
   handledPriorities: AssessedPriority[];
+  /** Checklist and stars of the week, shown right under the hero. */
+  highlights: React.ReactNode;
   historicalImport: HistoricalImportSummary;
   missingPhoneCount: number;
   notes: Awaited<ReturnType<typeof getSharedOwnerNotes>>;
@@ -928,6 +931,7 @@ function OwnerToday({
         stats={heroSalesStats(salesStatuses)}
         title="Owner Command Center"
       />
+      {highlights}
 
       <DailyPriorities handled={handledPriorities} priorities={priorities} tasks={taskChoices} />
       <SalesTrendChart series={trendSeries(salesStatuses)} />
@@ -996,6 +1000,7 @@ function OwnerToday({
 
 function ManagerToday({
   displayName,
+  highlights,
   limited,
   salesStatuses,
   stockOverview,
@@ -1004,6 +1009,8 @@ function ManagerToday({
   updateSummary,
 }: {
   displayName: string | null;
+  /** Checklist and stars of the week, shown right under the hero. */
+  highlights: React.ReactNode;
   /** Leave out sales figures and analysis pages. */
   limited: boolean;
   salesStatuses: StoreSalesStatus[];
@@ -1049,6 +1056,7 @@ function ManagerToday({
         }
         title="My Store Command Center"
       />
+      {highlights}
 
       <section className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm sm:p-5">
         <p className="text-sm font-medium text-muted">My assigned store{stores.length === 1 ? "" : "s"}</p>
@@ -1189,30 +1197,39 @@ export default async function TodayPage({
   const limited = await isLimitedView(profile);
 
   const pendingStaff = isOwner ? await pendingStaffRequestCount() : 0;
-
-  return (
-    <div className="space-y-5">
+  const activeStores = stores.filter((store) => store.is_active);
+  // Daily checklist (cheer or pending) and Stars of the week, under the hero.
+  const highlights = (
+    <>
+      <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-primary" href="/app/scan">
+        <span>📷 Scan an item: stock and sales for any tag</span>
+        <span aria-hidden>→</span>
+      </Link>
       {pendingStaff ? (
         <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-accent/40 bg-accent-soft p-4 text-sm font-semibold text-accent-ink" href="/app/employees">
           <span>{pendingStaff} new staff member{pendingStaff === 1 ? "" : "s"} waiting for your approval</span>
           <span aria-hidden>→</span>
         </Link>
       ) : null}
-      {/* Daily checklist per store: cheer when everything is done, otherwise what is pending. */}
-      <div className={stores.filter((store) => store.is_active).length > 1 ? "grid gap-4 lg:grid-cols-2" : ""}>
-        {stores.filter((store) => store.is_active).map((store) => (
+      <div className={activeStores.length > 1 ? "grid gap-4 lg:grid-cols-2" : ""}>
+        {activeStores.map((store) => (
           <StoreChecklistCard firstName={isOwner ? null : profile?.full_name?.split(" ")[0]} key={store.id} storeId={store.id} storeName={store.name} />
         ))}
       </div>
-      {/* Stars of the week per store (appreciation). */}
-      <div className={stores.filter((store) => store.is_active).length > 1 ? "grid gap-4 lg:grid-cols-2" : ""}>
-        {stores.filter((store) => store.is_active).map((store) => (
+      <div className={activeStores.length > 1 ? "grid gap-4 lg:grid-cols-2" : ""}>
+        {activeStores.map((store) => (
           <StoreStarsCard amounts={!limited} key={store.id} storeId={store.id} storeName={store.name} />
         ))}
       </div>
+    </>
+  );
+
+  return (
+    <div className="space-y-5">
       {isOwner ? (
         <OwnerToday
           displayName={displayName}
+          highlights={highlights}
           historicalImport={historicalImport}
           missingPhoneCount={missingPhoneCount}
           notes={notes}
@@ -1231,6 +1248,7 @@ export default async function TodayPage({
       ) : (
         <ManagerToday
           displayName={displayName}
+          highlights={highlights}
           limited={limited}
           salesStatuses={salesStatuses}
           stockOverview={stockOverview}

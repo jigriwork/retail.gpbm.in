@@ -20,9 +20,9 @@ export function Celebration({ id }: { id: string }) {
     } catch {
       // Storage blocked: still celebrate this view.
     }
-    // Deferred so the burst starts after the page has painted.
-    const start = window.setTimeout(() => setShow(true), 0);
-    const stop = window.setTimeout(() => setShow(false), 3200);
+    // Starts after the page's entrance animation, so it covers the whole screen.
+    const start = window.setTimeout(() => setShow(true), 450);
+    const stop = window.setTimeout(() => setShow(false), 3650);
     return () => { window.clearTimeout(start); window.clearTimeout(stop); };
   }, [id]);
 

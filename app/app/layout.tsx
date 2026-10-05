@@ -113,7 +113,7 @@ export default async function ProtectedAppLayout({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl px-3 py-4 sm:px-4 sm:py-5">{children}</main>
+      <main className="page-enter mx-auto w-full max-w-5xl px-3 py-4 sm:px-4 sm:py-5">{children}</main>
       <BottomNav role={profile.role} />
       <ChromeMeasure />
     </div>

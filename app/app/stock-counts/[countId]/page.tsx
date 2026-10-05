@@ -8,14 +8,14 @@ import { money, shortDate } from "@/lib/accounts/format";
 import { requireProfile } from "@/lib/auth/session";
 import { isLimitedView } from "@/lib/auth/view";
 import { addExtraItem, reviewCount, submitCount } from "@/lib/buying/actions";
-import { stockCount } from "@/lib/buying/queries";
+import { stockCount, stockCountCodes } from "@/lib/buying/queries";
 
 export default async function StockCountPage({ params }: { params: Promise<{ countId: string }> }) {
   const { profile } = await requireProfile();
   if (!profile || !["owner", "manager", "cashier"].includes(profile.role)) return <AccessDenied message="Stock counts are for the owner, store managers and cashiers." />;
   const { countId } = await params;
   if (!/^[0-9a-f-]{36}$/.test(countId)) return <AccessDenied message="Count not found." />;
-  const [{ count, sheet, summary }, phone] = await Promise.all([stockCount(countId), isLimitedView(profile)]);
+  const [{ count, sheet, summary }, phone, codes] = await Promise.all([stockCount(countId), isLimitedView(profile), stockCountCodes(countId)]);
   const limited = phone || profile.role === "cashier";
   if (!count) return <AccessDenied message="Count not found." />;
   const counting = count.status === "counting";
@@ -67,8 +67,8 @@ export default async function StockCountPage({ params }: { params: Promise<{ cou
         </Panel>
       ) : null}
 
-      <Panel description={counting ? "Type the number on the shelf for each item; it saves as you go. Enter 0 for items you cannot find." : undefined} title="Count sheet">
-        {sheet.length ? <CountSheet editable={counting} lines={sheet} /> : <Empty>No items.</Empty>}
+      <Panel description={counting ? "Tap Scan and scan each piece's tag (each scan adds 1), or type the number on the shelf; it saves as you go. Enter 0 for items you cannot find." : undefined} title="Count sheet">
+        {sheet.length ? <CountSheet codes={codes} countId={count.id} editable={counting} lines={sheet} /> : <Empty>No items.</Empty>}
       </Panel>
 
       {counting ? (

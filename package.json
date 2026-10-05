@@ -1,6 +1,6 @@
 {
   "name": "retail.gpbm.in",
-  "version": "9.25.0",
+  "version": "9.26.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -13,6 +13,8 @@
     "@hookform/resolvers": "^5.4.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
+    "@zxing/browser": "0.2.1",
+    "@zxing/library": "0.23.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "date-fns-tz": "^3.2.0",
