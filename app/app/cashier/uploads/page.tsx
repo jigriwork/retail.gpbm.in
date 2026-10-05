@@ -16,7 +16,7 @@ export default async function CashierUploadsPage() {
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <p className="text-sm font-medium text-muted">Uploads</p>
         <h1 className="mt-2 text-3xl font-semibold">Daily reports from Logic</h1>
-        <p className="mt-2 text-sm leading-6 text-muted">Upload yesterday&apos;s sales every morning, and the stock report when asked.</p>
+        <p className="mt-2 text-sm leading-6 text-muted">Upload yesterday&apos;s sales every morning, and the stock report every week.</p>
       </section>
       <Notice>Sales: export the <strong>BILL WISE SALES REPORT</strong> from Logic for one day. The DAILY SALE BOOK (totals by brand) is refused.</Notice>
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">

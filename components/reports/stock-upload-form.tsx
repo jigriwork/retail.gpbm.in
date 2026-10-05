@@ -8,7 +8,7 @@ import { Loader2, PackageSearch, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Store } from "@/lib/auth/session";
 import type { StockUploadState } from "@/lib/reports/stock-actions";
-import { getIndiaMonthInputValue } from "@/lib/tasks/dates";
+import { getIndiaToday } from "@/lib/tasks/dates";
 
 const initialState: StockUploadState = {
   ok: false,
@@ -65,14 +65,18 @@ export function StockUploadForm({
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Period month</span>
+            <span className="mb-2 block text-sm font-medium text-muted">Stock date</span>
             <input
               className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
-              defaultValue={getIndiaMonthInputValue()}
-              name="periodMonth"
+              defaultValue={getIndiaToday()}
+              max={getIndiaToday()}
+              name="stockDate"
               required
-              type="month"
+              type="date"
             />
+            <span className="mt-1.5 block text-xs leading-5 text-muted">
+              The day the stock file is up to. Exported at closing: today. Exported in the morning before opening: yesterday. Upload every week; a newer stock replaces the older one.
+            </span>
           </label>
         </div>
 

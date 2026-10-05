@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AccessDenied } from "@/components/app/access-denied";
 import { ActionForm } from "@/components/accounts/action-form";
+import { DeleteCountButton } from "@/components/buying/delete-count-button";
 import { Badge, Empty, Field, inputClass, Panel } from "@/components/accounts/fields";
 import { BuyingHeader, BuyingNav, pickStore } from "@/components/buying/buying-nav";
 import { shortDate } from "@/lib/accounts/format";
@@ -52,11 +53,12 @@ export default async function StockCountsPage({ searchParams }: { searchParams: 
         {counts.length ? (
           <ul className="space-y-2">
             {counts.map((count) => (
-              <li key={count.id}>
-                <Link className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-background p-3 text-sm transition hover:border-primary" href={`/app/stock-counts/${count.id}`}>
+              <li className="flex flex-wrap items-center gap-2" key={count.id}>
+                <Link className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-background p-3 text-sm transition hover:border-primary" href={`/app/stock-counts/${count.id}`}>
                   <span><span className="font-semibold">{count.title}</span> · started {shortDate(count.created_at.slice(0, 10))} by {count.profiles?.full_name ?? "—"}</span>
                   <Badge tone={statusLabel[count.status]?.tone ?? "muted"}>{statusLabel[count.status]?.label ?? count.status}</Badge>
                 </Link>
+                {count.status === "counting" || profile.role === "owner" ? <DeleteCountButton countId={count.id} storeId={store.id} title={count.title} /> : null}
               </li>
             ))}
           </ul>

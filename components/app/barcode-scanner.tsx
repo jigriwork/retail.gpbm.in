@@ -14,20 +14,47 @@ type DetectorClass = {
 const formats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "code_93", "codabar", "itf", "qr_code"];
 const video = { facingMode: { ideal: "environment" }, height: { ideal: 1080 }, width: { ideal: 1920 } } as const;
 
-function feedback(ok: boolean) {
-  try { navigator.vibrate?.(ok ? 50 : [40, 60, 40]); } catch { /* not supported */ }
+// One shared sound context. iPhones only allow sound when it is started by a
+// tap, so the Scan buttons call unlockScanSound() in their click handler.
+let sound: AudioContext | null = null;
+
+export function unlockScanSound() {
   try {
     const AudioContextClass = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
-    const context = new AudioContextClass();
-    const tone = context.createOscillator();
-    const gain = context.createGain();
-    tone.frequency.value = ok ? 1250 : 420;
-    gain.gain.value = 0.08;
-    tone.connect(gain).connect(context.destination);
+    sound ??= new AudioContextClass();
+    if (sound.state === "suspended") void sound.resume();
+    // A silent blip inside the tap fully unlocks audio on iOS.
+    const gain = sound.createGain();
+    gain.gain.value = 0;
+    const tone = sound.createOscillator();
+    tone.connect(gain).connect(sound.destination);
     tone.start();
-    tone.stop(context.currentTime + (ok ? 0.07 : 0.18));
-    tone.onended = () => void context.close();
+    tone.stop(sound.currentTime + 0.01);
+  } catch { /* sound is optional */ }
+}
+
+function beep(frequency: number, start: number, length: number) {
+  if (!sound) return;
+  const tone = sound.createOscillator();
+  const gain = sound.createGain();
+  tone.type = "square";
+  tone.frequency.value = frequency;
+  gain.gain.setValueAtTime(0.6, sound.currentTime + start);
+  gain.gain.exponentialRampToValueAtTime(0.001, sound.currentTime + start + length);
+  tone.connect(gain).connect(sound.destination);
+  tone.start(sound.currentTime + start);
+  tone.stop(sound.currentTime + start + length + 0.02);
+}
+
+/** Loud, short beep for a good scan; two low beeps when not found. */
+function feedback(ok: boolean) {
+  try { navigator.vibrate?.(ok ? 70 : [60, 80, 60]); } catch { /* not supported */ }
+  try {
+    if (!sound) unlockScanSound();
+    if (sound?.state === "suspended") void sound.resume();
+    if (ok) beep(1800, 0, 0.12);
+    else { beep(400, 0, 0.14); beep(400, 0.2, 0.14); }
   } catch { /* sound is optional */ }
 }
 
@@ -96,7 +123,7 @@ export function BarcodeScanner({ onClose, onCode, status, title = "Scan a barcod
               const found = await detector.detect(videoRef.current).catch(() => []);
               if (found[0]?.rawValue) seen(found[0].rawValue);
             }
-            timer = window.setTimeout(tick, 80);
+            timer = window.setTimeout(tick, 50);
           };
           void tick();
         } else {
@@ -108,7 +135,7 @@ export function BarcodeScanner({ onClose, onCode, status, title = "Scan a barcod
             BarcodeFormat.CODE_39, BarcodeFormat.CODE_93, BarcodeFormat.CODABAR, BarcodeFormat.ITF, BarcodeFormat.QR_CODE,
           ]);
           hints.set(DecodeHintType.TRY_HARDER, true);
-          const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 60, delayBetweenScanSuccess: 120 });
+          const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 30, delayBetweenScanSuccess: 80 });
           zxingControls = await reader.decodeFromConstraints({ audio: false, video }, videoRef.current, (result) => {
             if (result) seen(result.getText());
           });

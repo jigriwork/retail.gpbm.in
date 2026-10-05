@@ -98,3 +98,10 @@ export async function stockCountCodes(countId: string) {
   const { data } = await supabase.rpc("stock_count_codes", { p_count: countId });
   return (data ?? []) as unknown as Array<{ codes: string[]; line: string }>;
 }
+
+/** Items, counted pieces and (owner/manager only) expected pieces of a count. */
+export async function stockCountTotals(countId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("stock_count_totals", { p_count: countId });
+  return (data ?? null) as unknown as { counted: number; expected: number | null; items: number; snapshot_date: string | null } | null;
+}

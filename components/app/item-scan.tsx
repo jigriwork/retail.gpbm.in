@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Camera, Loader2, Search } from "lucide-react";
 
-import { BarcodeScanner } from "@/components/app/barcode-scanner";
+import { BarcodeScanner, unlockScanSound } from "@/components/app/barcode-scanner";
 import { lookupItem, type LookupItem } from "@/lib/scan/actions";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -55,7 +55,7 @@ export function ItemScan() {
         />
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <button className="inline-flex h-12 items-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-white" onClick={() => setScanning(true)} type="button">
+        <button className="inline-flex h-12 items-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-white" onClick={() => { unlockScanSound(); setScanning(true); }} type="button">
           <Camera className="size-5" /> Scan a tag
         </button>
         <form className="flex min-w-60 flex-1 gap-2" onSubmit={(event) => { event.preventDefault(); search(code); }}>

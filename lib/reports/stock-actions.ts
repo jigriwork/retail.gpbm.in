@@ -12,7 +12,7 @@ import {
 } from "@/lib/reports/stock-parser";
 import type { Json, TablesInsert } from "@/lib/supabase/database.types";
 import { completeMatchingTasksAroundDate } from "@/lib/tasks/auto-complete";
-import { getIndiaMonthStart } from "@/lib/tasks/dates";
+import { getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
 
 export type StockUploadState = {
   ok: boolean;
@@ -119,7 +119,12 @@ export async function uploadStockReport(
   }
 
   const storeId = readString(formData, "storeId");
-  const periodMonth = monthInputToPeriodMonth(readString(formData, "periodMonth"));
+  // Weekly stock: the stock date (the day the file is up to) sets the month.
+  const stockDate = readString(formData, "stockDate");
+  const validStockDate = /^\d{4}-\d{2}-\d{2}$/.test(stockDate) && stockDate <= getIndiaToday() ? stockDate : "";
+  const periodMonth = validStockDate
+    ? `${validStockDate.slice(0, 7)}-01`
+    : monthInputToPeriodMonth(readString(formData, "periodMonth"));
   const file = formData.get("file");
 
   if (!storeId) {
@@ -127,7 +132,7 @@ export async function uploadStockReport(
   }
 
   if (!periodMonth) {
-    return { ok: false, message: "Choose a valid stock report month." };
+    return { ok: false, message: "Choose the stock date (today or earlier)." };
   }
 
   if (!(file instanceof File) || file.size === 0) {
@@ -210,7 +215,7 @@ export async function uploadStockReport(
   }));
 
   const committed = await importReportFile({ file, storeId, type: "stock",
-    manifest: [{ date: periodMonth, row_count: stockRows.length, summary: safeSummaryJson(summary, periodMonth, file, extension) }],
+    manifest: [{ date: periodMonth, ...(validStockDate ? { stock_date: validStockDate } : {}), row_count: stockRows.length, summary: safeSummaryJson(summary, periodMonth, file, extension) }],
     rows: stockRows.map(row => ({ ...row, logical_date: periodMonth })),
   });
   if (!committed.ok) return committed;
@@ -228,7 +233,8 @@ export async function uploadStockReport(
 
   return {
     ok: true,
-    message: "Stock report uploaded and processed.",
+    // "Stock of 9 Oct uploaded; it replaces the stock of 2 Oct (kept as history)." when it replaced one.
+    message: /replaces/.test(committed.message ?? "") ? committed.message : "Stock report uploaded and processed.",
     summary: {
       storeName: store.name,
       periodMonth,

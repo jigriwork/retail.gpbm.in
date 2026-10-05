@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Check, Loader2 } from "lucide-react";
 
-import { BarcodeScanner } from "@/components/app/barcode-scanner";
+import { BarcodeScanner, unlockScanSound } from "@/components/app/barcode-scanner";
 import { addExtraItem, recordCount } from "@/lib/buying/actions";
 
 type Line = { id: string; lot_code: string | null; item_name: string | null; size: string | null; counted_qty: number | null; is_extra: boolean };
@@ -14,11 +14,13 @@ type ScanEntry = {
 };
 
 /** Enter the counted quantity per item; each entry saves on its own. No expected figures are shown. */
-export function CountSheet({ codes = [], countId, editable, lines }: {
+export function CountSheet({ codes = [], countId, editable, expectedPieces = null, lines }: {
   /** Codes each line can be scanned by (lot code, EAN, article code). */
   codes?: Array<{ codes: string[]; line: string }>;
   countId?: string;
   editable: boolean;
+  /** Expected pieces (owner and managers only; a cashier counts blind). */
+  expectedPieces?: number | null;
   lines: Line[];
 }) {
   const router = useRouter();
@@ -121,7 +123,7 @@ export function CountSheet({ codes = [], countId, editable, lines }: {
             )}
         </div>
       ) : <p className="rounded-2xl bg-white/10 p-3">Point the camera at each piece&apos;s tag. Every scan adds 1; keep going, it stays open.</p>}
-      <p className="text-xs text-white/70">This session: {sessionCount} piece{sessionCount === 1 ? "" : "s"} · {done} of {lines.length} items counted · {pieces} pieces in total</p>
+      <p className="text-xs text-white/70">This session: {sessionCount} piece{sessionCount === 1 ? "" : "s"} · {done} of {lines.length} items counted · {pieces}{expectedPieces !== null ? ` of ${Number(expectedPieces)}` : ""} pieces in total</p>
       {scanLog.length > 1 ? (
         <ul className="space-y-1">
           {scanLog.slice(1, 6).map((entry) => (
@@ -150,13 +152,13 @@ export function CountSheet({ codes = [], countId, editable, lines }: {
       {scanning ? <BarcodeScanner onClose={() => setScanning(false)} onCode={onScan} status={scanPanel} title="Scan to count (+1 each)" /> : null}
       <div className="flex flex-wrap items-center gap-3">
         {editable ? (
-          <button className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white" onClick={() => setScanning(true)} type="button">
+          <button className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white" onClick={() => { unlockScanSound(); setScanning(true); }} type="button">
             <Camera className="size-4" /> Scan
           </button>
         ) : null}
         <input className="h-11 min-w-56 flex-1 rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-primary" onChange={(event) => setQuery(event.target.value)} placeholder="Find item, size or lot code" value={query} />
         <label className="flex items-center gap-2 text-sm font-medium"><input checked={onlyOpen} className="size-4 accent-primary" onChange={(event) => setOnlyOpen(event.target.checked)} type="checkbox" />Not counted yet</label>
-        <span className="text-sm font-semibold">{done} of {lines.length} items counted · {pieces} pieces so far</span>
+        <span className="text-sm font-semibold">{done} of {lines.length} items counted · {pieces}{expectedPieces !== null ? ` of ${Number(expectedPieces)}` : ""} pieces</span>
       </div>
       <ul className="divide-y divide-border/60 rounded-2xl border border-border bg-background">
         {shown.slice(0, 400).map((line) => (

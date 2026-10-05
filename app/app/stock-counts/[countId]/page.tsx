@@ -4,18 +4,19 @@ import { AccessDenied } from "@/components/app/access-denied";
 import { ActionForm } from "@/components/accounts/action-form";
 import { Badge, Empty, Field, inputClass, Notice, Panel } from "@/components/accounts/fields";
 import { CountSheet } from "@/components/buying/count-sheet";
+import { DeleteCountButton } from "@/components/buying/delete-count-button";
 import { money, shortDate } from "@/lib/accounts/format";
 import { requireProfile } from "@/lib/auth/session";
 import { isLimitedView } from "@/lib/auth/view";
 import { addExtraItem, reviewCount, submitCount } from "@/lib/buying/actions";
-import { stockCount, stockCountCodes } from "@/lib/buying/queries";
+import { stockCount, stockCountCodes, stockCountTotals } from "@/lib/buying/queries";
 
 export default async function StockCountPage({ params }: { params: Promise<{ countId: string }> }) {
   const { profile } = await requireProfile();
   if (!profile || !["owner", "manager", "cashier"].includes(profile.role)) return <AccessDenied message="Stock counts are for the owner, store managers and cashiers." />;
   const { countId } = await params;
   if (!/^[0-9a-f-]{36}$/.test(countId)) return <AccessDenied message="Count not found." />;
-  const [{ count, sheet, summary }, phone, codes] = await Promise.all([stockCount(countId), isLimitedView(profile), stockCountCodes(countId)]);
+  const [{ count, sheet, summary }, phone, codes, totals] = await Promise.all([stockCount(countId), isLimitedView(profile), stockCountCodes(countId), stockCountTotals(countId)]);
   const limited = phone || profile.role === "cashier";
   if (!count) return <AccessDenied message="Count not found." />;
   const counting = count.status === "counting";
@@ -27,7 +28,17 @@ export default async function StockCountPage({ params }: { params: Promise<{ cou
         <Link className="text-sm font-medium text-muted" href={`/app/stock-counts?store=${count.store_id}`}>← Stock counts</Link>
         <h1 className="mt-2 text-3xl font-semibold">{count.title}</h1>
         <p className="mt-2 text-sm text-muted">{count.stores?.name} · started {shortDate(count.created_at.slice(0, 10))}{count.snapshot_date ? ` · expected stock from the report of ${shortDate(count.snapshot_date)} less sales since` : ""}</p>
-        <div className="mt-3"><Badge tone={counting ? "warn" : count.status === "reviewed" ? "good" : "muted"}>{counting ? "Counting" : count.status === "reviewed" ? "Reviewed" : "Submitted"}</Badge></div>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Badge tone={counting ? "warn" : count.status === "reviewed" ? "good" : "muted"}>{counting ? "Counting" : count.status === "reviewed" ? "Reviewed" : "Submitted"}</Badge>
+          {counting || profile.role === "owner" ? <DeleteCountButton countId={count.id} storeId={count.store_id} title={count.title} /> : null}
+        </div>
+        {totals ? (
+          <p className="mt-3 text-sm">
+            {totals.expected !== null ? <><span className="font-semibold">Expected {Number(totals.expected).toLocaleString("en-IN")} pcs</span> in {totals.items} items · </> : <>{totals.items} items · </>}
+            <span className="font-semibold">counted {Number(totals.counted).toLocaleString("en-IN")} pcs</span>
+            {totals.expected !== null && Number(totals.expected) > 0 ? ` (${Math.round((Number(totals.counted) / Number(totals.expected)) * 100)}%)` : ""}
+          </p>
+        ) : null}
       </section>
 
       {!counting && summary && !limited ? (
@@ -68,7 +79,7 @@ export default async function StockCountPage({ params }: { params: Promise<{ cou
       ) : null}
 
       <Panel description={counting ? "Each line is one item and size (so the number of lines is not the number of pieces). Tap Scan and scan every piece's tag: each scan adds 1 and saves. Or type the number on the shelf. Enter 0 for items you cannot find." : undefined} title="Count sheet">
-        {sheet.length ? <CountSheet codes={codes} countId={count.id} editable={counting} lines={sheet} /> : <Empty>No items.</Empty>}
+        {sheet.length ? <CountSheet codes={codes} countId={count.id} editable={counting} expectedPieces={totals?.expected ?? null} lines={sheet} /> : <Empty>No items.</Empty>}
       </Panel>
 
       {counting ? (

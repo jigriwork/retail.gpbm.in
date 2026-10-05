@@ -39,6 +39,8 @@ export type CashHistoryDay = {
 
 export type StoreChecklist = {
   cash_start: string | null;
+  /** Latest stock date; stock is uploaded weekly. */
+  stock_date?: string | null;
   days: Array<{ cash: "closed" | "not_done" | "open" | "reviewed"; day: string; report: "late" | "missing" | "on_time" | "summary_only" }>;
   tasks_due: number;
 };

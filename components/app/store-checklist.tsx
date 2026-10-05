@@ -39,6 +39,14 @@ export function checklistStatus(checklist: StoreChecklist) {
     if (!checklist.cash_start) notes.push("Cash book not started yet");
   }
   if (checklist.tasks_due) pending.push(`${checklist.tasks_due} task${checklist.tasks_due === 1 ? "" : "s"} due`);
+  // Weekly stock: pending once the latest stock is more than 7 days old.
+  if (yesterday) {
+    const stockAge = checklist.stock_date
+      ? Math.round((Date.parse(`${yesterday.day}T00:00:00Z`) - Date.parse(`${checklist.stock_date}T00:00:00Z`)) / 86_400_000) + 1
+      : null;
+    if (stockAge === null) pending.push("Stock report not uploaded yet: upload it every week");
+    else if (stockAge > 7) pending.push(`This week's stock is not uploaded (last: ${shortDay(checklist.stock_date!)})`);
+  }
   return { allDone: pending.length === 0 && Boolean(yesterday && dayDone(yesterday, checklist.cash_start)), notes, pending, streak };
 }
 

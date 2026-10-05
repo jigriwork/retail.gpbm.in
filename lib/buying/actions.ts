@@ -97,3 +97,14 @@ export async function reviewCount(_state: State, formData: FormData): Promise<St
   revalidatePath(`/app/stock-counts/${countId}`);
   return { ok: true, message: "Marked as reviewed." };
 }
+
+/** Delete a count started by mistake (owner any; store staff while still counting). */
+export async function deleteStockCount(_state: State, formData: FormData): Promise<State> {
+  const countId = text(formData, "countId", 60);
+  const storeId = text(formData, "storeId", 60);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_stock_count", { p_count: countId });
+  if (error) return { ok: false, message: message(error, "Could not delete the count.") };
+  revalidatePath("/app/stock-counts");
+  redirect(`/app/stock-counts${storeId ? `?store=${storeId}` : ""}`);
+}

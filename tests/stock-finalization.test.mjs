@@ -99,6 +99,8 @@ insert into stock_rows(report_id,store_id,stock_month,item_name,quantity,raw_dat
 rollback;`);
  assert.deepEqual(r.split('\n'),['15','5','','false','processing','0','true','25000|25000','off','1200.50|9']);
 });
+// Weekly stock (5 Oct 2026): a NEWER stock that appeared meanwhile still wins; nothing becomes current.
+// Weekly stock (5 Oct 2026): a NEWER stock that appeared meanwhile still wins; nothing becomes current.
 test('Final step refuses when another current report for the month appeared meanwhile; nothing becomes current',()=>{
  const r=sql(`${logicSetup(3000,'a')}
 select publish_stock_import_part(:'id')->>'remaining';
@@ -106,7 +108,7 @@ reset role;insert into reports(store_id,report_type,report_date,period_month,fil
 set local role authenticated;
 select commit_stock_report_import(:'id')->>'message';
 select ${visible};rollback;`);
- assert.deepEqual(r.split('\n'),['0','An active report already exists. Use owner correction. No partial report was published.','0']);
+ assert.deepEqual(r.split('\n'),['0','A newer stock (02 Oct) is already uploaded for this store. Upload a stock file of that day or later. No partial report was published.','0']);
 });
 test('Publishing parts is not available anonymously; the internal row writer is not callable by users',()=>{
  assert.equal(sql("select has_function_privilege('anon','public.publish_stock_import_part(uuid)','EXECUTE');"),'f');

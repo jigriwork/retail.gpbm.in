@@ -28,16 +28,22 @@ export function getMonthlyDueReminders(profile: Profile, stores: Store[]) {
   const day = getIndiaDayOfMonth();
   const reminders: TaskInsert[] = [];
 
-  if (day === 1) {
+  // Stock changes every day, so it is uploaded weekly (every Monday).
+  if (isMondayInIndia()) {
     reminders.push(
       ...stores.map((store) =>
         baseTask(
-          `Upload stock report for ${store.name}`,
+          `Upload this week's stock report for ${store.name}`,
           "stock_report_due",
           profile.id,
           store.id,
         ),
       ),
+    );
+  }
+
+  if (day === 1) {
+    reminders.push(
       ...stores.map((store) =>
         baseTask(
           `Upload salary attendance report for ${store.name}`,
