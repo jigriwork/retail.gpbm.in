@@ -1201,10 +1201,18 @@ export default async function TodayPage({
   // Daily checklist (cheer or pending) and Stars of the week, under the hero.
   const highlights = (
     <>
-      <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-primary" href="/app/scan">
-        <span>📷 Scan an item: stock and sales for any tag</span>
-        <span aria-hidden>→</span>
-      </Link>
+      <div className="grid grid-cols-2 gap-3">
+        <Link className="flex flex-col justify-between gap-2 rounded-[1.35rem] bg-primary p-4 text-white shadow-md shadow-primary/25 transition active:scale-[0.98]" href="/app/sizes">
+          <span className="text-2xl" aria-hidden>📏</span>
+          <span className="text-base font-semibold leading-tight">Check sizes</span>
+          <span className="text-xs text-white/80">Scan a tag: sizes in stock</span>
+        </Link>
+        <Link className="flex flex-col justify-between gap-2 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary active:scale-[0.98]" href="/app/scan">
+          <span className="text-2xl" aria-hidden>📷</span>
+          <span className="text-base font-semibold leading-tight">Scan an item</span>
+          <span className="text-xs text-muted">Stock and sales for any tag</span>
+        </Link>
+      </div>
       {pendingStaff ? (
         <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-accent/40 bg-accent-soft p-4 text-sm font-semibold text-accent-ink" href="/app/employees">
           <span>{pendingStaff} new staff member{pendingStaff === 1 ? "" : "s"} waiting for your approval</span>

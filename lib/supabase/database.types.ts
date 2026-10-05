@@ -7729,6 +7729,10 @@ export type Database = {
       stock_count_codes: { Args: { p_count: string }; Returns: Json }
       stock_count_totals: { Args: { p_count: string }; Returns: Json }
       delete_stock_count: { Args: { p_count: string }; Returns: undefined }
+      stock_sizes: { Args: { p_code: string }; Returns: Json }
+      staff_match_overview: { Args: { p_store: string }; Returns: Json }
+      link_staff_name: { Args: { p_employee: string; p_source: string; p_store: string }; Returns: undefined }
+      auto_link_staff_names: { Args: { p_store: string }; Returns: number }
       stock_lookup: { Args: { p_code: string }; Returns: Json }
       my_week_highlights: { Args: Record<PropertyKey, never>; Returns: Json }
       publish_stock_import_part: { Args: { p_import: string }; Returns: Json }

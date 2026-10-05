@@ -70,6 +70,10 @@ export default async function EmployeesPage({
     <div className="space-y-5">
       {profile.role === "owner" ? <StaffRequests /> : null}
       {profile.role === "cashier" ? <MyStaffRequests userId={profile.id} /> : null}
+      <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-primary" href="/app/staff-match">
+        <span>🔗 Match sales names to staff (so each login shows its own sales)</span>
+        <span aria-hidden>→</span>
+      </Link>
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>

@@ -57,6 +57,8 @@ const handheldPrefixes = [
   "/app/customers",
   "/app/stock-counts",
   "/app/scan",
+  "/app/sizes",
+  "/app/staff-match",
   "/app/tasks",
   "/app/checklist",
   "/app/updates",
@@ -74,7 +76,7 @@ const handheldPrefixes = [
 export function cashierAllows(pathname: string) {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
   if (path === "/app/money/profit" || path.startsWith("/app/money/profit/")) return false;
-  return ["/app/money", "/app/stock-counts", "/app/cashier", "/app/employees"].some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+  return ["/app/money", "/app/stock-counts", "/app/cashier", "/app/employees", "/app/sizes", "/app/staff-match"].some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
     || path === "/app/settings/account";
 }
 

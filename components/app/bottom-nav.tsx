@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpenCheck, CheckSquare, ClipboardList, Home, MessageCircle, Store, UploadCloud, UserPlus, Wallet } from "lucide-react";
+import { BarChart3, BookOpenCheck, CheckSquare, ClipboardList, Home, MessageCircle, Store, UploadCloud, UserPlus, Wallet, Ruler } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
 
@@ -22,6 +22,7 @@ const cashierItems = [
   { label: "Uploads", href: "/app/cashier/uploads", icon: UploadCloud },
   { label: "Counts", href: "/app/stock-counts", icon: ClipboardList },
   { label: "Staff", href: "/app/employees", icon: UserPlus },
+  { label: "Sizes", href: "/app/sizes", icon: Ruler },
 ];
 
 export function BottomNav({ role }: { role?: string }) {
