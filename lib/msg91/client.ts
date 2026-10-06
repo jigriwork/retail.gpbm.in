@@ -162,19 +162,27 @@ export async function getMsg91TemplateInfo(config: Msg91BrandConfig, templateNam
     });
     if (!response.ok) return { category: null, status: "unavailable" };
     const body = await responseBody(response);
-    const found: Array<{ category: string | null; status: string }> = [];
+    let category: string | null = null;
+    const statuses: string[] = [];
+    // The category sits on the template; the status may sit on it or on its languages.
+    const collect = (node: unknown) => {
+      if (Array.isArray(node)) return node.forEach(collect);
+      const record = object(node);
+      if (!record) return;
+      if (!category && typeof record.category === "string") category = record.category;
+      if (typeof record.status === "string") statuses.push(record.status.toLowerCase());
+      Object.values(record).forEach(collect);
+    };
     const visit = (node: unknown) => {
       if (Array.isArray(node)) return node.forEach(visit);
       const record = object(node);
       if (!record) return;
       const name = record.name ?? record.template_name ?? record.element_name;
-      if (name === templateName && typeof record.status === "string") {
-        found.push({ category: typeof record.category === "string" ? record.category : null, status: record.status.toLowerCase() });
-      }
+      if (name === templateName) return collect(record);
       Object.values(record).forEach(visit);
     };
     visit(body);
-    return found.find((item) => item.status === "approved") ?? found[0] ?? { category: null, status: "not_found" };
+    return { category, status: statuses.includes("approved") ? "approved" : statuses[0] ?? "not_found" };
   } catch {
     return { category: null, status: "unavailable" };
   }
