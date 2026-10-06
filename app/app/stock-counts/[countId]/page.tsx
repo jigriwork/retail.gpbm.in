@@ -78,7 +78,7 @@ export default async function StockCountPage({ params }: { params: Promise<{ cou
         </Panel>
       ) : null}
 
-      <Panel description={counting ? "Each line is one item and size (so the number of lines is not the number of pieces). Tap Scan and scan every piece's tag: each scan adds 1 and saves. Or type the number on the shelf. Enter 0 for items you cannot find." : undefined} title="Count sheet">
+      <Panel description={counting ? "Each line is one item and size (so the number of lines is not the number of pieces). Tap Camera scan (or use a scanner gun) and scan every piece's tag: a new tag adds 1 and saves; a tag already counted is not added again unless you tap “+1 another piece”. Or type the number on the shelf. Enter 0 for items you cannot find." : undefined} title="Count sheet">
         {sheet.length ? <CountSheet codes={codes} countId={count.id} editable={counting} expectedPieces={totals?.expected ?? null} lines={sheet} /> : <Empty>No items.</Empty>}
       </Panel>
 

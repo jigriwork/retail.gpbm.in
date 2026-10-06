@@ -10,7 +10,7 @@ import { addExtraItem, recordCount } from "@/lib/buying/actions";
 
 type Line = { id: string; lot_code: string | null; item_name: string | null; size: string | null; counted_qty: number | null; is_extra: boolean };
 type ScanEntry = {
-  code: string; key: number; kind: "added" | "adding" | "error" | "ok" | "skipped" | "undone" | "unknown";
+  code: string; key: number; kind: "added" | "adding" | "again" | "error" | "ok" | "skipped" | "undone" | "unknown";
   label: string; lineId?: string; total?: number;
 };
 
@@ -72,6 +72,12 @@ export function CountSheet({ codes = [], countId, editable, expectedPieces = nul
     const before = stored !== undefined && stored !== "" ? Number(stored) : Number(line.counted_qty ?? 0);
     const next = before + 1;
     const label = `${line.item_name ?? "Item"}${line.size ? ` · ${line.size}` : ""}`;
+    // A barcode already counted is not added again by itself (the same tag
+    // scanned twice); a second identical piece is added with "+1 another piece".
+    if (before > 0) {
+      log({ code, kind: "again", label, lineId: line.id, total: before });
+      return false;
+    }
     setSessionCount((n) => n + 1);
     const key = sequence.current + 1;
     log({ code, kind: "ok", label, lineId: line.id, total: next });
@@ -86,6 +92,16 @@ export function CountSheet({ codes = [], countId, editable, expectedPieces = nul
     const now = stored !== undefined && stored !== "" ? Number(stored) : Number(line.counted_qty ?? 0);
     const result = await setCount(line, Math.max(0, now - 1));
     if (result.ok) { update(entry.key, { kind: "undone" }); setSessionCount((n) => Math.max(0, n - 1)); }
+  }
+
+  async function addAnother(entry: ScanEntry) {
+    const line = lines.find((item) => item.id === entry.lineId);
+    if (!line) return;
+    const stored = current.current[line.id];
+    const now = stored !== undefined && stored !== "" ? Number(stored) : Number(line.counted_qty ?? 0);
+    const result = await setCount(line, now + 1);
+    if (result.ok) { update(entry.key, { kind: "ok", total: now + 1 }); setSessionCount((n) => n + 1); }
+    else update(entry.key, { kind: "error", label: `${entry.label}: ${result.message}` });
   }
 
   async function addExtra(entry: ScanEntry) {
@@ -116,6 +132,16 @@ export function CountSheet({ codes = [], countId, editable, expectedPieces = nul
             : latest.kind === "added" ? <p className="text-base font-semibold">✓ Added {latest.code} as a found extra (1 pc)</p>
             : latest.kind === "undone" ? <p className="font-semibold">Undone: {latest.label}</p>
             : latest.kind === "error" ? <p className="font-semibold">Could not save: {latest.label}</p>
+            : latest.kind === "again" ? (
+              <div className="space-y-2">
+                <p className="font-semibold">Already counted: {latest.label} = {latest.total} pc{latest.total === 1 ? "" : "s"}. Not added again.</p>
+                <p className="text-xs">Same tag scanned twice? Just scan the next item. Another piece of the same item and size? Tap +1.</p>
+                <span className="flex gap-2">
+                  <button className="rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white" onClick={() => addAnother(latest)} type="button">+1 another piece</button>
+                  <button className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black" onClick={() => update(latest.key, { kind: "skipped" })} type="button">OK</button>
+                </span>
+              </div>
+            )
             : (
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-semibold">⚠️ Not on this sheet: {latest.code}</p>
@@ -126,13 +152,13 @@ export function CountSheet({ codes = [], countId, editable, expectedPieces = nul
               </div>
             )}
         </div>
-      ) : <p className="rounded-2xl bg-white/10 p-3">Point the camera at each piece&apos;s tag. Every scan adds 1; keep going, it stays open.</p>}
+      ) : <p className="rounded-2xl bg-white/10 p-3">Point the camera at each piece&apos;s tag. A new tag adds 1; a tag already counted is not added again unless you tap +1. It stays open.</p>}
       <p className="text-xs text-white/70">This session: {sessionCount} piece{sessionCount === 1 ? "" : "s"} · {done} of {lines.length} items counted · {pieces}{expectedPieces !== null ? ` of ${Number(expectedPieces)}` : ""} pieces in total</p>
       {scanLog.length > 1 ? (
         <ul className="space-y-1">
           {scanLog.slice(1, 6).map((entry) => (
             <li className="flex items-center justify-between gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs" key={entry.key}>
-              <span className="truncate">{entry.kind === "ok" ? `+1 ${entry.label} → ${entry.total}` : entry.kind === "added" ? `Extra ${entry.code}` : entry.kind === "undone" ? `Undone: ${entry.label}` : entry.kind === "skipped" ? `Skipped ${entry.code}` : entry.label}</span>
+              <span className="truncate">{entry.kind === "ok" ? `+1 ${entry.label} → ${entry.total}` : entry.kind === "added" ? `Extra ${entry.code}` : entry.kind === "undone" ? `Undone: ${entry.label}` : entry.kind === "skipped" ? `Skipped ${entry.code}` : entry.kind === "again" ? `Already counted: ${entry.label} (not added)` : entry.label}</span>
               {entry.kind === "ok" ? <button className="shrink-0 rounded-lg bg-white/20 px-2 py-1 font-semibold" onClick={() => undo(entry)} type="button">−1</button> : null}
             </li>
           ))}
