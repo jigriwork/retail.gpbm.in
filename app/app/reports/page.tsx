@@ -374,6 +374,15 @@ export default async function ReportsPage() {
           {profile?.role === "owner" ? (
             <>
               <Link
+                className="block rounded-[1.35rem] border border-primary/30 bg-primary-soft p-5 shadow-sm transition hover:border-primary"
+                href="/app/owner/night"
+              >
+                <h2 className="text-2xl font-semibold">🌙 Plan for tomorrow</h2>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  The 11 PM plan: idle stock and why, sizes running out, moves between stores, staff to praise or coach, tomorrow&apos;s to-dos.
+                </p>
+              </Link>
+              <Link
                 className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
                 href="/app/reports/correction"
               >

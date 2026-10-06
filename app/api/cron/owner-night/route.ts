@@ -1,0 +1,30 @@
+import { NextResponse } from "next/server";
+
+import { runOwnerNightPlan } from "@/lib/owner-night/run";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
+// Supabase pg_cron (POST, 11:00 PM IST with a retry at 11:10 PM) calls
+// this; each night sends only once.
+// ?preview=1 returns the message text without sending; ?day=YYYY-MM-DD picks
+// a day (sent once per day and recipient).
+async function handle(request: Request) {
+  const header = request.headers.get("authorization");
+  const allowed = [process.env.CRON_SECRET, process.env.OWNER_SUMMARY_CRON_SECRET].filter((secret): secret is string => Boolean(secret));
+  if (!allowed.some((secret) => header === `Bearer ${secret}`)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    const params = new URL(request.url).searchParams;
+    const preview = params.get("preview") === "1";
+    const day = params.get("day") ?? undefined;
+    return NextResponse.json(await runOwnerNightPlan({ day, preview }));
+  } catch (error) {
+    console.error("owner_night_failed", error instanceof Error ? error.message : "unknown");
+    return NextResponse.json({ error: "Night plan run failed." }, { status: 500 });
+  }
+}
+
+export const GET = handle;
+export const POST = handle;
