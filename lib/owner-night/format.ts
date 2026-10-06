@@ -23,6 +23,33 @@ export const OWNER_NIGHT_TEMPLATE_BODY = [
   "",
   "Thank you for today. Good night! 🌙",
 ].join("\n");
+// v2: report wording like the 9 AM summary (WhatsApp classified v1 as marketing).
+export const OWNER_NIGHT_TEMPLATE_V2 = "gpbm_owner_night_plan_v2";
+export const OWNER_NIGHT_TEMPLATE_BODY_V2 = [
+  "🌙 Night store report: plan for {{1}}",
+  "",
+  "📋 Sales reports: {{2}}",
+  "",
+  "🧊 Stock with no recent sale: {{3}}",
+  "📉 Sizes running low: {{4}}",
+  "🔁 Stock selling better at the other store: {{5}}",
+  "",
+  "🌟 Top performers: {{6}}",
+  "🤝 Staff who may need support: {{7}}",
+  "👀 Staff with no recent sale: {{8}}",
+  "",
+  "💡 Suggested for tomorrow: {{9}}",
+  "",
+  "Full report: {{10}}",
+  "",
+  "This automatic report is sent every night by GPBM Retail. Good night 🌙",
+].join("\n");
+
+/** Newest first: the sender uses the first approved one, preferring utility. */
+export const OWNER_NIGHT_TEMPLATES = [
+  { body: OWNER_NIGHT_TEMPLATE_BODY_V2, name: OWNER_NIGHT_TEMPLATE_V2 },
+  { body: OWNER_NIGHT_TEMPLATE_BODY, name: OWNER_NIGHT_TEMPLATE },
+];
 
 type Num = number | string | null | undefined;
 export type NightIdle = { brand: string | null; item: string; last_sale: string | null; other_sold: Num; other_stores: string | null; pcs: Num; reason: "broken_sizes" | "move" | "never_sold" | "stopped"; sizes_left: string | null; value: Num };
@@ -76,8 +103,8 @@ export function staffGroups(stores: NightStore[]) {
       const name = title(person.name);
       const usual = n(person.usual_per_day);
       const change = usual > 0 ? Math.round(((n(person.recent_per_day) - usual) / usual) * 100) : 0;
-      if (flags.has("top")) praise.push({ name, note: "top seller of the last 7 days. A word of thanks would mean a lot.", short: "top seller of the week 👏", store: store.code });
-      else if (flags.has("improving")) praise.push({ name, note: `up ${change}% on their usual this week. Worth a pat on the back.`, short: `up ${change}% this week 👏`, store: store.code });
+      if (flags.has("top")) praise.push({ name, note: "top seller of the last 7 days. A word of thanks would mean a lot.", short: "top seller of the week", store: store.code });
+      else if (flags.has("improving")) praise.push({ name, note: `up ${change}% on their usual this week. Worth a pat on the back.`, short: `up ${change}% this week`, store: store.code });
       if (flags.has("low_bill")) talk.push({ name, note: `average bill ${money(person.avg_bill)} (store ${money(store.store_avg_bill)}). Showing higher-value ranges could help.`, short: `average bill ${money(person.avg_bill)} (store ${money(store.store_avg_bill)})`, store: store.code });
       else if (flags.has("low_items")) talk.push({ name, note: `${n(person.items_per_bill)} items per bill (store ${n(store.store_items_per_bill)}). A few add-on ideas could help.`, short: `${n(person.items_per_bill)} items per bill (store ${n(store.store_items_per_bill)})`, store: store.code });
       else if (flags.has("falling")) talk.push({ name, note: `sales a bit lower than usual this week (${change}%). A friendly chat may help.`, short: "a slower week than usual", store: store.code });
@@ -153,6 +180,6 @@ export function formatNightPlan(input: NightPlan, link: string) {
   return renderNightPlan(full).length <= 1000 ? full : build(0);
 }
 
-export function renderNightPlan(values: string[]) {
-  return OWNER_NIGHT_TEMPLATE_BODY.replace(/\{\{(\d+)\}\}/g, (_, index: string) => values[Number(index) - 1] ?? "");
+export function renderNightPlan(values: string[], body = OWNER_NIGHT_TEMPLATE_BODY) {
+  return body.replace(/\{\{(\d+)\}\}/g, (_, index: string) => values[Number(index) - 1] ?? "");
 }

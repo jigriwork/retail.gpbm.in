@@ -1,10 +1,10 @@
 import "server-only";
 
 import { whatsappUnitCost } from "@/lib/msg91/budget";
-import { createMsg91Template, getMsg91TemplateInfo, getMsg91TemplateStatus, sendMsg91Template } from "@/lib/msg91/client";
+import { createMsg91Template, getMsg91TemplateInfo, sendMsg91Template } from "@/lib/msg91/client";
 import { getMsg91Config } from "@/lib/msg91/config";
 import { claimWhatsAppDeliveries, finishWhatsAppDeliveries } from "@/lib/msg91/deliveries";
-import { formatNightPlan, OWNER_NIGHT_TEMPLATE, OWNER_NIGHT_TEMPLATE_BODY, renderNightPlan, type NightPlan } from "@/lib/owner-night/format";
+import { formatNightPlan, OWNER_NIGHT_TEMPLATES, renderNightPlan, type NightPlan } from "@/lib/owner-night/format";
 import { ownerSummaryRecipients } from "@/lib/owner-summary/run";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -16,6 +16,13 @@ function indiaNow(now: Date) {
     day: "2-digit", hour: "2-digit", hourCycle: "h23", minute: "2-digit", month: "2-digit", timeZone: "Asia/Kolkata", year: "numeric",
   }).formatToParts(now).map((part) => [part.type, part.value]));
   return { date: `${parts.year}-${parts.month}-${parts.day}`, minutes: Number(parts.hour) * 60 + Number(parts.minute) };
+}
+
+/** The newest approved template, preferring one WhatsApp classed as utility. */
+async function chooseTemplate(config: NonNullable<ReturnType<typeof getMsg91Config>>) {
+  const infos = await Promise.all(OWNER_NIGHT_TEMPLATES.map(async (template) => ({ ...template, ...(await getMsg91TemplateInfo(config, template.name)) })));
+  const approved = infos.filter((info) => info.status === "approved");
+  return (approved.find((info) => info.category?.toUpperCase() === "UTILITY") ?? approved[0])?.name ?? null;
 }
 
 export const nightPlanLink = (day: string) => `https://retail.gpbm.in/app/owner/night?day=${day}`;
@@ -36,16 +43,15 @@ export async function runOwnerNightPlan({ day: requestedDay, now = new Date(), p
   const { data, error } = await admin.rpc("owner_night_plan_internal", { p_day: day, p_limit: 5 });
   if (error || !data) throw new Error("Night plan figures could not be loaded.");
   const values = formatNightPlan(data as unknown as NightPlan, nightPlanLink(day));
-  if (preview) return { day, preview: renderNightPlan(values), sent: 0 };
+  if (preview) return { day, preview: renderNightPlan(values, OWNER_NIGHT_TEMPLATES[0].body), sent: 0 };
 
   if (!requestedDay && india.minutes < 22 * 60 + 55) return { day, detail: "Before 11:00 PM IST; not sent.", sent: 0 };
   const enabled = Boolean(process.env.MSG91_OWNER_NIGHT_TEMPLATE?.trim());
   const recipients = ownerSummaryRecipients();
   const config = getMsg91Config(SENDER);
   if (!enabled || !recipients.length || !config) return { day, detail: "Night plan is not configured.", sent: 0 };
-  const template = process.env.MSG91_OWNER_NIGHT_TEMPLATE!.trim() || OWNER_NIGHT_TEMPLATE;
-  const status = await getMsg91TemplateStatus(config, template);
-  if (status !== "approved") return { day, detail: `Template ${template} is ${status}.`, sent: 0 };
+  const template = await chooseTemplate(config);
+  if (!template) return { day, detail: "No approved night plan template.", sent: 0 };
 
   const [{ data: store }, { data: owner }] = await Promise.all([
     admin.from("stores").select("id").eq("code", SENDER).maybeSingle(),
@@ -83,25 +89,26 @@ const TEMPLATE_EXAMPLES = [
   "GP: US Polo shirt 4 pcs, only XL XXL left · BM: Mufti jeans 7 pcs, selling well at GP",
   "GP: Lunica top XL (0 left, 3 sold in 30 days)",
   "Mufti jeans 7 pcs BM→GP",
-  "Biswanath (GP) top seller of the week 👏",
+  "Biswanath (GP) top seller of the week",
   "Deva (GP) 1.3 items per bill (store 1.9)",
   "Akhtar (GP) no sale in 3 days, maybe a day off?",
   "1) GP: Lunica top XL could come from BM 2) a supportive chat with Deva",
   "https://retail.gpbm.in/app/owner/night?day=2026-10-06",
 ];
 
-/** Submits the night plan template to MSG91 / WhatsApp (once; later calls only report its status). */
+/** Submits the night plan templates to MSG91 / WhatsApp (each once); reports their status and category. */
 export async function setupOwnerNightTemplate() {
   const config = getMsg91Config(SENDER);
   if (!config) return { detail: "MSG91 is not configured for GP." };
-  const name = process.env.MSG91_OWNER_NIGHT_TEMPLATE?.trim() || OWNER_NIGHT_TEMPLATE;
-  const before = await getMsg91TemplateInfo(config, name);
-  if (before.status !== "not_found" && before.status !== "unavailable") {
-    const summary = process.env.MSG91_OWNER_SUMMARY_TEMPLATE?.trim();
-    return { category: before.category, name, status: before.status, summary: summary ? await getMsg91TemplateInfo(config, "gpbm_owner_daily_summary_v2") : null };
+  const results = [];
+  for (const template of OWNER_NIGHT_TEMPLATES) {
+    const before = await getMsg91TemplateInfo(config, template.name);
+    if (before.status === "not_found") {
+      const created = await createMsg91Template(config, { body: template.body, category: "UTILITY", examples: TEMPLATE_EXAMPLES, name: template.name });
+      results.push({ created: created.ok, name: template.name, ...(await getMsg91TemplateInfo(config, template.name)) });
+    } else results.push({ name: template.name, ...before });
   }
-  const created = await createMsg91Template(config, { body: OWNER_NIGHT_TEMPLATE_BODY, category: "UTILITY", examples: TEMPLATE_EXAMPLES, name });
-  return { created, name, status: await getMsg91TemplateStatus(config, name) };
+  return { templates: results, using: await chooseTemplate(config), summary: await getMsg91TemplateInfo(config, "gpbm_owner_daily_summary_v2") };
 }
 
 /**
@@ -114,8 +121,8 @@ export async function sendOwnerNightTest(number: string) {
   const admin = createAdminClient();
   const config = getMsg91Config(SENDER);
   if (!admin || !config) return { detail: "Not configured.", sent: 0 };
-  const template = process.env.MSG91_OWNER_NIGHT_TEMPLATE?.trim() || OWNER_NIGHT_TEMPLATE;
-  if ((await getMsg91TemplateStatus(config, template)) !== "approved") return { detail: "Template is not approved yet.", sent: 0 };
+  const template = await chooseTemplate(config);
+  if (!template) return { detail: "No approved night plan template.", sent: 0 };
   const day = indiaNow(new Date()).date;
   const { data, error } = await admin.rpc("owner_night_plan_internal", { p_day: day, p_limit: 5 });
   if (error || !data) throw new Error("Night plan figures could not be loaded.");

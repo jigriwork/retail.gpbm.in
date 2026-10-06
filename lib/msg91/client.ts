@@ -154,7 +154,7 @@ export async function createMsg91Template(config: Msg91BrandConfig, template: { 
 }
 
 /** Status and category (UTILITY / MARKETING …) of a template, as MSG91 reports them. */
-export async function getMsg91TemplateInfo(config: Msg91BrandConfig, templateName: string) {
+export async function getMsg91TemplateInfo(config: Msg91BrandConfig, templateName: string): Promise<{ category: string | null; status: string }> {
   try {
     const response = await fetch(`${apiBase}/get-template-client/${encodeURIComponent(config.integratedNumber)}?`, {
       headers: { accept: "application/json", authkey: config.authKey },
@@ -162,7 +162,7 @@ export async function getMsg91TemplateInfo(config: Msg91BrandConfig, templateNam
     });
     if (!response.ok) return { category: null, status: "unavailable" };
     const body = await responseBody(response);
-    let category: string | null = null;
+    let category = null as string | null;
     const statuses: string[] = [];
     // The category sits on the template; the status may sit on it or on its languages.
     const collect = (node: unknown) => {
