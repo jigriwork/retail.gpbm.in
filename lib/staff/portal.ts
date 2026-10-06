@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -50,12 +51,13 @@ function asRecord(value: unknown) {
     : null;
 }
 
-export async function getStaffProfileSummary() {
+// Shared by the staff layout and pages: one read per page view.
+export const getStaffProfileSummary = cache(async function getStaffProfileSummary() {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("staff_profile_summary");
   if (error) return null;
   return asRecord(data) as StaffProfileSummary | null;
-}
+});
 
 export async function getStaffHomeSummary() {
   const supabase = await createClient();

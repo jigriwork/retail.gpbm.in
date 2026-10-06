@@ -30,9 +30,9 @@ export default async function StockReportsPage({
         <Link className="text-sm font-semibold text-muted" href="/app/reports">
           Back to reports
         </Link>
-        <h1 className="mt-2 text-3xl font-semibold">Monthly stock upload</h1>
+        <h1 className="mt-2 text-3xl font-semibold">Weekly stock upload</h1>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Upload one active store stock file at a time. Files can be .xlsx, .xls, or .csv.
+          Upload each store&apos;s current stock file every week (Monday). A newer file replaces the older one. Files can be .xlsx, .xls, or .csv.
         </p>
         {profile?.role === "owner" ? (
           <p className="mt-2 text-sm leading-6 text-muted">
@@ -66,7 +66,7 @@ export default async function StockReportsPage({
               <div>
                 <p className="text-lg font-semibold">{status.store.name}</p>
                 <p className="mt-1 text-xs font-medium text-muted">
-                  Current month: {overview.periodMonth}
+                  {status.latestDate ? `Latest stock: ${status.latestDate.split("-").reverse().join("/")}` : "No stock file yet"}
                 </p>
               </div>
               <span
@@ -76,13 +76,13 @@ export default async function StockReportsPage({
                     : "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger"
                 }
               >
-                {status.report ? "Uploaded" : "Missing"}
+                {status.report ? "Up to date" : "Due"}
               </span>
             </div>
             <p className="mt-4 text-sm leading-6 text-muted">
               {status.report
                 ? `${status.report.row_count ?? 0} rows processed.`
-                : "Upload the current month stock report."}
+                : "Stock is more than 7 days old: upload this week's stock file."}
             </p>
             {!limited ? (
               <Link

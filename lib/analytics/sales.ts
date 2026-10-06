@@ -1,7 +1,7 @@
 import "server-only";
 import { analyticsData } from "@/lib/analytics/data";
 import { completeQuery } from "@/lib/supabase/complete-query";
-import { addDays, getIndiaDayOfMonth, getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
+import { addDays, getIndiaDayOfMonth, getIndiaMonthStart, getIndiaToday, monthEndOf, previousMonthRange, weekStartOf } from "@/lib/tasks/dates";
 import { staffNameKey } from "@/lib/employees/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { Store } from "@/lib/auth/session";
@@ -109,33 +109,8 @@ export type TargetProgress = {
   requiredDailySale: number;
 };
 
-function parseIndiaDate(dateText: string) {
-  return new Date(`${dateText}T00:00:00+05:30`);
-}
-
-function formatIndiaDate(date: Date) {
-  return new Intl.DateTimeFormat("en-CA", {
-    day: "2-digit",
-    month: "2-digit",
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-  }).format(date);
-}
-
-function weekStart(dateText: string) {
-  const date = parseIndiaDate(dateText);
-  const day = date.getDay();
-  const offset = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + offset);
-  return formatIndiaDate(date);
-}
-
-function monthEnd(dateText: string) {
-  const date = parseIndiaDate(`${dateText.slice(0, 7)}-01`);
-  date.setMonth(date.getMonth() + 1);
-  date.setDate(0);
-  return formatIndiaDate(date);
-}
+const weekStart = weekStartOf;
+const monthEnd = monthEndOf;
 
 function dateList(startDate: string, endDate: string) {
   const dates: string[] = [];
@@ -205,19 +180,7 @@ export function getDateRangeForPeriod(
   }
 
   if (period === "last-month") {
-    const firstOfThisMonth = new Date(`${getIndiaMonthStart(today)}T00:00:00+05:30`);
-    const lastDayPrevMonth = new Date(firstOfThisMonth);
-    lastDayPrevMonth.setDate(0);
-    const firstDayPrevMonth = new Date(lastDayPrevMonth);
-    firstDayPrevMonth.setDate(1);
-    const fmt = (d: Date) =>
-      new Intl.DateTimeFormat("en-CA", {
-        day: "2-digit",
-        month: "2-digit",
-        timeZone: "Asia/Kolkata",
-        year: "numeric",
-      }).format(d);
-    return { startDate: fmt(firstDayPrevMonth), endDate: fmt(lastDayPrevMonth) };
+    return previousMonthRange(today);
   }
 
   if (period === "custom" && customStart && customEnd && customStart <= customEnd) {

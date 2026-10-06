@@ -109,6 +109,19 @@ export default async function ReportsPage() {
       </Link>
 
       <Link
+        className="flex items-center gap-4 rounded-[1.35rem] border border-primary/30 bg-primary-soft p-4 shadow-sm transition hover:border-primary"
+        href="/app/reports/sold"
+      >
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
+          <PackageSearch className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">What sold, what did not</span>
+          <span className="block text-sm leading-5 text-muted">Pick any dates: pieces sold by brand, item and size, and what is still in stock without a sale.</span>
+        </span>
+      </Link>
+
+      {limited ? null : <Link
         className="flex items-center gap-4 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
         href="/app/buying"
       >
@@ -119,7 +132,7 @@ export default async function ReportsPage() {
           <span className="block font-semibold">Buying & stock</span>
           <span className="block text-sm leading-5 text-muted">Sell-through, reorder by size, transfers between stores, markdown list, budgets and stock counts.</span>
         </span>
-      </Link>
+      </Link>}
 
       {limited ? null : (
         <Link
@@ -281,7 +294,7 @@ export default async function ReportsPage() {
             </div>
             <h2 className="text-2xl font-semibold">Stock Upload</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Upload monthly stock and confirm current stock status. Current month: {stockOverview.periodMonth}.
+              Upload the stock file every week (Monday) so stock and sizes stay right.
             </p>
             <div className="mt-4 space-y-2">
               {stockOverview.statuses.map((status) => (

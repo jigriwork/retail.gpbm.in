@@ -3,7 +3,7 @@ import { analyticsData } from "@/lib/analytics/data";
 import { completeQuery } from "@/lib/supabase/complete-query";
 import { staffNameKey } from "@/lib/employees/utils";
 import { createClient } from "@/lib/supabase/server";
-import { addDays, getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
+import { addDays, getIndiaMonthStart, getIndiaToday, weekStartOf } from "@/lib/tasks/dates";
 import type { Store } from "@/lib/auth/session";
 
 export type BusinessPeriod = "today" | "yesterday" | "week" | "month" | "year" | "custom";
@@ -191,25 +191,7 @@ export const businessSignalThresholds = {
 } as const;
 
 
-function parseIndiaDate(dateText: string) {
-  return new Date(`${dateText}T00:00:00+05:30`);
-}
-
-function formatIndiaDate(date: Date) {
-  return new Intl.DateTimeFormat("en-CA", {
-    day: "2-digit",
-    month: "2-digit",
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-  }).format(date);
-}
-
-function weekStart(dateText: string) {
-  const date = parseIndiaDate(dateText);
-  const day = date.getDay();
-  date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day));
-  return formatIndiaDate(date);
-}
+const weekStart = weekStartOf;
 
 export function getBusinessDateRange(period: BusinessPeriod, start?: string, end?: string) {
   const today = getIndiaToday();

@@ -632,7 +632,7 @@ function StockStatusMini({ stockOverview }: { stockOverview: StockOverview }) {
         <div className="min-w-0">
           <p className="text-sm font-medium text-muted">Stock upload</p>
           <h2 className="mt-1 text-xl font-semibold sm:text-2xl">{stockOverview.headline}</h2>
-          <p className="mt-1 text-sm leading-6 text-muted">Monthly stock report due {stockOverview.dueDate}.</p>
+          <p className="mt-1 text-sm leading-6 text-muted">Upload each store&apos;s stock file every Monday.</p>
         </div>
         <Link
           className="inline-flex h-10 shrink-0 items-center justify-center rounded-2xl bg-primary px-3 text-sm font-semibold text-white transition hover:bg-primary-deep sm:h-11 sm:px-4"
@@ -659,6 +659,7 @@ function StockStatusMini({ stockOverview }: { stockOverview: StockOverview }) {
             <p className={status.report ? "mt-1 text-lg font-semibold text-success" : "mt-1 text-lg font-semibold text-danger"}>
               {status.report ? "Uploaded" : "Pending"}
             </p>
+            <p className="text-xs text-muted">{status.latestDate ? `Stock of ${status.latestDate.split("-").reverse().join("/")}` : "No stock file yet"}</p>
           </Link>
         ))}
       </div>

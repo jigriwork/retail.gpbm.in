@@ -66,6 +66,8 @@ const handheldPrefixes = [
   "/app/reviews",
   "/app/settings",
   "/app/reports/staff-aliases",
+  "/app/reports/sold",
+  "/app/employees",
   "/app/staff-accounts",
 ];
 

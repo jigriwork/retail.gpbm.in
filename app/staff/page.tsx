@@ -36,8 +36,8 @@ export default async function StaffHomePage() {
       {week ? (
         <section className={`rounded-2xl border p-4 shadow-sm ${myAwards.length ? "pop-in border-success/40 bg-success/10" : "border-border bg-card"}`}>
           {myAwards.length ? <Celebration id={`star:${week.to}`} /> : null}
-          <p className="text-xs text-muted">My week{week.from && week.to ? ` · ${shortDay(week.from)} – ${shortDay(week.to)}` : ""}</p>
-          {myAwards.length ? <p className="mt-1 text-lg font-semibold">⭐ You are this week&apos;s star: {myAwards.join(", ")}! Great work!</p> : null}
+          <p className="text-xs text-muted">Last 7 days{week.from && week.to ? ` · ${shortDay(week.from)} – ${shortDay(week.to)}` : ""} (until yesterday)</p>
+          {myAwards.length ? <p className="mt-1 text-lg font-semibold">⭐ You are a star of the last 7 days: {myAwards.join(", ")}! Great work!</p> : null}
           {week.linked ? (
             <p className="mt-1 text-sm">
               <span className="text-lg font-semibold">{money(week.sale ?? 0)}</span> · {week.bills ?? 0} bills
@@ -46,7 +46,7 @@ export default async function StaffHomePage() {
             </p>
           ) : <p className="mt-1 text-sm text-muted">Your sales name is not verified yet; ask the owner to link it.</p>}
           <div className="mt-3 border-t border-border pt-3">
-            <p className="mb-2 text-sm font-semibold">⭐ Stars of the week</p>
+            <p className="mb-2 text-sm font-semibold">⭐ Stars of the last 7 days</p>
             <StarsList amounts={false} stars={week.stars} />
           </div>
         </section>

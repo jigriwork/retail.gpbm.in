@@ -13,10 +13,45 @@ export function getIndiaToday() {
   return formatIndiaDate(new Date());
 }
 
+// Calendar maths on "YYYY-MM-DD" text in UTC, so the answer is the same on
+// any server clock (Vercel runs in UTC; local-time Date getters gave the
+// previous day for India's midnight).
+function calendarDate(dateText: string) {
+  const [year, month, day] = dateText.slice(0, 10).split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function calendarText(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
 export function addDays(dateText: string, days: number) {
-  const date = new Date(`${dateText}T00:00:00+05:30`);
-  date.setDate(date.getDate() + days);
-  return formatIndiaDate(date);
+  const date = calendarDate(dateText);
+  date.setUTCDate(date.getUTCDate() + days);
+  return calendarText(date);
+}
+
+/** 0 = Sunday … 6 = Saturday. */
+export function weekdayOf(dateText: string) {
+  return calendarDate(dateText).getUTCDay();
+}
+
+/** Monday of the week the date is in. */
+export function weekStartOf(dateText: string) {
+  const day = weekdayOf(dateText);
+  return addDays(dateText, day === 0 ? -6 : 1 - day);
+}
+
+/** Last day of the date's month. */
+export function monthEndOf(dateText: string) {
+  const [year, month] = dateText.slice(0, 7).split("-").map(Number);
+  return calendarText(new Date(Date.UTC(year, month, 0)));
+}
+
+/** First and last day of the month before the date's month. */
+export function previousMonthRange(dateText: string) {
+  const endDate = addDays(`${dateText.slice(0, 7)}-01`, -1);
+  return { endDate, startDate: `${endDate.slice(0, 7)}-01` };
 }
 
 export function getIndiaTomorrow() {
@@ -24,8 +59,7 @@ export function getIndiaTomorrow() {
 }
 
 export function isMondayInIndia(dateText = getIndiaToday()) {
-  const date = new Date(`${dateText}T00:00:00+05:30`);
-  return date.getDay() === 1;
+  return weekdayOf(dateText) === 1;
 }
 
 export function getIndiaDayOfMonth(dateText = getIndiaToday()) {

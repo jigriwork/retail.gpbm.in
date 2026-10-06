@@ -2,8 +2,10 @@
 //
 // - EAN/UPC codes carry a check digit: a read with a wrong check digit is a
 //   misread and is dropped; a correct one counts at once.
-// - Other barcodes (Code 128, Code 39) have no such check in the number, so
-//   they count only after the same text is read twice within a second.
+// - Code 128 (the shop's price stickers) has a check character that both
+//   readers verify, so one read counts at once too.
+// - Code 39 has no check: it counts only after the same text is read twice
+//   within a second.
 // - A code counts again only after it has been out of view for `ABSENT_MS`:
 //   one tag held in front of the camera counts once, but identical tags on
 //   several pieces all count as the camera moves between them.
@@ -17,6 +19,7 @@ export const CONFIRM_MS = 1000;
 export const emptyReadState: ReadState = { last: { code: "", seen: 0 }, pending: { code: "", seen: 0 } };
 
 const ean = /^(ean_13|ean_8|upc_a|upc_e|EAN_13|EAN_8|UPC_A|UPC_E)$/;
+const checked = /^(code_128|CODE_128)$/;
 
 /** Check digit of an EAN-8, UPC-A (12) or EAN-13 code. */
 export function validEanUpc(code: string) {
@@ -39,6 +42,8 @@ export function acceptRead(state: ReadState, raw: string, format: string, now: n
   if (code.length < 4) return { accept: false, state };
   if (ean.test(format) || /^\d{12,13}$/.test(code)) {
     if (!validEanUpc(code) && /^\d{8}$|^\d{12,13}$/.test(code)) return { accept: false, state };
+  } else if (checked.test(format)) {
+    // Verified by the reader's check character: counts at once.
   } else if (!(state.pending.code === code && now - state.pending.seen < CONFIRM_MS)) {
     // First sighting of a code without a check digit: wait for a second read.
     if (state.last.code === code && now - state.last.seen < ABSENT_MS) {

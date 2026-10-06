@@ -1,6 +1,6 @@
 import "server-only";
 import { completeQuery, checkedQuery } from "@/lib/supabase/complete-query";
-import { getIndiaDayOfMonth, getIndiaMonthStart, getIndiaToday } from "@/lib/tasks/dates";
+import { addDays, getIndiaDayOfMonth, getIndiaMonthStart, getIndiaToday, isMondayInIndia, weekStartOf } from "@/lib/tasks/dates";
 import { createClient } from "@/lib/supabase/server";
 
 export type StockReportSummary = {
@@ -39,7 +39,10 @@ export type StockReportWithStore = {
 export type StoreStockStatus = {
   store: { id: string; name: string; code: string };
   periodMonth: string;
+  /** Newest stock file if it is at most 7 days old. */
   report: StockReportWithStore | null;
+  /** Stock date of the newest file, however old. */
+  latestDate: string | null;
   recentReports: StockReportWithStore[];
 };
 
@@ -160,10 +163,17 @@ export async function getStoreStockStatuses(
     return {
       store,
       periodMonth,
+      // Stock is uploaded weekly: up to date when the newest stock file is at
+      // most 7 days old (report_date is the stock date of the file).
       report:
-        reports.find(
-          (report) => report.store_id === store.id && report.period_month === periodMonth,
-        ) ?? null,
+        reports
+          .filter((report) => report.store_id === store.id && report.report_date && report.report_date >= addDays(getIndiaToday(), -7))
+          .sort((left, right) => String(right.report_date).localeCompare(String(left.report_date)))[0] ?? null,
+      latestDate: reports
+        .filter((report) => report.store_id === store.id && report.report_date)
+        .map((report) => String(report.report_date))
+        .sort()
+        .at(-1) ?? null,
       recentReports,
     } satisfies StoreStockStatus;
   });
@@ -178,20 +188,18 @@ export async function getStockOverview(stores: Array<{ id: string; name: string;
   const uploadedCount = statuses.length - missingCount;
   const allUploaded = statuses.length > 0 && missingCount === 0;
 
-  let headline = "Next stock report due";
-  if (dayOfMonth === 1) {
-    headline = "Stock report due today";
-  } else if (missingCount > 0) {
-    headline = "Stock report pending";
-  } else if (allUploaded) {
-    headline = "Stock report ready";
+  let headline = "Stock is up to date";
+  if (missingCount > 0) {
+    headline = isMondayInIndia(today) ? "Weekly stock due today" : "Weekly stock pending";
+  } else if (!allUploaded) {
+    headline = "Next stock upload on Monday";
   }
 
   return {
     today,
     dayOfMonth,
     periodMonth,
-    dueDate: periodMonth,
+    dueDate: weekStartOf(today),
     statuses,
     uploadedCount,
     missingCount,

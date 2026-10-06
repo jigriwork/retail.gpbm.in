@@ -42,13 +42,15 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // The login is checked against the project's signing key on this server
+  // (no round trip to Supabase Auth on every page and prefetch); an expired
+  // session is refreshed here as before.
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = typeof claims?.claims?.sub === "string" ? claims.claims.sub : null;
   const path = request.nextUrl.pathname;
 
-  if (user && (path.startsWith("/app") || path.startsWith("/api/tia"))) {
-    const access = await profileAccess(supabase, user.id);
+  if (userId && (path.startsWith("/app") || path.startsWith("/api/tia"))) {
+    const access = await profileAccess(supabase, userId);
     if (access?.role === "accountant" && access.active && (path.startsWith("/api/tia") || !accountantAllows(path))) {
       if (request.method !== "GET" && request.method !== "HEAD") return new NextResponse(null, { status: 404 });
       return redirectKeepingCookies(response, new URL("/app/accounts", request.url));

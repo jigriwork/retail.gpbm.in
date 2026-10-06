@@ -13,7 +13,7 @@ import {
 } from "@/lib/analytics/sales";
 import { getLatestStockMonth, getStockSummary, type StockSummary } from "@/lib/analytics/stock";
 import { createClient } from "@/lib/supabase/server";
-import { addDays, getIndiaToday, isMondayInIndia } from "@/lib/tasks/dates";
+import { addDays, getIndiaToday, isMondayInIndia, weekStartOf } from "@/lib/tasks/dates";
 import type { ManagerUpdate } from "@/lib/updates/queries";
 import { getAnalyticsQueryPath } from "@/lib/analytics/query-path";
 import {
@@ -79,26 +79,7 @@ export type StoreWeeklyAuditSummary = {
   stockSignals: WeeklyStockSignalAudit;
 };
 
-function parseIndiaDate(dateText: string) {
-  return new Date(`${dateText}T00:00:00+05:30`);
-}
-
-function formatIndiaDate(date: Date) {
-  return new Intl.DateTimeFormat("en-CA", {
-    day: "2-digit",
-    month: "2-digit",
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-  }).format(date);
-}
-
-function weekStartFor(dateText: string) {
-  const date = parseIndiaDate(dateText);
-  const day = date.getDay();
-  const offset = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + offset);
-  return formatIndiaDate(date);
-}
+const weekStartFor = weekStartOf;
 
 export function getPreviousWeekRangeAsiaKolkata(today = getIndiaToday()) {
   const currentWeekStart = weekStartFor(today);

@@ -4,24 +4,17 @@ import { BarChart3, CircleAlert, LineChart, Target, Trophy } from "lucide-react"
 import { SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
 import { DataFreshnessBadge } from "@/components/app/data-freshness-badge";
 import { DailySalesBars } from "@/components/reports/daily-sales-bars";
+import { PeriodPicker } from "@/components/reports/period-picker";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { resolveRange } from "@/lib/reports/period";
 import {
   calculateTargetProgress,
   currentMonthRange,
-  getDateRangeForPeriod,
   getMissingSalesReportDates,
   getSalesSummary,
-  type SalesPeriod,
 } from "@/lib/analytics/sales";
 import { getSuspiciousSalesReportWarningsFromReports } from "@/lib/reports/sales-queries";
 
-const periodLabels: Array<{ value: SalesPeriod; label: string }> = [
-  { value: "today", label: "Today" },
-  { value: "yesterday", label: "Yesterday" },
-  { value: "week", label: "This week" },
-  { value: "month", label: "This month" },
-  { value: "custom", label: "Custom" },
-];
 
 function formatMoney(value?: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -37,9 +30,6 @@ function formatNumber(value?: number) {
   }).format(value ?? 0);
 }
 
-function safePeriod(value?: string): SalesPeriod {
-  return periodLabels.some((period) => period.value === value) ? (value as SalesPeriod) : "yesterday";
-}
 
 function RankingList({
   items,
@@ -94,8 +84,7 @@ export default async function SalesAnalyticsPage({
   const { storeId, period: rawPeriod, start, end } = await searchParams;
   const { profile } = await requireProfile();
   const stores = await getAccessibleStores(profile);
-  const period = safePeriod(rawPeriod);
-  const dateRange = getDateRangeForPeriod(period, start, end);
+  const dateRange = resolveRange({ end, period: rawPeriod, start }, "yesterday");
   const selectedStores =
     storeId && stores.some((store) => store.id === storeId)
       ? stores.filter((store) => store.id === storeId)
@@ -129,60 +118,16 @@ export default async function SalesAnalyticsPage({
         </p>
       </div>
 
-      <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Store</span>
-            <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
-              defaultValue={storeId ?? "all"}
-              name="storeId"
-            >
-              <option value="all">All accessible stores</option>
-              {stores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Period</span>
-            <select
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
-              defaultValue={period}
-              name="period"
-            >
-              {periodLabels.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">Start</span>
-            <input
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
-              defaultValue={dateRange.startDate}
-              name="start"
-              type="date"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-muted">End</span>
-            <input
-              className="h-12 w-full rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
-              defaultValue={dateRange.endDate}
-              name="end"
-              type="date"
-            />
-          </label>
-          <button className="mt-7 h-12 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep">
-            Apply
-          </button>
-        </form>
-      </section>
+      <PeriodPicker keep={{ storeId }} path="/app/reports/sales/analytics" range={dateRange}>
+        <label className="col-span-2 block text-xs font-medium text-muted sm:col-span-1">Store
+          <select className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary" defaultValue={storeId ?? "all"} name="storeId">
+            <option value="all">All accessible stores</option>
+            {stores.map((store) => (
+              <option key={store.id} value={store.id}>{store.name}</option>
+            ))}
+          </select>
+        </label>
+      </PeriodPicker>
 
       <DataFreshnessBadge freshness={summary.freshness} source="Sales" />
 

@@ -60,7 +60,8 @@ export default async function VoucherPage({ params, searchParams }: { params: Pr
       </section>
 
       <Panel description="Every voucher balances: total debit equals total credit." title="Entries">
-        <table className="min-w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[420px] text-sm">
           <thead className="text-left text-xs text-muted"><tr><th className="py-1">Account</th><th className="text-right">Debit</th><th className="text-right">Credit</th></tr></thead>
           <tbody className="divide-y divide-border">
             {lines.map((line) => (
@@ -77,6 +78,7 @@ export default async function VoucherPage({ params, searchParams }: { params: Pr
             </tr>
           </tbody>
         </table>
+        </div>
       </Panel>
 
       {voucher.party_id ? (

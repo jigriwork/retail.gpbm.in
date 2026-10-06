@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Camera, Loader2, Search } from "lucide-react";
+import { Camera, Loader2, ScanBarcode, Search } from "lucide-react";
 
 import { BarcodeScanner, unlockScanSound } from "@/components/app/barcode-scanner";
+import { ScannerGun, useScannerGunSetting } from "@/components/app/scanner-gun";
 import { lookupItem, type LookupItem } from "@/lib/scan/actions";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -22,14 +23,15 @@ export function ItemScan() {
   const [pending, start] = useTransition();
 
   const latest = useRef(0);
+  const [gun, toggleGun] = useScannerGunSetting();
 
   // Connection problems show "scan again" (never the error page); only the newest answer is shown.
-  function search(value: string) {
+  function search(value: string): Promise<boolean> {
     const clean = value.trim();
-    if (!clean) return;
+    if (!clean) return Promise.resolve(false);
     setCode(clean);
     const request = ++latest.current;
-    start(async () => {
+    return new Promise((resolve) => start(async () => {
       let next: { code: string; items: LookupItem[]; message?: string };
       try {
         next = { code: clean, ...(await lookupItem(clean)) };
@@ -37,7 +39,8 @@ export function ItemScan() {
         next = { code: clean, items: [], message: "Connection problem. Scan again." };
       }
       if (request === latest.current) setResult(next);
-    });
+      resolve(next.items.length > 0);
+    }));
   }
 
   return (
@@ -45,7 +48,7 @@ export function ItemScan() {
       {scanning ? (
         <BarcodeScanner
           onClose={() => setScanning(false)}
-          onCode={(value) => { search(value); }}
+          onCode={search}
           status={
             pending ? <p className="rounded-2xl bg-white/10 p-3">Looking up {code}…</p>
               : !result ? <p className="rounded-2xl bg-white/10 p-3">Point the camera at any tag. It stays open: scan the next tag whenever you like.</p>
@@ -61,7 +64,7 @@ export function ItemScan() {
                     </p>
                   ))}
                 </div>
-              ) : <p className="rounded-2xl bg-accent p-3 font-semibold text-black">No item found for {result.code} in the latest stock reports.</p>
+              ) : <p className="rounded-2xl bg-accent p-3 font-semibold text-black">{result.code} is not in the latest stock files. New arrivals show after the next weekly stock upload.</p>
           }
           title="Scan an item"
         />
@@ -70,6 +73,9 @@ export function ItemScan() {
         <button className="inline-flex h-12 items-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-white" onClick={() => { unlockScanSound(); setScanning(true); }} type="button">
           <Camera className="size-5" /> Scan a tag
         </button>
+        <button aria-pressed={gun} className={`inline-flex h-12 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold ${gun ? "bg-primary-deep text-white" : "border border-border bg-card"}`} onClick={toggleGun} type="button">
+          <ScanBarcode className="size-5" /> Scanner gun{gun ? ": on" : ""}
+        </button>
         <form className="flex min-w-60 flex-1 gap-2" onSubmit={(event) => { event.preventDefault(); search(code); }}>
           <input className="h-12 flex-1 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary" inputMode="text" onChange={(event) => setCode(event.target.value)} placeholder="Or type barcode / lot code" value={code} />
           <button aria-label="Look up" className="inline-flex size-12 items-center justify-center rounded-2xl border border-border bg-card" type="submit">
@@ -77,6 +83,11 @@ export function ItemScan() {
           </button>
         </form>
       </div>
+      {gun && !scanning ? (
+        <div className="rounded-2xl bg-primary-deep p-3 text-white shadow-md">
+          <ScannerGun hint="Scan a tag to see its stock and recent sales. Works with any USB or Bluetooth barcode scanner." onCode={search} />
+        </div>
+      ) : null}
 
       {result ? (
         result.message ? <p className="rounded-2xl border border-danger/20 bg-danger/5 p-4 text-sm font-medium text-danger">{result.message}</p>

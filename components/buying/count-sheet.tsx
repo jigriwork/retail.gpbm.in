@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Check, Loader2 } from "lucide-react";
+import { Camera, Check, Loader2, ScanBarcode } from "lucide-react";
 
 import { BarcodeScanner, unlockScanSound } from "@/components/app/barcode-scanner";
+import { ScannerGun, useScannerGunSetting } from "@/components/app/scanner-gun";
 import { addExtraItem, recordCount } from "@/lib/buying/actions";
 
 type Line = { id: string; lot_code: string | null; item_name: string | null; size: string | null; counted_qty: number | null; is_extra: boolean };
@@ -29,6 +30,8 @@ export function CountSheet({ codes = [], countId, editable, expectedPieces = nul
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(lines.map((line) => [line.id, line.counted_qty === null ? "" : String(Number(line.counted_qty))])));
   const [state, setState] = useState<Record<string, "saving" | "saved" | string>>({});
   const [scanning, setScanning] = useState(false);
+  // Scanner gun (USB / Bluetooth) mode, remembered on this device.
+  const [gun, toggleGun] = useScannerGunSetting();
   // Latest first; "unknown" entries wait for Add as extra / Skip.
   const [scanLog, setScanLog] = useState<ScanEntry[]>([]);
   const [sessionCount, setSessionCount] = useState(0);
@@ -153,14 +156,25 @@ export function CountSheet({ codes = [], countId, editable, expectedPieces = nul
       {scanning ? <BarcodeScanner onClose={() => setScanning(false)} onCode={onScan} status={scanPanel} title="Scan to count (+1 each)" /> : null}
       <div className="flex flex-wrap items-center gap-3">
         {editable ? (
-          <button className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white" onClick={() => { unlockScanSound(); setScanning(true); }} type="button">
-            <Camera className="size-4" /> Scan
-          </button>
+          <>
+            <button className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white" onClick={() => { unlockScanSound(); setScanning(true); }} type="button">
+              <Camera className="size-4" /> Camera scan
+            </button>
+            <button aria-pressed={gun} className={`inline-flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold ${gun ? "bg-primary-deep text-white" : "border border-border bg-card"}`} onClick={toggleGun} type="button">
+              <ScanBarcode className="size-4" /> Scanner gun{gun ? ": on" : ""}
+            </button>
+          </>
         ) : null}
         <input className="h-11 min-w-56 flex-1 rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-primary" onChange={(event) => setQuery(event.target.value)} placeholder="Find item, size or lot code" value={query} />
         <label className="flex items-center gap-2 text-sm font-medium"><input checked={onlyOpen} className="size-4 accent-primary" onChange={(event) => setOnlyOpen(event.target.checked)} type="checkbox" />Not counted yet</label>
         <span className="text-sm font-semibold">{done} of {lines.length} items counted · {pieces}{expectedPieces !== null ? ` of ${Number(expectedPieces)}` : ""} pieces</span>
       </div>
+      {editable && gun && !scanning ? (
+        <div className="space-y-3 rounded-2xl bg-primary-deep p-3 text-white shadow-md">
+          <ScannerGun hint="Every scan adds 1 and saves. Works with any USB or Bluetooth barcode scanner." onCode={onScan} />
+          {scanPanel}
+        </div>
+      ) : null}
       <ul className="divide-y divide-border/60 rounded-2xl border border-border bg-background">
         {shown.slice(0, 400).map((line) => (
           <li className="flex items-center gap-3 px-3 py-2 text-sm" key={line.id}>

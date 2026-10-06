@@ -7538,6 +7538,8 @@ export type Database = {
       markdown_candidates: { Args: { p_store: string }; Returns: { brand: string; item_name: string; size: string | null; category: string | null; mrp: number | null; on_hand: number; value_mrp: number; last_sale: string | null; days_without_sale: number; first_seen: string | null; suggested_pct: number }[] }
       transfer_suggestions: { Args: Record<PropertyKey, never>; Returns: { brand: string; item_name: string; size: string | null; from_store_id: string; from_store: string; to_store_id: string; to_store: string; from_on_hand: number; to_sold_30: number; qty: number }[] }
       reorder_suggestions: { Args: { p_store: string; p_days: number; p_cover_days: number }; Returns: { brand: string; item_name: string; size: string | null; sold: number; on_hand: number; suggest_qty: number; other_store_on_hand: number; other_store_names: string | null; last_sale: string }[] }
+      staff_name_totals: { Args: { p_store_ids: string[] }; Returns: { store_id: string; staff_name: string; row_count: number; net_sale: number }[] }
+      sold_report: { Args: { p_store: string; p_from: string; p_to: string; p_brand?: string }; Returns: Json }
       brand_sell_through: { Args: { p_store: string; p_days: number }; Returns: { brand: string; sold_units: number; net_sales: number; on_hand: number; on_hand_mrp: number; on_hand_cost: number | null; cost_known_units: number; sell_through_pct: number | null; days_cover: number | null; no_sale_90_units: number; snapshot_date: string | null }[] }
       refresh_stock_position: { Args: { p_store: string }; Returns: boolean }
       customer_visible: { Args: { p_mobile: string }; Returns: boolean }

@@ -10,7 +10,8 @@ const rejected = { __isAuthError: true, message: "Invalid Refresh Token", name: 
 
 function withUser(result) {
   const f = fixture({ role: "owner" });
-  f.client.auth.getUser = async () => result;
+  // The login is checked with getClaims (token verified on the server).
+  f.client.auth.getClaims = async () => ({ data: result.data.user ? { claims: { sub: result.data.user.id } } : null, error: result.error });
   return f;
 }
 

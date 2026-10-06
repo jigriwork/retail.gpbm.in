@@ -35,11 +35,11 @@ test("handhelds get everyday store pages only", () => {
   for (const path of [
     "/app/today", "/app/tasks", "/app/tasks/new", "/app/checklist/gp", "/app/updates/new", "/app/sops", "/app/reviews/rack",
     "/app/settings/account", "/app/reports", "/app/reports/", "/app/reports/sales", "/app/reports/stock",
-    "/app/reports/staff-aliases", "/app/stores", "/app/staff-accounts",
+    "/app/reports/staff-aliases", "/app/stores", "/app/staff-accounts", "/app/reports/sold", "/app/employees", "/app/employees/new",
   ]) assert.equal(handheldAllows(path), true, path);
   for (const path of [
     "/app/reports/sales/analytics", "/app/reports/stock/analytics", "/app/reports/business", "/app/reports/staff",
-    "/app/reports/salary-attendance", "/app/reports/correction", "/app/stores/gp", "/app/employees", "/app/employees/new",
+    "/app/reports/salary-attendance", "/app/reports/correction", "/app/stores/gp",
     "/app/audit", "/app/audit/gp", "/app/payslips", "/app/secretary", "/app/owner/review", "/app/users", "/app/life",
   ]) assert.equal(handheldAllows(path), false, path);
 });

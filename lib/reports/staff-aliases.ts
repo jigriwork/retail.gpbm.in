@@ -1,5 +1,4 @@
 import "server-only";
-import { analyticsData } from "@/lib/analytics/data";
 import { completeQuery } from "@/lib/supabase/complete-query";
 import { revalidatePath } from "next/cache";
 
@@ -232,7 +231,7 @@ export async function getStaffAliasPageData({
       .in("store_id", selectedStoreIds).eq("source_type", sourceType).order("source_name")),
     completeQuery(supabase.from("employee_contacts").select("id,staff_name,store_id,is_active", { count: "exact" })
       .in("store_id", selectedStoreIds).order("staff_name")),
-    analyticsData(selectedStoreIds, "0001-01-01", "9999-12-31"),
+    supabase.rpc("staff_name_totals", { p_store_ids: selectedStoreIds }),
   ]);
 
   const normalizedSearch = search.trim().toLowerCase();
@@ -253,7 +252,7 @@ export async function getStaffAliasPageData({
   ]);
   const unmatchedMap = new Map<string, UnmatchedStaffName>();
 
-  for (const row of salesData.sales) {
+  for (const row of salesData.data ?? []) {
     if (!row.store_id || !row.staff_name?.trim()) {
       continue;
     }
@@ -275,7 +274,7 @@ export async function getStaffAliasPageData({
         rowCount: 0,
         totalSale: 0,
       };
-    current.rowCount += row.source_row_count ?? 1;
+    current.rowCount += Number(row.row_count ?? 0);
     current.totalSale += Number(row.net_sale ?? 0);
     unmatchedMap.set(key, current);
   }

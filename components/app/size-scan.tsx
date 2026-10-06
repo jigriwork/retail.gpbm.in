@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Camera, Loader2, Search } from "lucide-react";
+import { Camera, Loader2, ScanBarcode, Search } from "lucide-react";
 
 import { BarcodeScanner, unlockScanSound } from "@/components/app/barcode-scanner";
+import { ScannerGun, useScannerGunSetting } from "@/components/app/scanner-gun";
 import { checkSizes, type SizeItem } from "@/lib/scan/size-actions";
 
 type Result = { code: string; items: SizeItem[]; message?: string };
@@ -53,15 +54,16 @@ export function SizeScan() {
   const [pending, start] = useTransition();
 
   const latest = useRef(0);
+  const [gun, toggleGun] = useScannerGunSetting();
 
   // A connection problem shows "scan again" here; it must never replace the
   // page with an error screen. Only the newest scan's answer is shown.
-  function search(value: string) {
+  function search(value: string): Promise<boolean> {
     const clean = value.trim();
-    if (!clean) return;
+    if (!clean) return Promise.resolve(false);
     setCode(clean);
     const request = ++latest.current;
-    start(async () => {
+    return new Promise((resolve) => start(async () => {
       let next: Result;
       try {
         next = { code: clean, ...(await checkSizes(clean)) };
@@ -69,7 +71,8 @@ export function SizeScan() {
         next = { code: clean, items: [], message: "Connection problem. Scan again." };
       }
       if (request === latest.current) setResult(next);
-    });
+      resolve(next.items.length > 0);
+    }));
   }
 
   const resultView = (dark: boolean) =>
@@ -84,14 +87,17 @@ export function SizeScan() {
             </div>
           ))}
         </div>
-      ) : <p className="rounded-2xl bg-accent p-3 font-semibold text-black">No item found for {result.code} in the latest stock report.</p>;
+      ) : <p className="rounded-2xl bg-accent p-3 font-semibold text-black">{result.code} is not in the latest stock file. If it came in after the last weekly stock upload, it shows after the next one. Check the code, or scan again.</p>;
 
   return (
     <div className="space-y-4">
-      {scanning ? <BarcodeScanner onClose={() => setScanning(false)} onCode={(value) => { search(value); }} status={resultView(true)} title="Check sizes" /> : null}
+      {scanning ? <BarcodeScanner onClose={() => setScanning(false)} onCode={search} status={resultView(true)} title="Check sizes" /> : null}
       <div className="flex flex-wrap gap-2">
         <button className="inline-flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-base font-semibold text-white sm:flex-none" onClick={() => { unlockScanSound(); setScanning(true); }} type="button">
           <Camera className="size-5" /> Scan a tag
+        </button>
+        <button aria-pressed={gun} className={`inline-flex h-14 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold ${gun ? "bg-primary-deep text-white" : "border border-border bg-card"}`} onClick={toggleGun} type="button">
+          <ScanBarcode className="size-5" /> Scanner gun{gun ? ": on" : ""}
         </button>
         <form className="flex min-w-60 flex-1 gap-2" onSubmit={(event) => { event.preventDefault(); search(code); }}>
           <input className="h-14 flex-1 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary" onChange={(event) => setCode(event.target.value)} placeholder="Or type the barcode" value={code} />
@@ -100,6 +106,11 @@ export function SizeScan() {
           </button>
         </form>
       </div>
+      {gun && !scanning ? (
+        <div className="rounded-2xl bg-primary-deep p-3 text-white shadow-md">
+          <ScannerGun hint="Scan a tag to see which sizes are in stock. Works with any USB or Bluetooth barcode scanner." onCode={search} />
+        </div>
+      ) : null}
       {!scanning && result ? resultView(false) : null}
     </div>
   );

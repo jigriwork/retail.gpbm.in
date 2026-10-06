@@ -26,17 +26,19 @@ function isTemporaryFailure(error: { name?: string; status?: number } | null) {
   return error.name === "AuthRetryableFetchError" || !error.status || error.status >= 500 || error.status === 429;
 }
 
-export const getCurrentUser = cache(async function getCurrentUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+/** The signed-in person as the login token states it (verified with the project's signing key). */
+export type SessionUser = { email: string | null; id: string };
 
-  if (!user && error && error.name !== "AuthSessionMissingError" && isTemporaryFailure(error)) {
-    throw new SessionCheckError();
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<SessionUser | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getClaims();
+  const id = data?.claims?.sub;
+
+  if (typeof id !== "string") {
+    if (error && error.name !== "AuthSessionMissingError" && isTemporaryFailure(error)) throw new SessionCheckError();
+    return null;
   }
-  return user;
+  return { email: typeof data?.claims?.email === "string" ? data.claims.email : null, id };
 });
 
 export const getCurrentProfile = cache(async function getCurrentProfile() {

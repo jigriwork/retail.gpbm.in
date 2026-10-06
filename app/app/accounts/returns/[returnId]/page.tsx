@@ -51,7 +51,8 @@ export default async function ReturnPage({ params }: { params: Promise<{ returnI
         </p>
       </section>
       <Panel title="Items">
-        <table className="min-w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[420px] text-sm">
           <thead className="text-left text-xs text-muted"><tr><th className="py-1">Item</th><th className="text-right">Qty</th><th className="text-right">Value/pc</th><th className="text-right">Accepted</th><th className="text-right">Rejected</th></tr></thead>
           <tbody className="divide-y divide-border">
             {lines.map((line) => (
@@ -63,6 +64,7 @@ export default async function ReturnPage({ params }: { params: Promise<{ returnI
             ))}
           </tbody>
         </table>
+        </div>
       </Panel>
       {can ? (
         <Panel title="Next step">

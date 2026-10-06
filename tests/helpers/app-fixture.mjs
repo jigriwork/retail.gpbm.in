@@ -85,7 +85,10 @@ export function fixture({ role = "manager", active = true, assigned = ["gp"], an
   }
   const client = {
     from,
-    auth: { getUser: async () => ({ data: { user: anonymous ? null : { id: "actor" } }, error: null }) },
+    auth: {
+      getClaims: async () => ({ data: anonymous ? null : { claims: { sub: "actor" } }, error: null }),
+      getUser: async () => ({ data: { user: anonymous ? null : { id: "actor" } }, error: null }),
+    },
     storage: { from(bucket) {
       assert.ok(["reports", "payslips"].includes(bucket));
       return {

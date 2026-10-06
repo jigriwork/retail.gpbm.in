@@ -40,11 +40,16 @@ test("EAN/UPC: a correct check digit counts at once, a misread is dropped", () =
   assert.deepEqual(feed([["8909329430961", "ean_13", 0], ["8909329430968", "ean_13", 100]]), [false, true]);
 });
 
-test("Code 128 / Code 39 count only after two identical reads within a second", () => {
-  assert.deepEqual(feed([["Q12446", "code_128", 0], ["Q12446", "code_128", 120], ["Q12446", "code_128", 240]]), [false, true, false]);
+test("Code 128 (check character verified by the reader) counts on the first read, once while in view", () => {
+  assert.deepEqual(feed([["PC001OLM001", "code_128", 0], ["PC001OLM001", "code_128", 120], ["PC001OLM001", "CODE_128", 240]]), [true, false, false]);
+  assert.deepEqual(feed([["PC001OLM001", "code_128", 0], ["PC001OLM001", "code_128", 1500]]), [true, true], "counts again after leaving the view");
+});
+
+test("Code 39 (no check) counts only after two identical reads within a second", () => {
+  assert.deepEqual(feed([["Q12446", "code_39", 0], ["Q12446", "code_39", 120], ["Q12446", "code_39", 240]]), [false, true, false]);
   assert.deepEqual(feed([["Q1Z44", "code_39", 0], ["Q12446", "code_39", 1500]]), [false, false], "a single stray read never counts");
 });
 
 test("very short reads are ignored", () => {
-  assert.deepEqual(feed([["12", "code_128", 0], ["12", "code_128", 50]]), [false, false]);
+  assert.deepEqual(feed([["12", "code_128", 0], ["12", "code_128", 50], ["123", "code_39", 90]]), [false, false, false]);
 });
