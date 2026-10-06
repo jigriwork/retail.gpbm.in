@@ -27,6 +27,20 @@ function rememberCamera(id: string) {
 }
 
 const isBack = (camera: MediaDeviceInfo) => /back|rear|environment/i.test(camera.label);
+const isFrontName = (camera: MediaDeviceInfo) => /front|user|selfie|facetime/i.test(camera.label);
+
+// Cameras found to face the user (old Androids often name cameras just
+// "Camera 1"), remembered on this phone so Switch camera never picks them.
+const frontKey = "gpbm-front-cameras";
+function knownFront() {
+  try { return new Set<string>(JSON.parse(window.localStorage.getItem(frontKey) ?? "[]")); } catch { return new Set<string>(); }
+}
+function markFront(id: string) {
+  const ids = knownFront();
+  ids.add(id);
+  try { window.localStorage.setItem(frontKey, JSON.stringify([...ids].slice(-10))); } catch { /* storage blocked */ }
+}
+const facesUser = (track: MediaStreamTrack | undefined) => (track?.getSettings() as { facingMode?: string } | undefined)?.facingMode === "user";
 
 /**
  * The back camera that focuses on a tag held close: on iPhone Pro models the
@@ -178,13 +192,16 @@ export function BarcodeScanner({ onClose, onCode, status, title = "Scan a barcod
           return open("");
         });
         if (stopped) return;
-        // Camera names are readable once the camera is allowed.
-        const all = (await navigator.mediaDevices.enumerateDevices().catch(() => [])).filter((device) => device.kind === "videoinput");
-        const backs = all.filter(isBack);
+        // Camera names are readable once the camera is allowed. Only back
+        // cameras are offered: never one named or found to face the user.
+        const front = knownFront();
+        const all = (await navigator.mediaDevices.enumerateDevices().catch(() => []))
+          .filter((device) => device.kind === "videoinput" && device.deviceId && !isFrontName(device) && !front.has(device.deviceId));
+        const named = all.filter(isBack);
+        const backs = named.length ? named : all;
         if (stopped) return;
-        setCameras(backs.length > 1 ? backs : all.length > 1 ? all : []);
         if (!chosen) {
-          const best = preferredBack(backs);
+          const best = preferredBack(named);
           const current = stream.getVideoTracks()[0]?.getSettings().deviceId;
           if (best && best.deviceId && best.deviceId !== current) {
             stream.getTracks().forEach((track) => track.stop());
@@ -192,6 +209,20 @@ export function BarcodeScanner({ onClose, onCode, status, title = "Scan a barcod
             if (stopped) return;
           }
         }
+        // Opened the front camera after all? Note it, and open a back one.
+        if (facesUser(stream.getVideoTracks()[0])) {
+          const wrong = stream.getVideoTracks()[0]?.getSettings().deviceId;
+          if (wrong) markFront(wrong);
+          rememberCamera("");
+          stream.getTracks().forEach((track) => track.stop());
+          const other = backs.find((camera) => camera.deviceId !== wrong);
+          stream = await (other ? open(other.deviceId) : Promise.reject(new Error("no back camera")))
+            .catch(() => navigator.mediaDevices.getUserMedia({ audio: false, video: { ...size, facingMode: { exact: "environment" } } }));
+          if (stopped) return;
+        }
+        const usedId = stream.getVideoTracks()[0]?.getSettings().deviceId;
+        const switchable = backs.filter((camera) => !(facesUser(stream?.getVideoTracks()[0]) && camera.deviceId === usedId));
+        setCameras(switchable.length > 1 ? switchable : []);
         const track = stream.getVideoTracks()[0];
         if (!videoRef.current || !track) return;
         videoRef.current.srcObject = stream;
