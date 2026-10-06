@@ -1,11 +1,13 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 
+import { InstallApp } from "@/components/app/install-app";
 import { StaffBottomNav } from "@/components/staff/staff-bottom-nav";
 import { StaffChangePasswordForm } from "@/components/staff/change-password-form";
 import { signOut } from "@/lib/auth/actions";
 import { requireProfile } from "@/lib/auth/session";
 import { getStaffProfileSummary } from "@/lib/staff/portal";
+import packageJson from "@/package.json";
 
 export const dynamic = "force-dynamic";
 
@@ -19,5 +21,5 @@ export default async function StaffLayout({ children }: { children: React.ReactN
     return <main className="min-h-dvh bg-background px-5 py-8"><section className="mx-auto max-w-md rounded-[1.35rem] border border-border bg-card p-5 shadow-sm"><Image alt="GPBM Retail" className="rounded-xl" height={40} src="/icon-192.png" width={40} /><p className="mt-6 text-sm font-medium text-muted">First login or PIN reset</p><h1 className="mt-2 text-3xl font-semibold">Choose your private PIN</h1><p className="mb-6 mt-3 text-sm leading-6 text-muted">Enter the new 6–8 digit PIN twice. You do not need to enter the temporary code again.</p><StaffChangePasswordForm requireCurrent={false} /><form action={signOut} className="mt-4"><button className="h-11 w-full rounded-2xl border border-border text-sm font-semibold">Log out</button></form></section></main>;
   }
 
-  return <div className="min-h-dvh bg-background pb-24 text-foreground"><header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur"><div className="mx-auto flex max-w-xl items-center justify-between"><div className="flex items-center gap-3"><Image alt="" className="rounded-lg" height={30} src="/icon-192.png" width={30} /><div><p className="font-semibold">GPBM Staff</p><p className="text-xs text-muted">{staff.store.name}</p></div></div><form action={signOut}><button className="rounded-xl border border-border px-3 py-2 text-xs font-semibold">Logout</button></form></div></header><main className="mx-auto max-w-xl px-4 py-5">{children}</main><StaffBottomNav /></div>;
+  return <div className="min-h-dvh bg-background pb-24 text-foreground"><header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur"><div className="mx-auto flex max-w-xl items-center justify-between"><div className="flex items-center gap-3"><Image alt="" className="rounded-lg" height={30} src="/icon-192.png" width={30} /><div><p className="font-semibold">GPBM Staff</p><p className="text-xs text-muted">{staff.store.name} · v{packageJson.version}</p></div></div><form action={signOut}><button className="rounded-xl border border-border px-3 py-2 text-xs font-semibold">Logout</button></form></div></header><main className="mx-auto max-w-xl px-4 py-5"><InstallApp />{children}</main><StaffBottomNav /></div>;
 }

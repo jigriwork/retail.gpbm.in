@@ -54,6 +54,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
+const installScript = `window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__gpbmInstall=e;window.dispatchEvent(new Event("gpbm-install"))});window.addEventListener("appinstalled",function(){try{localStorage.setItem("gpbm-installed","1")}catch(e){}window.__gpbmInstall=null;window.dispatchEvent(new Event("gpbm-install"))});if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){})})}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -64,6 +66,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
       lang="en"
     >
+      <head>
+        {/* Keep Chrome's install offer for the Install banner (it can fire before the page is ready). */}
+        <script dangerouslySetInnerHTML={{ __html: installScript }} />
+      </head>
       <body className="min-h-full bg-background font-sans text-foreground">
         {children}
         <PointerProbe />

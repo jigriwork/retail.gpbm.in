@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { InstallApp } from "@/components/app/install-app";
 import { redirect } from "next/navigation";
 import { LockKeyhole } from "lucide-react";
 
@@ -71,6 +72,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </div>
         </div>
 
+        <InstallApp />
         <div className="rise-in rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
           <div className="mb-8 flex items-start justify-between gap-4">
             <div>

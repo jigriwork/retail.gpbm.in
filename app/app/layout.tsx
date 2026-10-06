@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth/actions";
 import { requireProfile } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
+import { InstallApp } from "@/components/app/install-app";
 import packageJson from "@/package.json";
 
 export default async function ProtectedAppLayout({
@@ -113,7 +114,7 @@ export default async function ProtectedAppLayout({
         </div>
       </header>
 
-      <main className="page-enter mx-auto w-full max-w-5xl px-3 py-4 sm:px-4 sm:py-5">{children}</main>
+      <main className="page-enter mx-auto w-full max-w-5xl px-3 py-4 sm:px-4 sm:py-5"><InstallApp />{children}</main>
       <BottomNav role={profile.role} />
       <ChromeMeasure />
     </div>
