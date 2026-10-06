@@ -129,3 +129,26 @@ export async function getMsg91TemplateStatus(config: Msg91BrandConfig, templateN
   }
 }
 
+
+/** Submits a WhatsApp template (body text only) to MSG91 for Meta's approval. */
+export async function createMsg91Template(config: Msg91BrandConfig, template: { body: string; category: "MARKETING" | "UTILITY"; examples: string[]; name: string }) {
+  try {
+    const response = await fetch(`${apiBase}/client-panel-template/`, {
+      body: JSON.stringify({
+        integrated_number: config.integratedNumber,
+        template_name: template.name,
+        language: config.language,
+        category: template.category,
+        button_url: "false",
+        components: [{ type: "BODY", text: template.body, example: { body_text: [template.examples] } }],
+      }),
+      headers: { accept: "application/json", authkey: config.authKey, "content-type": "application/json" },
+      method: "POST",
+      signal: AbortSignal.timeout(20_000),
+    });
+    const body = await responseBody(response);
+    return { ok: response.ok && !responseHasError(body), response: JSON.stringify(body)?.slice(0, 500) ?? null, status: response.status };
+  } catch {
+    return { ok: false, response: null, status: 0 };
+  }
+}

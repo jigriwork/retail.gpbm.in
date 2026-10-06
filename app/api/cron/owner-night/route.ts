@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { runOwnerNightPlan } from "@/lib/owner-night/run";
+import { runOwnerNightPlan, setupOwnerNightTemplate } from "@/lib/owner-night/run";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -17,6 +17,8 @@ async function handle(request: Request) {
   }
   try {
     const params = new URL(request.url).searchParams;
+    // ?setup=template submits the WhatsApp template to MSG91 (or reports its status).
+    if (params.get("setup") === "template") return NextResponse.json(await setupOwnerNightTemplate());
     const preview = params.get("preview") === "1";
     const day = params.get("day") ?? undefined;
     return NextResponse.json(await runOwnerNightPlan({ day, preview }));

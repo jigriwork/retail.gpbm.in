@@ -1,10 +1,10 @@
 import "server-only";
 
 import { whatsappUnitCost } from "@/lib/msg91/budget";
-import { getMsg91TemplateStatus, sendMsg91Template } from "@/lib/msg91/client";
+import { createMsg91Template, getMsg91TemplateStatus, sendMsg91Template } from "@/lib/msg91/client";
 import { getMsg91Config } from "@/lib/msg91/config";
 import { claimWhatsAppDeliveries, finishWhatsAppDeliveries } from "@/lib/msg91/deliveries";
-import { formatNightPlan, OWNER_NIGHT_TEMPLATE, renderNightPlan, type NightPlan } from "@/lib/owner-night/format";
+import { formatNightPlan, OWNER_NIGHT_TEMPLATE, OWNER_NIGHT_TEMPLATE_BODY, renderNightPlan, type NightPlan } from "@/lib/owner-night/format";
 import { ownerSummaryRecipients } from "@/lib/owner-summary/run";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -74,4 +74,29 @@ export async function runOwnerNightPlan({ day: requestedDay, now = new Date(), p
   const delivery = await sendMsg91Template(config, template, claimed.map((recipient) => ({ components, to: recipient })));
   await finishWhatsAppDeliveries(claimed.map((recipient) => claims.get(key(recipient))!), delivery);
   return delivery.ok ? { day, sent: claimed.length } : { day, detail: delivery.errorCode ?? "MSG91 rejected the night plan.", sent: 0 };
+}
+
+// Example values Meta reviews with the template.
+const TEMPLATE_EXAMPLES = [
+  "Wed 7 Oct",
+  "GP ✅ uploaded · BM ✅ uploaded",
+  "GP: US Polo shirt 4 pcs, only XL XXL left · BM: Mufti jeans 7 pcs, selling well at GP",
+  "GP: Lunica top XL (0 left, 3 sold in 30 days)",
+  "Mufti jeans 7 pcs BM→GP",
+  "Biswanath (GP) top seller of the week 👏",
+  "Deva (GP) 1.3 items per bill (store 1.9)",
+  "Akhtar (GP) no sale in 3 days, maybe a day off?",
+  "1) GP: Lunica top XL could come from BM 2) a supportive chat with Deva",
+  "https://retail.gpbm.in/app/owner/night?day=2026-10-06",
+];
+
+/** Submits the night plan template to MSG91 / WhatsApp (once; later calls only report its status). */
+export async function setupOwnerNightTemplate() {
+  const config = getMsg91Config(SENDER);
+  if (!config) return { detail: "MSG91 is not configured for GP." };
+  const name = process.env.MSG91_OWNER_NIGHT_TEMPLATE?.trim() || OWNER_NIGHT_TEMPLATE;
+  const before = await getMsg91TemplateStatus(config, name);
+  if (before !== "not_found" && before !== "unavailable") return { name, status: before };
+  const created = await createMsg91Template(config, { body: OWNER_NIGHT_TEMPLATE_BODY, category: "UTILITY", examples: TEMPLATE_EXAMPLES, name });
+  return { created, name, status: await getMsg91TemplateStatus(config, name) };
 }
