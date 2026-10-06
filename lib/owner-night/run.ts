@@ -1,7 +1,7 @@
 import "server-only";
 
 import { whatsappUnitCost } from "@/lib/msg91/budget";
-import { createMsg91Template, getMsg91TemplateStatus, sendMsg91Template } from "@/lib/msg91/client";
+import { createMsg91Template, getMsg91TemplateInfo, getMsg91TemplateStatus, sendMsg91Template } from "@/lib/msg91/client";
 import { getMsg91Config } from "@/lib/msg91/config";
 import { claimWhatsAppDeliveries, finishWhatsAppDeliveries } from "@/lib/msg91/deliveries";
 import { formatNightPlan, OWNER_NIGHT_TEMPLATE, OWNER_NIGHT_TEMPLATE_BODY, renderNightPlan, type NightPlan } from "@/lib/owner-night/format";
@@ -95,8 +95,45 @@ export async function setupOwnerNightTemplate() {
   const config = getMsg91Config(SENDER);
   if (!config) return { detail: "MSG91 is not configured for GP." };
   const name = process.env.MSG91_OWNER_NIGHT_TEMPLATE?.trim() || OWNER_NIGHT_TEMPLATE;
-  const before = await getMsg91TemplateStatus(config, name);
-  if (before !== "not_found" && before !== "unavailable") return { name, status: before };
+  const before = await getMsg91TemplateInfo(config, name);
+  if (before.status !== "not_found" && before.status !== "unavailable") {
+    const summary = process.env.MSG91_OWNER_SUMMARY_TEMPLATE?.trim();
+    return { category: before.category, name, status: before.status, summary: summary ? await getMsg91TemplateInfo(config, "gpbm_owner_daily_summary_v2") : null };
+  }
   const created = await createMsg91Template(config, { body: OWNER_NIGHT_TEMPLATE_BODY, category: "UTILITY", examples: TEMPLATE_EXAMPLES, name });
   return { created, name, status: await getMsg91TemplateStatus(config, name) };
+}
+
+/**
+ * One test message of today's plan to a single number, outside the nightly
+ * once-per-night record (so tonight's 11 PM message still goes).
+ */
+export async function sendOwnerNightTest(number: string) {
+  const to = number.replace(/\D/g, "").replace(/^(?=[6-9]\d{9}$)/, "91");
+  if (!/^91[6-9]\d{9}$/.test(to)) return { detail: "Give a 10-digit Indian mobile number.", sent: 0 };
+  const admin = createAdminClient();
+  const config = getMsg91Config(SENDER);
+  if (!admin || !config) return { detail: "Not configured.", sent: 0 };
+  const template = process.env.MSG91_OWNER_NIGHT_TEMPLATE?.trim() || OWNER_NIGHT_TEMPLATE;
+  if ((await getMsg91TemplateStatus(config, template)) !== "approved") return { detail: "Template is not approved yet.", sent: 0 };
+  const day = indiaNow(new Date()).date;
+  const { data, error } = await admin.rpc("owner_night_plan_internal", { p_day: day, p_limit: 5 });
+  if (error || !data) throw new Error("Night plan figures could not be loaded.");
+  const values = formatNightPlan(data as unknown as NightPlan, nightPlanLink(day));
+  const [{ data: store }, { data: owner }] = await Promise.all([
+    admin.from("stores").select("id").eq("code", SENDER).maybeSingle(),
+    admin.from("profiles").select("id").eq("role", "owner").eq("is_active", true).limit(1).maybeSingle(),
+  ]);
+  if (!store || !owner) throw new Error("Sender store or owner could not be loaded.");
+  const dedupeKey = `owner-night-test:${Date.now()}:${to}`;
+  const reservation = await claimWhatsAppDeliveries([{
+    brandCode: SENDER, dedupeKey, initiatedBy: owner.id, kind: "owner_night_plan", metadata: { day, test: true }, recipient: to,
+    referenceId: store.id, storeId: store.id, templateName: template, unitCostInr: whatsappUnitCost("owner_night_plan"),
+  }]);
+  const claim = reservation.claims.find((item) => item.dedupeKey === dedupeKey);
+  if (!claim) return { detail: "Could not record the test message.", sent: 0 };
+  const components = Object.fromEntries(values.map((value, index) => [`body_${index + 1}`, { type: "text" as const, value }]));
+  const delivery = await sendMsg91Template(config, template, [{ components, to }]);
+  await finishWhatsAppDeliveries([claim.id], delivery);
+  return delivery.ok ? { day, sent: 1 } : { day, detail: delivery.errorCode ?? "MSG91 rejected the message.", sent: 0 };
 }

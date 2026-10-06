@@ -152,3 +152,30 @@ export async function createMsg91Template(config: Msg91BrandConfig, template: { 
     return { ok: false, response: null, status: 0 };
   }
 }
+
+/** Status and category (UTILITY / MARKETING …) of a template, as MSG91 reports them. */
+export async function getMsg91TemplateInfo(config: Msg91BrandConfig, templateName: string) {
+  try {
+    const response = await fetch(`${apiBase}/get-template-client/${encodeURIComponent(config.integratedNumber)}?`, {
+      headers: { accept: "application/json", authkey: config.authKey },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) return { category: null, status: "unavailable" };
+    const body = await responseBody(response);
+    const found: Array<{ category: string | null; status: string }> = [];
+    const visit = (node: unknown) => {
+      if (Array.isArray(node)) return node.forEach(visit);
+      const record = object(node);
+      if (!record) return;
+      const name = record.name ?? record.template_name ?? record.element_name;
+      if (name === templateName && typeof record.status === "string") {
+        found.push({ category: typeof record.category === "string" ? record.category : null, status: record.status.toLowerCase() });
+      }
+      Object.values(record).forEach(visit);
+    };
+    visit(body);
+    return found.find((item) => item.status === "approved") ?? found[0] ?? { category: null, status: "not_found" };
+  } catch {
+    return { category: null, status: "unavailable" };
+  }
+}
