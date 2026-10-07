@@ -4,12 +4,13 @@ import { Bell, CheckSquare, FileText, TrendingUp } from "lucide-react";
 import { Celebration } from "@/components/app/celebration";
 import { StarsList, shortDay } from "@/components/app/store-stars";
 import { TodayHero } from "@/components/app/today-hero";
-import { getMyWeek, getStaffHomeSummary, getStaffProfileSummary } from "@/lib/staff/portal";
+import { TargetCard } from "@/components/staff/target-card";
+import { getMyTarget, getMyWeek, getStaffHomeSummary, getStaffProfileSummary } from "@/lib/staff/portal";
 
 function money(value: number) { return new Intl.NumberFormat("en-IN", { currency: "INR", maximumFractionDigits: 0, style: "currency" }).format(value); }
 
 export default async function StaffHomePage() {
-  const [profile, home, week] = await Promise.all([getStaffProfileSummary(), getStaffHomeSummary(), getMyWeek()]);
+  const [profile, home, week, target] = await Promise.all([getStaffProfileSummary(), getStaffHomeSummary(), getMyWeek(), getMyTarget()]);
   if (!profile || !home) return null;
   // Am I one of this week's stars? (my names as the sales reports spell them)
   const mine = new Set(week?.names ?? []);
@@ -33,6 +34,7 @@ export default async function StaffHomePage() {
         ]}
         title={`${profile.designation ?? "Staff"} · ${profile.store.name}`}
       />
+      <TargetCard target={target} />
       {week ? (
         <section className={`rounded-2xl border p-4 shadow-sm ${myAwards.length ? "pop-in border-success/40 bg-success/10" : "border-border bg-card"}`}>
           {myAwards.length ? <Celebration id={`star:${week.to}`} /> : null}

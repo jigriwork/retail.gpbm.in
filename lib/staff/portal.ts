@@ -130,3 +130,13 @@ export async function getMyWeek() {
   if (error) return null;
   return data as unknown as MyWeek;
 }
+
+export type MyTarget = { days_left?: number; month: string; sale?: number; set_by?: string | null; target: number | null };
+
+/** This month's target set by the manager / owner, with sales so far. */
+export async function getMyTarget() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_target");
+  if (error) return null;
+  return asRecord(data) as MyTarget | null;
+}

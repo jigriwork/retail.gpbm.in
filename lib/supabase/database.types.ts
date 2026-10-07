@@ -7562,6 +7562,8 @@ export type Database = {
       my_team_requests: { Args: Record<PropertyKey, never>; Returns: Json }
       owner_team_requests: { Args: Record<PropertyKey, never>; Returns: Json }
       answer_team_request: { Args: { p_request: string; p_status: string; p_reply: string }; Returns: string }
+      my_target: { Args: Record<PropertyKey, never>; Returns: Json }
+      staff_login_for_sales_name: { Args: { p_store: string; p_name: string }; Returns: string }
       sold_report: { Args: { p_store: string; p_from: string; p_to: string; p_brand?: string }; Returns: Json }
       brand_sell_through: { Args: { p_store: string; p_days: number }; Returns: { brand: string; sold_units: number; net_sales: number; on_hand: number; on_hand_mrp: number; on_hand_cost: number | null; cost_known_units: number; sell_through_pct: number | null; days_cover: number | null; no_sale_90_units: number; snapshot_date: string | null }[] }
       refresh_stock_position: { Args: { p_store: string }; Returns: boolean }

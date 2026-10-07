@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import type { AccountsActionState } from "@/lib/accounts/master-actions";
 import { canAccessStore, requireOwner, requireProfile } from "@/lib/auth/session";
 import { parseSlabs } from "@/lib/incentives/calc";
-import { createClient } from "@/lib/supabase/server";
+import { notifyUsers } from "@/lib/notifications/send";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 type State = AccountsActionState;
 
@@ -69,6 +70,13 @@ export async function saveTarget(_state: State, formData: FormData): Promise<Sta
     { onConflict: "store_id,month,staff_name" },
   );
   if (error) return { ok: false, message: "Could not save the target." };
+  // Tell the salesperson (if they have a staff login).
+  const admin = createAdminClient();
+  const { data: login } = admin ? await admin.rpc("staff_login_for_sales_name", { p_name: staffName, p_store: storeId }) : { data: null };
+  if (login) {
+    const label = new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-IN", { month: "long", timeZone: "UTC" });
+    await notifyUsers([login as string], { body: `₹${target.toLocaleString("en-IN")} for ${label}. You can see your progress on your home screen. All the best!`, createdBy: profile.id, kind: "alert", title: "🎯 Your target is set", url: "/staff" });
+  }
   revalidatePath("/app/reports/incentives");
-  return { ok: true, message: "Saved." };
+  return { ok: true, message: login ? "Saved. The salesperson is notified." : "Saved." };
 }

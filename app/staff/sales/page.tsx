@@ -1,12 +1,13 @@
 import { PeriodPicker } from "@/components/reports/period-picker";
 import { resolveRange } from "@/lib/reports/period";
-import { getMySalesSummary } from "@/lib/staff/portal";
+import { TargetCard } from "@/components/staff/target-card";
+import { getMySalesSummary, getMyTarget } from "@/lib/staff/portal";
 
 function money(value: number) { return new Intl.NumberFormat("en-IN", { currency: "INR", maximumFractionDigits: 0, style: "currency" }).format(value); }
 
 export default async function MySalesPage({ searchParams }: { searchParams: Promise<{ end?: string; period?: string; start?: string }> }) {
   const range = resolveRange(await searchParams, "month", { maxDays: 366 });
-  const sales = await getMySalesSummary(range.startDate, range.endDate);
+  const [sales, target] = await Promise.all([getMySalesSummary(range.startDate, range.endDate), getMyTarget()]);
   const days = [...sales.daily].sort((left, right) => right.sale_date.localeCompare(left.sale_date));
   const average = sales.summary.bill_count ? sales.summary.value / sales.summary.bill_count : 0;
   return (
@@ -19,6 +20,7 @@ export default async function MySalesPage({ searchParams }: { searchParams: Prom
         </div>
       ) : (
         <>
+          <TargetCard target={target} />
           <PeriodPicker path="/staff/sales" presets={["today", "yesterday", "week", "month", "last-month", "last30"]} range={range} />
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat label="Sales" value={money(sales.summary.value)} />
