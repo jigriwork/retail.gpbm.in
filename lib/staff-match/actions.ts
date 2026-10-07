@@ -88,3 +88,17 @@ export async function markNameLeft(_state: State, formData: FormData): Promise<S
   revalidatePath("/app/staff-match");
   return { ok: true, message: "Hidden: marked as left / not staff." };
 }
+
+/** A name on the bills that is not in the staff list: add them as staff of this store and match at once. */
+export async function addStaffFromName(_state: State, formData: FormData): Promise<State> {
+  const { profile } = await requireProfile();
+  if (!["owner", "manager"].includes(profile.role)) return { ok: false, message: "Ask the owner or manager to add new staff (Staff → Add new staff)." };
+  const storeId = await access(formData);
+  if (!storeId) return { ok: false, message: "You cannot add staff for this store." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("add_staff_from_sales_name", { p_source: text(formData, "source"), p_store: storeId });
+  if (error) return { ok: false, message: error.code === "P0001" ? error.message : "Could not add. Please retry." };
+  revalidatePath("/app/staff-match");
+  revalidatePath("/app/employees");
+  return { ok: true, message: "Added to the staff list and matched. Add their phone number on the Staff page." };
+}

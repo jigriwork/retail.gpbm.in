@@ -5,7 +5,7 @@ import { ActionForm } from "@/components/accounts/action-form";
 import { Empty, Notice, Panel } from "@/components/accounts/fields";
 import { StaffPicker } from "@/components/employees/staff-picker";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
-import { autoMatchPayslips, autoMatchStaff, decidePayslipLink, linkPayslipName, linkStaffName, markNameLeft } from "@/lib/staff-match/actions";
+import { autoMatchPayslips, autoMatchStaff, decidePayslipLink, linkPayslipName, linkStaffName, markNameLeft, addStaffFromName } from "@/lib/staff-match/actions";
 import { createClient } from "@/lib/supabase/server";
 
 type Candidate = { id: string; name: string; reason: string; store: string };
@@ -41,6 +41,7 @@ export default async function StaffMatchPage({ searchParams }: { searchParams: P
   const overview = data as unknown as Overview | null;
   const slips = (slipData as unknown as Payslips | null) ?? { linked: 0, requests: [], staff: [], unlinked: [] };
   if (!overview) return <AccessDenied message="Store access denied." />;
+  const canAdd = ["owner", "manager"].includes(profile.role);
   const isOwner = profile.role === "owner";
 
   return (
@@ -88,7 +89,10 @@ export default async function StaffMatchPage({ searchParams }: { searchParams: P
                   ))}
                 </div>
                 <MatchPicker name={item.name} staff={overview.staff} storeId={store.id} />
-                <LeftButton name={item.name} storeId={store.id} />
+                <div className="flex flex-wrap gap-2">
+                  {canAdd ? <AddButton name={item.name} storeId={store.id} /> : null}
+                  <LeftButton name={item.name} storeId={store.id} />
+                </div>
               </li>
             ))}
           </ul>
@@ -102,7 +106,10 @@ export default async function StaffMatchPage({ searchParams }: { searchParams: P
               <li className="rounded-2xl border border-border bg-background p-3 text-sm" key={item.name}>
                 <p><b>{item.name}</b> <span className="text-muted">· {item.lines} bill lines</span></p>
                 <MatchPicker name={item.name} staff={overview.staff} storeId={store.id} />
-                <LeftButton name={item.name} storeId={store.id} />
+                <div className="flex flex-wrap gap-2">
+                  {canAdd ? <AddButton name={item.name} storeId={store.id} /> : null}
+                  <LeftButton name={item.name} storeId={store.id} />
+                </div>
               </li>
             ))}
           </ul>
@@ -177,6 +184,15 @@ function MatchPicker({ name, staff, storeId }: { name: string; staff: Overview["
 function LeftButton({ name, storeId }: { name: string; storeId: string }) {
   return (
     <ActionForm action={markNameLeft} className="mt-2 flex" submitLabel="Left / not staff" variant="secondary">
+      <input name="storeId" type="hidden" value={storeId} />
+      <input name="source" type="hidden" value={name} />
+    </ActionForm>
+  );
+}
+
+function AddButton({ name, storeId }: { name: string; storeId: string }) {
+  return (
+    <ActionForm action={addStaffFromName} className="mt-2 flex" submitLabel="➕ Add as new staff">
       <input name="storeId" type="hidden" value={storeId} />
       <input name="source" type="hidden" value={name} />
     </ActionForm>

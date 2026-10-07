@@ -26,3 +26,14 @@ test("former staff and names with no sale for 90 days are not listed; 'left / no
   assert.deepEqual(unmatched(), ["NEW PERSON"]);
   assert.deepEqual(unmatched(`${as(cashier)} select mark_sales_name_left(${GP}, 'new person'); reset role;`), []);
 });
+
+test("'add as new staff': a name from the bills becomes staff of the store and is matched; cashiers cannot", () => {
+  const manager = "00000000-0000-0000-0000-0000000000d2";
+  const withManager = `${seed} insert into auth.users(id,email) values ('${manager}','fn-manager@example.invalid') on conflict do nothing;
+update profiles set role='manager', is_active=true where id='${manager}'; insert into store_users(user_id, store_id) values ('${manager}', ${GP});`;
+  const out = sql(`${withManager} ${as(manager)} select add_staff_from_sales_name(${GP}, 'BINAYAK MAHARANA S') is not null; reset role;
+select staff_name from employee_contacts where normalized_staff_name = 'binayak maharana';
+select a.verification_status from staff_name_aliases a join employee_contacts e on e.id = a.employee_contact_id where a.normalized_source_name = 'binayak maharana s'; rollback;`).split("\n").filter(Boolean);
+  assert.deepEqual(out, ["t", "Binayak Maharana", "verified"]);
+  assert.throws(() => sql(`${seed} ${as(cashier)} select add_staff_from_sales_name(${GP}, 'NEW PERSON'); rollback;`), /Only the owner or the store manager/);
+});

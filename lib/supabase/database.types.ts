@@ -7580,6 +7580,7 @@ export type Database = {
       keep_chat_message: { Args: { p_message: string; p_keep: boolean }; Returns: undefined }
       set_chat_announcements: { Args: { p_room: string; p_on: boolean }; Returns: undefined }
       mark_sales_name_left: { Args: { p_store: string; p_source: string }; Returns: undefined }
+      add_staff_from_sales_name: { Args: { p_store: string; p_source: string }; Returns: string }
       sold_report: { Args: { p_store: string; p_from: string; p_to: string; p_brand?: string }; Returns: Json }
       brand_sell_through: { Args: { p_store: string; p_days: number }; Returns: { brand: string; sold_units: number; net_sales: number; on_hand: number; on_hand_mrp: number; on_hand_cost: number | null; cost_known_units: number; sell_through_pct: number | null; days_cover: number | null; no_sale_90_units: number; snapshot_date: string | null }[] }
       refresh_stock_position: { Args: { p_store: string }; Returns: boolean }
