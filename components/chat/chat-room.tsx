@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Megaphone, Pin, SendHorizontal, Trash2 } from "lucide-react";
 
 import { type ChatMember, type ChatMessage, type ChatRoomData, deleteChat, keepChat, loadChat, markChatRead, sendChat, setAnnouncements } from "@/lib/chat/actions";
@@ -28,6 +29,7 @@ function Body({ members, message, me, mine }: { me: string; members: ChatMember[
 }
 
 export function ChatRoom({ basePath, initial, roomId }: { basePath: { app: string; staff: string }; initial: ChatRoomData; roomId: string }) {
+  const router = useRouter();
   const [room, setRoom] = useState(initial);
   const [text, setText] = useState("");
   const [mentions, setMentions] = useState<string[]>([]);
@@ -44,15 +46,31 @@ export function ChatRoom({ basePath, initial, roomId }: { basePath: { app: strin
   const canKeep = isOwner || room.my_role === "manager";
   const readOnly = room.announcements_only && !isOwner;
 
+  // Read: the chat, its 🔔 notices and its phone notifications; then the header counts update.
+  const markRead = useCallback(async () => {
+    await markChatRead(roomId).catch(() => undefined);
+    router.refresh();
+    try {
+      const registration = await navigator.serviceWorker?.getRegistration();
+      (await registration?.getNotifications({ tag: `chat-${roomId}` }))?.forEach((notice) => notice.close());
+    } catch { /* not supported */ }
+  }, [roomId, router]);
+
+  const lastSeenId = useRef(initial.messages.at(-1)?.id);
   const refresh = useCallback(async () => {
     const result = await loadChat(roomId).catch(updateOr({ error: "x" } as { data?: ChatRoomData; error?: string }));
-    if (result.data) setRoom(result.data);
-    if (document.visibilityState === "visible") void markChatRead(roomId).catch(() => undefined);
-  }, [roomId]);
+    if (result.data) {
+      const newest = result.data.messages.at(-1)?.id;
+      const newer = newest !== lastSeenId.current;
+      lastSeenId.current = newest;
+      setRoom(result.data);
+      if (newer && document.visibilityState === "visible") void markRead();
+    }
+  }, [markRead, roomId]);
 
   // Live: new messages appear at once (and every 15 s as a fallback).
   useEffect(() => {
-    void markChatRead(roomId).catch(() => undefined);
+    void markRead();
     const supabase = createClient();
     let timer = 0;
     const soon = () => { window.clearTimeout(timer); timer = window.setTimeout(() => void refresh(), 250); };
@@ -63,7 +81,7 @@ export function ChatRoom({ basePath, initial, roomId }: { basePath: { app: strin
     const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => { window.clearTimeout(timer); window.clearInterval(poll); document.removeEventListener("visibilitychange", onVisible); void supabase.removeChannel(channel); };
-  }, [refresh, roomId]);
+  }, [markRead, refresh, roomId]);
 
   // Full-screen chat sized to the visible area: the keyboard only shortens the
   // message list (the screen no longer jumps up). The page behind cannot scroll.
