@@ -77,3 +77,14 @@ export async function autoMatchPayslips(_state: State, formData: FormData): Prom
   revalidatePath("/app/staff-match");
   return { ok: true, message: Number(data) ? `${data} salary slip${Number(data) === 1 ? "" : "s"} matched.` : "Nothing new to match." };
 }
+
+/** A name on the bills that is not a current staff member (left, or a shop counter): hide it from matching. */
+export async function markNameLeft(_state: State, formData: FormData): Promise<State> {
+  const storeId = await access(formData);
+  if (!storeId) return { ok: false, message: "You cannot change staff names for this store." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("mark_sales_name_left", { p_source: text(formData, "source"), p_store: storeId });
+  if (error) return { ok: false, message: error.code === "P0001" ? error.message : "Could not save. Please retry." };
+  revalidatePath("/app/staff-match");
+  return { ok: true, message: "Hidden: marked as left / not staff." };
+}

@@ -5,7 +5,7 @@ import { ActionForm } from "@/components/accounts/action-form";
 import { Empty, Notice, Panel } from "@/components/accounts/fields";
 import { StaffPicker } from "@/components/employees/staff-picker";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
-import { autoMatchPayslips, autoMatchStaff, decidePayslipLink, linkPayslipName, linkStaffName } from "@/lib/staff-match/actions";
+import { autoMatchPayslips, autoMatchStaff, decidePayslipLink, linkPayslipName, linkStaffName, markNameLeft } from "@/lib/staff-match/actions";
 import { createClient } from "@/lib/supabase/server";
 
 type Candidate = { id: string; name: string; reason: string; store: string };
@@ -88,19 +88,21 @@ export default async function StaffMatchPage({ searchParams }: { searchParams: P
                   ))}
                 </div>
                 <MatchPicker name={item.name} staff={overview.staff} storeId={store.id} />
+                <LeftButton name={item.name} storeId={store.id} />
               </li>
             ))}
           </ul>
         ) : <Empty>Nothing to confirm.</Empty>}
       </Panel>
 
-      <Panel description="Shared logins like “SHOP GP” can be left as they are. Pick the staff member if you know who it is." title="Not found in the staff list">
+      <Panel description="Names on the bills of the last 90 days that are not in the staff list. Pick the staff member, or tap “Left / not staff” for someone who left or a shop counter (it is hidden; old sales stay in past reports)." title="Not found in the staff list">
         {overview.unmatched.length ? (
           <ul className="space-y-3">
             {overview.unmatched.map((item) => (
               <li className="rounded-2xl border border-border bg-background p-3 text-sm" key={item.name}>
                 <p><b>{item.name}</b> <span className="text-muted">· {item.lines} bill lines</span></p>
                 <MatchPicker name={item.name} staff={overview.staff} storeId={store.id} />
+                <LeftButton name={item.name} storeId={store.id} />
               </li>
             ))}
           </ul>
@@ -168,6 +170,15 @@ function MatchPicker({ name, staff, storeId }: { name: string; staff: Overview["
       <input name="storeId" type="hidden" value={storeId} />
       <input name="source" type="hidden" value={name} />
       <StaffPicker showStore staff={staff} />
+    </ActionForm>
+  );
+}
+
+function LeftButton({ name, storeId }: { name: string; storeId: string }) {
+  return (
+    <ActionForm action={markNameLeft} className="mt-2 flex" submitLabel="Left / not staff" variant="secondary">
+      <input name="storeId" type="hidden" value={storeId} />
+      <input name="source" type="hidden" value={name} />
     </ActionForm>
   );
 }
