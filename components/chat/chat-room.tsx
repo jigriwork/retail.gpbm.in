@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, Megaphone, Pin, SendHorizontal, Trash2 } from "lucide-react";
 
 import { type ChatMember, type ChatMessage, type ChatRoomData, deleteChat, keepChat, loadChat, markChatRead, sendChat, setAnnouncements } from "@/lib/chat/actions";
+import { isOutdatedApp, reloadForUpdate, updateOr } from "@/lib/app-version/outdated";
 import { createClient } from "@/lib/supabase/client";
 
 const time = (value: string) => new Date(value).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
@@ -33,7 +34,10 @@ export function ChatRoom({ basePath, initial, roomId }: { basePath: { app: strin
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [menu, setMenu] = useState<string | null>(null);
+  // The part of the screen not covered by the keyboard (iPhone and Android).
+  const [view, setView] = useState<{ height: number; top: number } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const draftKey = `gpbm-chat-draft-${roomId}`;
   const boxRef = useRef<HTMLTextAreaElement>(null);
   const back = room.my_role === "staff" ? basePath.staff : basePath.app;
   const isOwner = room.my_role === "owner";
@@ -41,7 +45,7 @@ export function ChatRoom({ basePath, initial, roomId }: { basePath: { app: strin
   const readOnly = room.announcements_only && !isOwner;
 
   const refresh = useCallback(async () => {
-    const result = await loadChat(roomId).catch(() => ({ error: "x" }) as { data?: ChatRoomData; error?: string });
+    const result = await loadChat(roomId).catch(updateOr({ error: "x" } as { data?: ChatRoomData; error?: string }));
     if (result.data) setRoom(result.data);
     if (document.visibilityState === "visible") void markChatRead(roomId).catch(() => undefined);
   }, [roomId]);
@@ -60,6 +64,37 @@ export function ChatRoom({ basePath, initial, roomId }: { basePath: { app: strin
     document.addEventListener("visibilitychange", onVisible);
     return () => { window.clearTimeout(timer); window.clearInterval(poll); document.removeEventListener("visibilitychange", onVisible); void supabase.removeChannel(channel); };
   }, [refresh, roomId]);
+
+  // Full-screen chat sized to the visible area: the keyboard only shortens the
+  // message list (the screen no longer jumps up). The page behind cannot scroll.
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const apply = () => {
+      setView(viewport ? { height: viewport.height, top: viewport.offsetTop } : { height: window.innerHeight, top: 0 });
+      window.requestAnimationFrame(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight }));
+    };
+    const frame = window.requestAnimationFrame(apply);
+    viewport?.addEventListener("resize", apply);
+    viewport?.addEventListener("scroll", apply);
+    window.addEventListener("resize", apply);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.cancelAnimationFrame(frame);
+      viewport?.removeEventListener("resize", apply);
+      viewport?.removeEventListener("scroll", apply);
+      window.removeEventListener("resize", apply);
+      document.body.style.overflow = overflow;
+    };
+  }, []);
+
+  // A message typed before an update reload is put back.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try { const draft = window.sessionStorage.getItem(draftKey); if (draft) { setText(draft); window.sessionStorage.removeItem(draftKey); } } catch { /* storage blocked */ }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [draftKey]);
 
   // Keep the newest message in view.
   const count = room.messages.length;
@@ -83,7 +118,14 @@ export function ChatRoom({ basePath, initial, roomId }: { basePath: { app: strin
     setSending(true);
     setError("");
     const used = mentions.filter((id) => body.includes(`@${room.members.find((member) => member.id === id)?.name ?? "\u0000"}`));
-    const result = await sendChat(roomId, body, used, basePath).catch(() => ({ error: "Connection problem. Please retry." }) as { error?: string });
+    const result = await sendChat(roomId, body, used, basePath).catch((reason: unknown) => {
+      // A new version went live while this chat was open: keep the message, load the new version.
+      if (isOutdatedApp(reason)) {
+        try { window.sessionStorage.setItem(draftKey, body); } catch { /* storage blocked */ }
+        if (reloadForUpdate()) return { error: "" };
+      }
+      return { error: "Connection problem. Please retry." };
+    }) as { error?: string };
     setSending(false);
     if ("error" in result && result.error) { setError(result.error); return; }
     setText("");
@@ -93,7 +135,7 @@ export function ChatRoom({ basePath, initial, roomId }: { basePath: { app: strin
 
   async function act(action: Promise<{ error?: string } | { ok: boolean }>) {
     setMenu(null);
-    const result = await action.catch(() => ({ error: "Connection problem." }));
+    const result = await action.catch(updateOr({ error: "Connection problem." }));
     if ("error" in result && result.error) setError(result.error);
     void refresh();
   }
@@ -104,8 +146,8 @@ export function ChatRoom({ basePath, initial, roomId }: { basePath: { app: strin
     ? room.reads.filter((read) => read.user_id !== room.me && read.at >= last.created_at).length : null;
 
   return (
-    <div className="flex h-[calc(100dvh-10rem)] flex-col rounded-[1.35rem] border border-border bg-card shadow-sm">
-      <header className="flex items-center gap-2 border-b border-border p-3">
+    <div className="fixed inset-x-0 top-0 z-[45] flex h-dvh flex-col bg-card" style={view ? { height: view.height, top: view.top } : undefined}>
+      <header className="flex items-center gap-2 border-b border-border px-3 pb-2 pt-[max(env(safe-area-inset-top),0.5rem)]">
         <Link aria-label="All chats" className="inline-flex size-9 items-center justify-center rounded-xl text-muted" href={back}><ArrowLeft className="size-4" /></Link>
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{room.title}</p>
@@ -118,7 +160,7 @@ export function ChatRoom({ basePath, initial, roomId }: { basePath: { app: strin
         ) : null}
       </header>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3" ref={listRef}>
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain bg-background p-3" ref={listRef}>
         {room.messages.length ? room.messages.map((message, index) => {
           const mine = message.sender_id === room.me;
           const forMe = message.mentions.includes(room.me);
@@ -152,7 +194,7 @@ export function ChatRoom({ basePath, initial, roomId }: { basePath: { app: strin
         {seenBy !== null ? <p className="text-right text-[0.7rem] text-muted">{room.kind === "direct" ? (seenBy ? "✓✓ Seen" : "✓ Sent") : `Seen by ${seenBy}`}</p> : null}
       </div>
 
-      <footer className="border-t border-border p-2">
+      <footer className="border-t border-border bg-card p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
         {error ? <p className="px-1 pb-1 text-xs font-semibold text-danger">{error}</p> : null}
         {suggestions.length ? (
           <div className="mb-2 flex flex-wrap gap-1.5">

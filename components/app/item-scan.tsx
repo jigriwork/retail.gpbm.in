@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { Camera, Loader2, ScanBarcode, Search } from "lucide-react";
 
 import { BarcodeScanner, unlockScanSound } from "@/components/app/barcode-scanner";
+import { isOutdatedApp, reloadForUpdate } from "@/lib/app-version/outdated";
 import { ScannerGun, useScannerGunSetting } from "@/components/app/scanner-gun";
 import { lookupItem, type LookupItem } from "@/lib/scan/actions";
 
@@ -35,7 +36,8 @@ export function ItemScan() {
       let next: { code: string; items: LookupItem[]; message?: string };
       try {
         next = { code: clean, ...(await lookupItem(clean)) };
-      } catch {
+      } catch (error) {
+        if (isOutdatedApp(error) && reloadForUpdate()) return;
         next = { code: clean, items: [], message: "Connection problem. Scan again." };
       }
       if (request === latest.current) setResult(next);

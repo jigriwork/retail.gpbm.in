@@ -1,8 +1,13 @@
 "use client";
 
+import { useEffect } from "react";
 import { RotateCcw, TriangleAlert } from "lucide-react";
 
-export default function DataError({ reset }: { reset: () => void }) {
+import { isOutdatedApp, reloadForUpdate } from "@/lib/app-version/outdated";
+
+export default function DataError({ error, reset }: { error: Error; reset: () => void }) {
+  // A new version went live while this screen was open: load it.
+  useEffect(() => { if (isOutdatedApp(error)) reloadForUpdate(); }, [error]);
   return (
     <div className="mx-auto max-w-xl rounded-[1.35rem] border border-border bg-card p-6 shadow-sm" role="alert">
       <span className="flex size-11 items-center justify-center rounded-2xl bg-accent-soft text-accent-ink">

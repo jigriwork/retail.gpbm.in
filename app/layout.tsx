@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 
 import { PointerProbe } from "@/components/app/pointer-probe";
-import { UpdateWatcher } from "@/components/app/update-watcher";
 
 import "./globals.css";
 
@@ -90,7 +89,6 @@ export default function RootLayout({
       <body className="min-h-full bg-background font-sans text-foreground">
         {children}
         <PointerProbe />
-        <UpdateWatcher />
       </body>
     </html>
   );
