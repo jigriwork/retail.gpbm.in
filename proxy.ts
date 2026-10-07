@@ -113,6 +113,6 @@ function redirectKeepingCookies(from: NextResponse, url: URL) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|favicon-32.png|favicon-48.png|icon.svg|icon-192.png|icon-512.png|apple-touch-icon.png|manifest.webmanifest|sw.js|og-image.jpg).*)",
+    "/((?!_next/static|_next/image|favicon.ico|favicon-32.png|favicon-48.png|icon.svg|icon-192.png|icon-512.png|apple-touch-icon.png|manifest.webmanifest|sw.js|og-image.jpg|api/version).*)",
   ],
 };
