@@ -25,9 +25,25 @@ export const metadata: Metadata = {
     default: "GPBM Retail",
     template: "%s | GPBM Retail",
   },
-  description:
-    "Mobile-first retail command center for GPBM sales, stock, attendance, tasks, reviews, and AI secretary workflows.",
+  description: "Sales, stock and staff for Go Planet and Brand Mark stores.",
   applicationName: "GPBM Retail",
+  metadataBase: new URL("https://retail.gpbm.in"),
+  // Shown when the link is shared (WhatsApp, Telegram, Facebook…).
+  openGraph: {
+    description: "Sales, stock and staff for Go Planet and Brand Mark stores.",
+    images: [{ alt: "GPBM Retail", height: 630, type: "image/jpeg", url: "/og-image.jpg", width: 1200 }],
+    locale: "en_IN",
+    siteName: "GPBM Retail",
+    title: "GPBM Retail",
+    type: "website",
+    url: "https://retail.gpbm.in",
+  },
+  twitter: {
+    card: "summary_large_image",
+    description: "Sales, stock and staff for Go Planet and Brand Mark stores.",
+    images: ["/og-image.jpg"],
+    title: "GPBM Retail",
+  },
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
