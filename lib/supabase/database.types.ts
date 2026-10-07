@@ -6032,6 +6032,12 @@ export type Database = {
           }
         ]
       }
+      chat_messages: {
+        Row: { body: string; created_at: string; deleted_at: string | null; id: string; kept: boolean; kept_by: string | null; mentions: string[]; room_id: string; sender_id: string }
+        Insert: { body: string; created_at?: string; deleted_at?: string | null; id?: string; kept?: boolean; kept_by?: string | null; mentions?: string[]; room_id: string; sender_id: string }
+        Update: { body?: string; created_at?: string; deleted_at?: string | null; id?: string; kept?: boolean; kept_by?: string | null; mentions?: string[]; room_id?: string; sender_id?: string }
+        Relationships: []
+      }
       notifications: {
         Row: { body: string | null; created_at: string; created_by: string | null; id: string; kind: string; read_at: string | null; title: string; url: string | null; user_id: string }
         Insert: { body?: string | null; created_at?: string; created_by?: string | null; id?: string; kind: string; read_at?: string | null; title: string; url?: string | null; user_id: string }
@@ -7564,6 +7570,15 @@ export type Database = {
       answer_team_request: { Args: { p_request: string; p_status: string; p_reply: string }; Returns: string }
       my_target: { Args: Record<PropertyKey, never>; Returns: Json }
       staff_login_for_sales_name: { Args: { p_store: string; p_name: string }; Returns: string }
+      my_chat_rooms: { Args: Record<PropertyKey, never>; Returns: Json }
+      chat_unread_total: { Args: Record<PropertyKey, never>; Returns: number }
+      open_direct_chat: { Args: { p_other: string }; Returns: string }
+      chat_room: { Args: { p_room: string; p_limit?: number }; Returns: Json }
+      mark_chat_read: { Args: { p_room: string }; Returns: undefined }
+      send_chat_message: { Args: { p_room: string; p_body: string; p_mentions: string[] }; Returns: Json }
+      delete_chat_message: { Args: { p_message: string }; Returns: undefined }
+      keep_chat_message: { Args: { p_message: string; p_keep: boolean }; Returns: undefined }
+      set_chat_announcements: { Args: { p_room: string; p_on: boolean }; Returns: undefined }
       sold_report: { Args: { p_store: string; p_from: string; p_to: string; p_brand?: string }; Returns: Json }
       brand_sell_through: { Args: { p_store: string; p_days: number }; Returns: { brand: string; sold_units: number; net_sales: number; on_hand: number; on_hand_mrp: number; on_hand_cost: number | null; cost_known_units: number; sell_through_pct: number | null; days_cover: number | null; no_sale_90_units: number; snapshot_date: string | null }[] }
       refresh_stock_position: { Args: { p_store: string }; Returns: boolean }

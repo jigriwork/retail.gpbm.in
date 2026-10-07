@@ -5,8 +5,9 @@ import webpush from "web-push";
 import { VAPID_PUBLIC_KEY } from "@/lib/notifications/keys";
 import { createAdminClient } from "@/lib/supabase/server";
 
-export type NoticeKind = "alert" | "approval" | "broadcast" | "request" | "request_reply" | "task";
-export type Notice = { body?: string | null; createdBy?: string | null; kind: NoticeKind; title: string; url?: string | null };
+export type NoticeKind = "alert" | "approval" | "broadcast" | "chat" | "mention" | "request" | "request_reply" | "task";
+/** `inbox: false` only rings the phone (chat messages have their own unread count); `tag` groups pushes (one per chat). */
+export type Notice = { body?: string | null; createdBy?: string | null; inbox?: boolean; kind: NoticeKind; tag?: string; title: string; url?: string | null };
 
 /** Quiet hours (10:30 PM – 9:00 AM India): notifications arrive without sound. */
 export function isQuietHours(now = new Date()) {
@@ -27,13 +28,15 @@ export async function notifyUsers(userIds: Array<string | null | undefined>, not
     if (!ids.length || !admin) return 0;
     const title = notice.title.slice(0, 120);
     const body = notice.body?.slice(0, 600) ?? null;
-    await admin.from("notifications").insert(ids.map((user_id) => ({ body, created_by: notice.createdBy ?? null, kind: notice.kind, title, url: notice.url ?? null, user_id })));
+    if (notice.inbox !== false) {
+      await admin.from("notifications").insert(ids.map((user_id) => ({ body, created_by: notice.createdBy ?? null, kind: notice.kind, title, url: notice.url ?? null, user_id })));
+    }
 
     const privateKey = process.env.VAPID_PRIVATE_KEY?.trim();
     if (!privateKey) return ids.length;
     webpush.setVapidDetails("https://retail.gpbm.in", VAPID_PUBLIC_KEY, privateKey);
     const { data: subscriptions } = await admin.from("push_subscriptions").select("id,endpoint,p256dh,auth,failures").in("user_id", ids);
-    const payload = JSON.stringify({ body, silent: isQuietHours(), tag: `${notice.kind}-${Date.now()}`, title, url: notice.url ?? "/" });
+    const payload = JSON.stringify({ body, silent: isQuietHours(), tag: notice.tag ?? `${notice.kind}-${Date.now()}`, title, url: notice.url ?? "/" });
     await Promise.allSettled((subscriptions ?? []).map(async (subscription) => {
       try {
         await webpush.sendNotification({ endpoint: subscription.endpoint, keys: { auth: subscription.auth, p256dh: subscription.p256dh } }, payload, { TTL: 12 * 3600, urgency: "high" });

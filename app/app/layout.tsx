@@ -10,6 +10,7 @@ import { signOut } from "@/lib/auth/actions";
 import { requireProfile } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { InstallApp } from "@/components/app/install-app";
+import { ChatLink } from "@/components/chat/chat-link";
 import { NotificationBell } from "@/components/notifications/bell";
 import { EnableNotifications } from "@/components/notifications/enable-notifications";
 import { PushListener } from "@/components/notifications/push-listener";
@@ -101,6 +102,7 @@ export default async function ProtectedAppLayout({
               <UsersRound className="size-4" />
             </Link>
           ) : null}
+          <ChatLink href="/app/chat" />
           <NotificationBell href="/app/notifications" />
           <Link
             aria-label="Settings"
