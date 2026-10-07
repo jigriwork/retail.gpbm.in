@@ -1,6 +1,6 @@
 {
   "name": "retail.gpbm.in",
-  "version": "10.4.5",
+  "version": "10.5.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -28,6 +28,7 @@
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.6.0",
     "tus-js-client": "^4.3.1",
+    "web-push": "^3.6.7",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz",
     "zod": "^4.4.3"
   },
@@ -36,6 +37,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",

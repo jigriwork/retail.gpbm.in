@@ -51,12 +51,12 @@ export default async function StaffHomePage() {
           </div>
         </section>
       ) : null}
-      <Link className="flex items-center justify-between gap-3 rounded-2xl bg-primary p-4 text-white shadow-md shadow-primary/25 active:scale-[0.98]" href="/staff/sizes">
+      <Link className="flex items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary-soft p-4 shadow-sm active:scale-[0.98]" href="/staff/requests">
         <span>
-          <span className="block text-lg font-semibold">📏 Check sizes</span>
-          <span className="text-xs text-white/80">Scan a tag and tell the customer which sizes are in stock</span>
+          <span className="block text-lg font-semibold">✍️ Request to owner</span>
+          <span className="text-xs text-muted">Stock needed, shop supplies, leave, a problem or an idea</span>
         </span>
-        <span aria-hidden className="text-xl">→</span>
+        <span aria-hidden className="text-xl text-primary">→</span>
       </Link>
       <section className="grid grid-cols-2 gap-3">
         <Link className="rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:border-primary" href="/staff/sales">

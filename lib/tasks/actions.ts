@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { canAccessStore, getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { notifyTask } from "@/lib/notifications/send";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, getIndiaToday, getIndiaTomorrow } from "@/lib/tasks/dates";
 import { buildAutoTasksForToday } from "@/lib/tasks/reminders";
@@ -145,6 +146,7 @@ export async function createTask(formData: FormData): Promise<ActionState> {
     return { ok: false, message: error.message };
   }
 
+  await notifyTask({ assignedEmployeeId, createdBy: profile.id, isPrivate: profile.role === "owner" ? isPrivate : false, storeId, title });
   revalidatePath("/app/tasks");
   revalidatePath("/app/today");
   redirect("/app/tasks");

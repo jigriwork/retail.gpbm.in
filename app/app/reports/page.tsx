@@ -384,6 +384,13 @@ export default async function ReportsPage() {
               </Link>
               <Link
                 className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
+                href="/app/owner/notify"
+              >
+                <h2 className="text-2xl font-semibold">📣 Send a notification</h2>
+                <p className="mt-2 text-sm leading-6 text-muted">To everyone, a store, managers, staff or one person. It rings on their phone. Team requests: 🔔 → Requests.</p>
+              </Link>
+              <Link
+                className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
                 href="/app/reports/correction"
               >
                 <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">

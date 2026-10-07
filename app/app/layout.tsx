@@ -10,6 +10,9 @@ import { signOut } from "@/lib/auth/actions";
 import { requireProfile } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { InstallApp } from "@/components/app/install-app";
+import { NotificationBell } from "@/components/notifications/bell";
+import { EnableNotifications } from "@/components/notifications/enable-notifications";
+import { PushListener } from "@/components/notifications/push-listener";
 import packageJson from "@/package.json";
 
 export default async function ProtectedAppLayout({
@@ -98,6 +101,7 @@ export default async function ProtectedAppLayout({
               <UsersRound className="size-4" />
             </Link>
           ) : null}
+          <NotificationBell href="/app/notifications" />
           <Link
             aria-label="Settings"
             className="flex size-9 shrink-0 items-center justify-center rounded-xl text-muted hover:text-foreground"
@@ -114,9 +118,10 @@ export default async function ProtectedAppLayout({
         </div>
       </header>
 
-      <main className="page-enter mx-auto w-full max-w-5xl px-3 py-4 sm:px-4 sm:py-5"><InstallApp />{children}</main>
+      <main className="page-enter mx-auto w-full max-w-5xl px-3 py-4 sm:px-4 sm:py-5"><InstallApp /><EnableNotifications />{children}</main>
       <BottomNav role={profile.role} />
       <ChromeMeasure />
+      <PushListener />
     </div>
   );
 }

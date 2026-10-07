@@ -6032,6 +6032,18 @@ export type Database = {
           }
         ]
       }
+      notifications: {
+        Row: { body: string | null; created_at: string; created_by: string | null; id: string; kind: string; read_at: string | null; title: string; url: string | null; user_id: string }
+        Insert: { body?: string | null; created_at?: string; created_by?: string | null; id?: string; kind: string; read_at?: string | null; title: string; url?: string | null; user_id: string }
+        Update: { body?: string | null; created_at?: string; created_by?: string | null; id?: string; kind?: string; read_at?: string | null; title?: string; url?: string | null; user_id?: string }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: { auth: string; created_at: string; endpoint: string; failures: number; id: string; last_success_at: string | null; p256dh: string; user_agent: string | null; user_id: string }
+        Insert: { auth: string; created_at?: string; endpoint: string; failures?: number; id?: string; last_success_at?: string | null; p256dh: string; user_agent?: string | null; user_id: string }
+        Update: { auth?: string; created_at?: string; endpoint?: string; failures?: number; id?: string; last_success_at?: string | null; p256dh?: string; user_agent?: string | null; user_id?: string }
+        Relationships: []
+      }
       payslip_rows: {
         Row: {
           employee_contact_id: string | null
@@ -7541,6 +7553,15 @@ export type Database = {
       staff_name_totals: { Args: { p_store_ids: string[] }; Returns: { store_id: string; staff_name: string; row_count: number; net_sale: number }[] }
       owner_night_plan_internal: { Args: { p_day: string; p_limit: number }; Returns: Json }
       owner_night_plan: { Args: { p_day: string }; Returns: Json }
+      save_push_subscription: { Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_user_agent: string }; Returns: undefined }
+      remove_push_subscription: { Args: { p_endpoint: string }; Returns: undefined }
+      my_notifications: { Args: { p_limit?: number }; Returns: Json }
+      my_unread_notifications: { Args: Record<PropertyKey, never>; Returns: number }
+      mark_notifications_read: { Args: Record<PropertyKey, never>; Returns: undefined }
+      create_team_request: { Args: { p_category: string; p_message: string }; Returns: string }
+      my_team_requests: { Args: Record<PropertyKey, never>; Returns: Json }
+      owner_team_requests: { Args: Record<PropertyKey, never>; Returns: Json }
+      answer_team_request: { Args: { p_request: string; p_status: string; p_reply: string }; Returns: string }
       sold_report: { Args: { p_store: string; p_from: string; p_to: string; p_brand?: string }; Returns: Json }
       brand_sell_through: { Args: { p_store: string; p_days: number }; Returns: { brand: string; sold_units: number; net_sales: number; on_hand: number; on_hand_mrp: number; on_hand_cost: number | null; cost_known_units: number; sell_through_pct: number | null; days_cover: number | null; no_sale_90_units: number; snapshot_date: string | null }[] }
       refresh_stock_position: { Args: { p_store: string }; Returns: boolean }

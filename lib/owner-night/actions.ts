@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import type { AccountsActionState } from "@/lib/accounts/master-actions";
 import { requireProfile } from "@/lib/auth/session";
+import { notifyTask } from "@/lib/notifications/send";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, getIndiaToday } from "@/lib/tasks/dates";
 
@@ -35,6 +36,7 @@ export async function giveNightTask(_state: AccountsActionState, formData: FormD
     title,
   });
   if (error) return { ok: false, message: "Could not create the task. Please retry." };
+  await notifyTask({ createdBy: profile.id, storeId: store.id, title });
   revalidatePath("/app/tasks");
   return { ok: true, message: "Task given for tomorrow." };
 }
