@@ -33,11 +33,45 @@ const QUOTES = [
   "Your best day this month is still ahead.",
 ];
 
-/** The quote of the day (India date), the same for everyone. */
-export function dailyQuote(day: string) {
+// Store managers: leading the team on the floor.
+const MANAGER_QUOTES = [
+  "Start the day with a 2-minute team huddle: today's target and one tip.",
+  "Praise in public, correct in private.",
+  "Walk the floor every hour: neat racks and full sizes sell more.",
+  "Help your weakest seller close one sale today. Confidence grows fast.",
+  "Celebrate small wins. A cheering team sells more.",
+  "Check the fast sellers' sizes before the evening rush.",
+  "A great store is a team where everyone knows the goal.",
+  "Lead by example: greet the first customer yourself.",
+  "Ask the team what customers asked for but we didn't have.",
+  "Close the day with one thing that went well. End on a high.",
+  "Fair, clear and kind: the three things a team needs from its leader.",
+  "Your team copies your energy. Bring your best today.",
+];
+
+// Owners: running and growing the business.
+const OWNER_QUOTES = [
+  "What gets measured gets managed.",
+  "Cash flow is the oxygen of a business. Keep an eye on it daily.",
+  "Dead stock is money sleeping on a shelf. Wake it up.",
+  "Hire for attitude, train for skill.",
+  "Your team treats customers the way you treat your team.",
+  "Buy what sells, not what you like.",
+  "Small improvements every day add up to big results.",
+  "The best time to plan next season is while this one is selling.",
+  "Recognise good work quickly. It costs nothing and returns a lot.",
+  "A business grows when its people grow.",
+  "Focus on the few things that make the most difference.",
+  "Know your numbers, trust your team, serve your customers.",
+];
+
+const sets = { manager: MANAGER_QUOTES, owner: OWNER_QUOTES, staff: QUOTES };
+
+/** The quote of the day (India date) for staff, managers or owners. */
+export function dailyQuote(day: string, audience: keyof typeof sets = "staff") {
   const [year, month, date] = day.split("-").map(Number);
-  const index = Math.floor(Date.UTC(year, month - 1, date) / 86_400_000) % QUOTES.length;
-  return QUOTES[index];
+  const list = sets[audience];
+  return list[Math.floor(Date.UTC(year, month - 1, date) / 86_400_000) % list.length];
 }
 
 const money = (value: number) => `₹${Math.round(value).toLocaleString("en-IN")}`;

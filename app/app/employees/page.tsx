@@ -77,24 +77,17 @@ export default async function EmployeesPage({
         <span aria-hidden>→</span>
       </Link>
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted">Staff</p>
-            <h1 className="mt-2 text-3xl font-semibold">Staff</h1>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              {helperText}
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:items-end">
-            {profile.role === "owner" ? <SyncStaffButton action={syncStaffFromPayslips} /> : null}
-            <Link
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 text-xs font-semibold transition hover:bg-black/[0.03]"
-              href={`/app/employees/new?returnTo=${encodeURIComponent(returnTo)}`}
-            >
-              <Plus className="size-4" />
-              Add new staff
-            </Link>
-          </div>
+        <h1 className="text-3xl font-semibold">Staff</h1>
+        <p className="mt-2 text-sm leading-6 text-muted">{helperText}</p>
+        <div className={`mt-4 grid gap-2 ${profile.role === "owner" ? "grid-cols-2" : "grid-cols-1 sm:max-w-xs"}`}>
+          <Link
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-white transition hover:bg-primary-deep"
+            href={`/app/employees/new?returnTo=${encodeURIComponent(returnTo)}`}
+          >
+            <Plus className="size-4 shrink-0" />
+            <span className="truncate">Add new staff</span>
+          </Link>
+          {profile.role === "owner" ? <SyncStaffButton action={syncStaffFromPayslips} /> : null}
         </div>
       </section>
 

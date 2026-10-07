@@ -931,7 +931,7 @@ function OwnerToday({
           total: handledPriorities.length + priorities.length,
         }}
         stats={heroSalesStats(salesStatuses)}
-        motivation={{ quote: dailyQuote(getIndiaToday()) }}
+        motivation={{ quote: dailyQuote(getIndiaToday(), "owner") }}
         title="Owner Command Center"
       />
       {highlights}
@@ -1033,7 +1033,7 @@ function ManagerToday({
     <>
       <TodayHero
         action={<SyncNowButton onDark />}
-        motivation={{ line: "💪 Let's make today a great day for the store!", quote: dailyQuote(getIndiaToday()) }}
+        motivation={{ line: "💪 Let's make today a great day for the store!", quote: dailyQuote(getIndiaToday(), "manager") }}
         name={displayName}
         progress={{
           caption: `Yesterday's closing sales for ${assignedStoreLabel}`,

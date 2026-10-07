@@ -3,7 +3,6 @@
 import { useActionState } from "react";
 import { RefreshCw } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import type { EmployeeSyncState } from "@/lib/employees/actions";
 
 const initialState: EmployeeSyncState = {
@@ -19,13 +18,17 @@ export function SyncStaffButton({
   const [state, formAction, pending] = useActionState(action, initialState);
 
   return (
-    <form action={formAction} className="space-y-2">
-      <Button disabled={pending} size="md">
-        <RefreshCw className={pending ? "size-4 animate-spin" : "size-4"} />
-        Sync staff from payslips
-      </Button>
+    <form action={formAction} className="contents">
+      <button
+        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-semibold transition hover:bg-black/[0.03] disabled:opacity-60"
+        disabled={pending}
+        type="submit"
+      >
+        <RefreshCw className={pending ? "size-4 shrink-0 animate-spin" : "size-4 shrink-0"} />
+        <span className="truncate">{pending ? "Syncing…" : "Sync from salary sheet"}</span>
+      </button>
       {state.message ? (
-        <p className={state.ok ? "text-xs font-semibold text-success" : "text-xs font-semibold text-danger"}>
+        <p className={`col-span-2 ${state.ok ? "text-xs font-semibold text-success" : "text-xs font-semibold text-danger"}`}>
           {state.message}
         </p>
       ) : null}
