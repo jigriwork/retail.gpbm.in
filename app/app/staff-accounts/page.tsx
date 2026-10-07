@@ -13,7 +13,6 @@ import {
   resetStaffTemporaryPassword,
   setStaffAccountActive,
   verifyCredentialManagementPassword,
-  verifySalesAlias,
 } from "@/lib/staff/actions";
 import { getStaffAccountAdminData } from "@/lib/staff/admin";
 
@@ -167,16 +166,10 @@ export default async function StaffAccountsPage({ searchParams }: { searchParams
 
       {profile.role === "owner" ? (
         <>
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">Unverified sales aliases</h2>
-            {data.aliases.filter((alias) => alias.verification_status !== "verified").slice(0, 100).map((alias) => (
-              <form action={verifySalesAlias} className="grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" key={alias.id}>
-                <div><p className="text-xs text-muted">Source sales name</p><p className="font-semibold">{alias.source_name}</p></div>
-                <label className="grid gap-1 text-xs font-semibold text-muted">Exact employee<select className="h-11 rounded-xl border border-border bg-background px-3 text-sm" defaultValue={alias.employee_contact_id ?? ""} name="employeeId" required><option value="">Select exact employee</option>{data.employees.filter((employee) => employee.store_id === alias.store_id).map((employee) => <option key={employee.id} value={employee.id}>{employee.staff_name}</option>)}</select></label>
-                <input name="aliasId" type="hidden" value={alias.id} /><button className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white">Owner verify</button>
-              </form>
-            ))}
-          </section>
+          <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-primary" href="/app/staff-match">
+            <span>🔗 Sales names on the bills: match them to staff, or hide staff who left (“Left / not staff”), on Match staff names.</span>
+            <span aria-hidden>→</span>
+          </Link>
           <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-primary" href="/app/staff-match">
             <span>🔗 Salary slips not matched to staff: {data.payrollRows.length}{data.payrollRows.length === 250 ? "+" : ""} rows. Same names match automatically; match or approve the rest here.</span>
             <span aria-hidden>→</span>

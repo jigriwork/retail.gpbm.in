@@ -236,6 +236,8 @@ export async function getStaffAliasPageData({
 
   const normalizedSearch = search.trim().toLowerCase();
   const aliases = ((aliasesResult.data ?? []) as StaffAliasRow[]).filter((alias) => {
+    // Staff who left (marked "Left / not staff" / former staff) are not listed.
+    if ((alias as { verification_status?: string | null }).verification_status === "rejected") return false;
     if (!normalizedSearch) return true;
     return [alias.source_name, alias.canonical_staff_name, alias.stores?.name]
       .filter(Boolean)
