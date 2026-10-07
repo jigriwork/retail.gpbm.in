@@ -5,7 +5,9 @@ import { Celebration } from "@/components/app/celebration";
 import { StarsList, shortDay } from "@/components/app/store-stars";
 import { TodayHero } from "@/components/app/today-hero";
 import { TargetCard } from "@/components/staff/target-card";
-import { getMyTarget, getMyWeek, getStaffHomeSummary, getStaffProfileSummary } from "@/lib/staff/portal";
+import { dailyQuote, staffLine } from "@/lib/motivation/lines";
+import { addDays, getIndiaToday, isMondayInIndia } from "@/lib/tasks/dates";
+import { getMySalesSummary, getMyTarget, getMyWeek, getStaffHomeSummary, getStaffProfileSummary } from "@/lib/staff/portal";
 
 function money(value: number) { return new Intl.NumberFormat("en-IN", { currency: "INR", maximumFractionDigits: 0, style: "currency" }).format(value); }
 
@@ -20,6 +22,21 @@ export default async function StaffHomePage() {
     week.stars.most_items && mine.has(week.stars.most_items.name) ? "most items per bill" : "",
   ].filter(Boolean) : [];
   const verified = home.sales.linkage_verified;
+  // Motivation: yesterday from this month's days (or a small read on the 1st).
+  const today = getIndiaToday();
+  const yesterdayDate = addDays(today, -1);
+  const fromMonth = home.sales.daily.find((dayRow) => dayRow.sale_date === yesterdayDate);
+  const yesterday = fromMonth ? Number(fromMonth.value) : verified && yesterdayDate.slice(0, 7) !== today.slice(0, 7)
+    ? Number((await getMySalesSummary(yesterdayDate, yesterdayDate).catch(() => null))?.summary.value ?? 0) : 0;
+  const goal = Number(target?.target ?? 0);
+  const left = Math.max(0, goal - Number(target?.sale ?? 0));
+  const line = verified ? staffLine({
+    isMonday: isMondayInIndia(today),
+    rank: week?.linked ? (week.rank ?? null) : null,
+    target: goal ? { left, perDay: left / Math.max(1, Number(target?.days_left ?? 1)), reached: left === 0 } : null,
+    today: Number(home.today_value ?? 0),
+    yesterday,
+  }) : null;
   const payslip = home.latest_payslip_month
     ? new Date(`${home.latest_payslip_month}T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })
     : "Not linked";
@@ -32,7 +49,8 @@ export default async function StaffHomePage() {
           { label: "Today sales", value: verified ? money(home.today_value) : "Verification needed" },
           { label: "Month sales", value: verified ? money(home.sales.summary.value) : "Verification needed" },
         ]}
-        title={`${profile.designation ?? "Staff"} · ${profile.store.name}`}
+        motivation={{ line, quote: dailyQuote(today) }}
+        title={profile.store.name}
       />
       <TargetCard target={target} />
       {week ? (

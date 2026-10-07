@@ -1,4 +1,5 @@
 import { checkedQuery } from "@/lib/supabase/complete-query";
+import { dailyQuote } from "@/lib/motivation/lines";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -930,6 +931,7 @@ function OwnerToday({
           total: handledPriorities.length + priorities.length,
         }}
         stats={heroSalesStats(salesStatuses)}
+        motivation={{ quote: dailyQuote(getIndiaToday()) }}
         title="Owner Command Center"
       />
       {highlights}
@@ -1031,6 +1033,7 @@ function ManagerToday({
     <>
       <TodayHero
         action={<SyncNowButton onDark />}
+        motivation={{ line: "💪 Let's make today a great day for the store!", quote: dailyQuote(getIndiaToday()) }}
         name={displayName}
         progress={{
           caption: `Yesterday's closing sales for ${assignedStoreLabel}`,
@@ -1214,6 +1217,16 @@ export default async function TodayPage({
           <span className="text-xs text-muted">Stock and sales for any tag</span>
         </Link>
       </div>
+      <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary active:scale-[0.98]" href="/app/employees">
+        <span className="flex items-center gap-3">
+          <span className="text-2xl" aria-hidden>👥</span>
+          <span>
+            <span className="block text-base font-semibold leading-tight">Staff</span>
+            <span className="text-xs text-muted">Add new staff, remove staff who left, phone numbers</span>
+          </span>
+        </span>
+        <span aria-hidden className="text-muted">→</span>
+      </Link>
       {pendingStaff ? (
         <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-accent/40 bg-accent-soft p-4 text-sm font-semibold text-accent-ink" href="/app/employees">
           <span>{pendingStaff} new staff member{pendingStaff === 1 ? "" : "s"} waiting for your approval</span>

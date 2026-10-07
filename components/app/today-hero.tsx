@@ -60,12 +60,15 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
  */
 export function TodayHero({
   action,
+  motivation,
   name,
   progress,
   stats,
   title,
 }: {
   action?: ReactNode;
+  /** A personal line (bold) and the quote of the day (smaller). */
+  motivation?: { line?: string | null; quote?: string | null };
   name?: string | null;
   progress?: { done: number; total: number; label: string; caption: string };
   stats: HeroStat[];
@@ -87,6 +90,8 @@ export function TodayHero({
         {greetingForHour()}
         {firstName ? `, ${firstName}` : ""}
       </h1>
+      {motivation?.line ? <p className="relative mt-2 text-base font-semibold leading-snug text-white">{motivation.line}</p> : null}
+      {motivation?.quote ? <p className="relative mt-1.5 text-sm italic leading-snug text-white/75">“{motivation.quote}”</p> : null}
 
       {progress ? (
         <div className="relative mt-4 flex items-center gap-4">

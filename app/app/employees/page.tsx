@@ -52,8 +52,8 @@ export default async function EmployeesPage({
   });
   const helperText =
     profile.role === "owner"
-      ? "Staff names are auto-created from salary sheet and payslip uploads. Add phone numbers once; future payslips will auto-fill them."
-      : "Add or update staff phone numbers for your assigned store. Salary slips and salary details are owner-only.";
+      ? "Staff from the salary sheet appear here by themselves. Add new staff with \u201cAdd new staff\u201d, and use \u201cRemove (left)\u201d for staff who left."
+      : "Your store's staff. Add new staff with \u201cAdd new staff\u201d and remove staff who left. Salary details are owner-only.";
   const directoryParams = new URLSearchParams();
   if (q) directoryParams.set("q", q);
   if (selectedStore) directoryParams.set("store", selectedStore);
@@ -80,7 +80,7 @@ export default async function EmployeesPage({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm font-medium text-muted">Staff</p>
-            <h1 className="mt-2 text-3xl font-semibold">Staff Phone Directory</h1>
+            <h1 className="mt-2 text-3xl font-semibold">Staff</h1>
             <p className="mt-2 text-sm leading-6 text-muted">
               {helperText}
             </p>
@@ -92,7 +92,7 @@ export default async function EmployeesPage({
               href={`/app/employees/new?returnTo=${encodeURIComponent(returnTo)}`}
             >
               <Plus className="size-4" />
-              Add Staff Contact
+              Add new staff
             </Link>
           </div>
         </div>
