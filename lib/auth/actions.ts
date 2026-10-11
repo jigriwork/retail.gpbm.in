@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { notifyAccountReady, sendPasswordResetEmail } from "@/lib/auth/account-emails";
 import { requireOwner, requireProfile } from "@/lib/auth/session";
+import { emailConfigured } from "@/lib/email/send";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -193,12 +195,15 @@ export async function createUserAccount(formData: FormData) {
     },
   });
 
+  const notice = await notifyAccountReady({
+    email, initiatedBy: owner.profile.id, name: fullName, phones: [phone], storeId: null, userId: data.user.id,
+  });
   revalidatePath("/app/users");
   const created = role === "owner" ? "Owner" : role === "accountant" ? "Accountant" : role === "cashier" ? "Cashier" : "Manager";
   return {
     ok: true,
-    message: role === "accountant" ? "Accountant account created. Give access under Accounts → Access."
-      : role === "cashier" ? "Cashier account created. Tick their store below." : `${created} account created.`,
+    message: (role === "accountant" ? "Accountant account created. Give access under Accounts → Access."
+      : role === "cashier" ? "Cashier account created. Tick their store below." : `${created} account created.`) + notice,
   };
 }
 
@@ -399,13 +404,18 @@ export async function sendPasswordResetLink(
     return { ok: false, message: "User email was not found." };
   }
 
-  const authClient = createAdminClient() ?? supabase;
-  const { error } = await authClient.auth.resetPasswordForEmail(userProfile.email, {
-    redirectTo: passwordResetRedirectUrl(),
-  });
+  if (emailConfigured()) {
+    const sent = await sendPasswordResetEmail(userProfile.email);
+    if (!sent.ok) return { ok: false, message: sent.message ?? "The reset email could not be sent." };
+  } else {
+    const authClient = createAdminClient() ?? supabase;
+    const { error } = await authClient.auth.resetPasswordForEmail(userProfile.email, {
+      redirectTo: passwordResetRedirectUrl(),
+    });
 
-  if (error) {
-    return { ok: false, message: error.message };
+    if (error) {
+      return { ok: false, message: error.message };
+    }
   }
 
   await writeAuthAuditLog({
@@ -500,11 +510,16 @@ export async function forgotPassword(
     return { ok: false, message: "Enter your email address." };
   }
 
-  const supabase = await createClient();
   const origin = await requestOrigin();
-  await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/reset-password`,
-  });
+  if (emailConfigured()) {
+    const sent = await sendPasswordResetEmail(email, origin);
+    if (!sent.ok) return { ok: false, message: sent.message ?? "The reset email could not be sent. Please retry." };
+  } else {
+    const supabase = await createClient();
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/reset-password`,
+    });
+  }
 
   return {
     ok: true,

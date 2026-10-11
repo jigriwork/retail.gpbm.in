@@ -2,7 +2,7 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/server";
 
-export type WhatsAppDeliveryKind = "customer_follow_up" | "customer_thank_you" | "owner_night_plan" | "owner_summary" | "payslip";
+export type WhatsAppDeliveryKind = "account_ready" | "customer_follow_up" | "customer_thank_you" | "owner_night_plan" | "owner_summary" | "payslip";
 
 function positiveNumber(name: string, fallback: number) {
   const parsed = Number(process.env[name]);
@@ -23,7 +23,7 @@ export function whatsappBudgetConfig() {
 
 export function whatsappUnitCost(kind: WhatsAppDeliveryKind) {
   const config = whatsappBudgetConfig();
-  return kind === "payslip" || kind === "owner_summary" || kind === "owner_night_plan" ? config.utilityRate : config.marketingRate;
+  return kind === "payslip" || kind === "account_ready" || kind === "owner_summary" || kind === "owner_night_plan" ? config.utilityRate : config.marketingRate;
 }
 
 function indiaParts(now = new Date()) {

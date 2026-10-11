@@ -4,12 +4,14 @@ import { AccessDenied } from "@/components/app/access-denied";
 import { ActionForm } from "@/components/accounts/action-form";
 import { Badge, Empty, Field, inputClass, Notice, Pager, Panel } from "@/components/accounts/fields";
 import { WhatsAppButton } from "@/components/customers/whatsapp-button";
+import { DeliveryList, DeliveryTiles } from "@/components/customers/whatsapp-delivery";
 import { indiaToday, money, shortDate } from "@/lib/accounts/format";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { isLimitedView } from "@/lib/auth/view";
 import { saveReviewLink } from "@/lib/customers/actions";
 import { customerKpis, customerSegments, listCustomers } from "@/lib/customers/queries";
 import { whatsappBudgetSnapshot } from "@/lib/msg91/budget";
+import { deliveryCounts, recentDeliveries } from "@/lib/msg91/delivery-report";
 import { addDays, monthStart } from "@/lib/money/format";
 
 const pageSize = 50;
@@ -34,6 +36,14 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const whatsappBudgets = isOwner
     ? await Promise.all(stores.map(async (item) => ({ item, snapshot: await whatsappBudgetSnapshot(item.id) })))
     : [];
+  const deliveryStores = store ? [store] : stores;
+  const [deliveryTotals, deliveries] = isOwner
+    ? await Promise.all([
+      Promise.all(deliveryStores.map(async (item) => ({ item, counts: await deliveryCounts(item.id) }))),
+      recentDeliveries(deliveryStores.map((item) => item.id)),
+    ])
+    : [[], []];
+  const noReports = deliveryTotals.some(({ counts }) => counts.total >= 5 && counts.reached === 0 && counts.failed === 0);
   const scopeParam = store?.id ?? "all";
   const segmentInfo = customerSegments.find((item) => item.value === segment)!;
   const capture = kpis?.bills ? Math.round((kpis.bills_with_mobile / kpis.bills) * 100) : 0;
@@ -91,6 +101,17 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
             ))}
           </div>
           <p className="mt-3 text-xs text-muted">A ₹100 safety buffer and ₹25 salary-message reserve are kept inside each store&apos;s limit.</p>
+        </Panel>
+      ) : null}
+
+      {isOwner ? (
+        <Panel description="Messages the app sent through MSG91 in the last 30 days, with the delivery report WhatsApp sends back. Messages opened from the WhatsApp buttons below are sent from your phone and are not tracked here." title="WhatsApp delivery">
+          <div className="grid gap-3 lg:grid-cols-2">
+            {deliveryTotals.map(({ item, counts }) => <DeliveryTiles counts={counts} key={item.id} name={item.name} />)}
+          </div>
+          {noReports ? <div className="mt-3"><Notice>No delivery reports have come back yet. Check that the MSG91 webhook points to this app.</Notice></div> : null}
+          <h3 className="mb-2 mt-5 text-sm font-semibold">Latest messages</h3>
+          <DeliveryList rows={deliveries} />
         </Panel>
       ) : null}
 

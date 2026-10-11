@@ -4,11 +4,13 @@ import { AccessDenied } from "@/components/app/access-denied";
 import { ActionForm } from "@/components/accounts/action-form";
 import { Badge, Check, Empty, Field, inputClass, Panel } from "@/components/accounts/fields";
 import { WhatsAppButton } from "@/components/customers/whatsapp-button";
+import { DeliveryList } from "@/components/customers/whatsapp-delivery";
 import { indiaToday, money, shortDate } from "@/lib/accounts/format";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { isLimitedView } from "@/lib/auth/view";
 import { saveCustomerProfile } from "@/lib/customers/actions";
 import { customerMessagesFor, customerProfile, customerPurchases } from "@/lib/customers/queries";
+import { deliveriesTo } from "@/lib/msg91/delivery-report";
 import { addDays } from "@/lib/money/format";
 
 const kindLabels: Record<string, string> = { thank_you: "Thank you + review", lapsed_offer: "We miss you", birthday: "Birthday wish", custom: "Message" };
@@ -22,6 +24,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
     customerPurchases(mobile), customerProfile(mobile), customerMessagesFor(mobile), getAccessibleStores(profile), isLimitedView(profile), searchParams,
   ]);
   if (!purchases.length) return <AccessDenied message="Customer not found, or they have not bought at your store." />;
+  const deliveries = profile.role === "owner" ? await deliveriesTo(mobile) : [];
   const store = stores.find((item) => item.id === query.store) ?? stores.find((item) => purchases.some((row) => row.store_name === item.name));
   const bills = new Map<string, { date: string; store: string; total: number; items: typeof purchases }>();
   for (const row of purchases) {
@@ -101,6 +104,12 @@ export default async function CustomerPage({ params, searchParams }: { params: P
           </ul>
         ) : <Empty>None yet.</Empty>}
       </Panel>
+
+      {profile.role === "owner" ? (
+        <Panel description="Sent automatically through MSG91, with WhatsApp's delivery report." title="WhatsApp delivery">
+          <DeliveryList rows={deliveries} showRecipient={false} />
+        </Panel>
+      ) : null}
     </div>
   );
 }

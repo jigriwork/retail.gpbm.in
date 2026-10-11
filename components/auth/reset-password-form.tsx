@@ -7,6 +7,9 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
+// One redemption per token, shared if the effect runs twice (React dev mode).
+const redemptions = new Map<string, Promise<{ error: unknown }>>();
+
 export function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -23,6 +26,22 @@ export function ResetPasswordForm() {
     async function prepareRecoverySession() {
       const supabase = createClient();
       const code = searchParams.get("code");
+      const tokenHash = searchParams.get("token_hash");
+
+      // Links emailed by the app carry a one-time token hash; it is only
+      // redeemed here, in the browser, so mail scanners can't use it up.
+      if (tokenHash && searchParams.get("type") === "recovery") {
+        if (!redemptions.has(tokenHash)) redemptions.set(tokenHash, supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" }));
+        const { error } = await redemptions.get(tokenHash)!;
+        window.history.replaceState(null, "", window.location.pathname);
+        if (!active) return;
+        if (error) {
+          setMessage("This reset link has expired or was already used. Ask for a new one from “Forgot password”.");
+          setOk(false);
+          setIsReady(false);
+          return;
+        }
+      }
 
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);

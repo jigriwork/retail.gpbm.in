@@ -6,6 +6,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
+import { notifyAccountReady } from "@/lib/auth/account-emails";
 import { requireProfile } from "@/lib/auth/session";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -135,7 +136,7 @@ export async function requestStaffAccount(
     supabase.rpc("consume_credential_action_limit", { p_employee_id: employeeId }),
   ]);
   if (!allowed || !withinLimit) return { ok: false, message: withinLimit === false ? "Password action limit reached. Try again after one hour." : "You can create accounts only for active employees in assigned stores." };
-  const { data: employee } = await supabase.from("employee_contacts").select("id,store_id,staff_name").eq("id", employeeId).maybeSingle();
+  const { data: employee } = await supabase.from("employee_contacts").select("id,store_id,staff_name,whatsapp_phone,phone").eq("id", employeeId).maybeSingle();
   if (!employee?.store_id) return { ok: false, message: "Employee store is missing." };
   const admin = createAdminClient();
   if (!admin) return { ok: false, message: "Server Auth administration is not configured." };
@@ -171,8 +172,11 @@ export async function requestStaffAccount(
       return { ok: false, message: finalizeError.message };
     }
     await securityEvent({ actorId: user.id, actorRole: profile.role, authUserId: created.user.id, employeeId, eventType: "temporary_password_issued", storeId: employee.store_id });
+    const notice = await notifyAccountReady({
+      email, initiatedBy: profile.id, name: employee.staff_name, phones: [employee.whatsapp_phone, employee.phone], storeId: employee.store_id, userId: created.user.id,
+    });
     revalidatePath("/app/staff-accounts");
-    return { ok: true, message: "Staff account created. Share the temporary code privately; it will not be shown again." };
+    return { ok: true, message: `Staff account created. Share the temporary code privately; it will not be shown again.${notice}` };
   }
 
   const { data: request, error } = await supabase.from("staff_account_requests").insert({
@@ -230,6 +234,11 @@ export async function decideStaffRequest(formData: FormData): Promise<void> {
     return;
   }
   await securityEvent({ actorId: profile.id, actorRole: profile.role, authUserId: request.pending_auth_user_id, employeeId: request.employee_contact_id, eventType: "request_approved", safeMetadata: { request_id: request.id }, storeId: request.store_id });
+  const { data: employee } = await admin.from("employee_contacts").select("staff_name,whatsapp_phone,phone").eq("id", request.employee_contact_id).maybeSingle();
+  await notifyAccountReady({
+    email: request.requested_email, initiatedBy: profile.id, name: employee?.staff_name ?? "", phones: [employee?.whatsapp_phone, employee?.phone],
+    storeId: request.store_id, userId: request.pending_auth_user_id,
+  });
   revalidatePath("/app/staff-accounts");
 }
 
@@ -250,7 +259,7 @@ export async function createStaffAccount(
   const [{ data: allowed }, { data: withinLimit }, { data: employee }] = await Promise.all([
     supabase.rpc("can_manage_staff_employee", { p_employee_id: employeeId }),
     supabase.rpc("consume_credential_action_limit", { p_employee_id: employeeId }),
-    supabase.from("employee_contacts").select("id,staff_name,store_id").eq("id", employeeId).maybeSingle(),
+    supabase.from("employee_contacts").select("id,staff_name,store_id,whatsapp_phone,phone").eq("id", employeeId).maybeSingle(),
   ]);
   if (!allowed || !withinLimit || !employee?.store_id) return { ok: false, message: withinLimit === false ? "Reset limit reached. Try again after one hour." : "Employee access denied." };
   const admin = createAdminClient();
@@ -263,8 +272,11 @@ export async function createStaffAccount(
     return { ok: false, message: finalizeError.message };
   }
   await securityEvent({ actorId: user.id, actorRole: profile.role, authUserId: created.user.id, employeeId, eventType: "temporary_password_issued", storeId: employee.store_id });
+  const notice = await notifyAccountReady({
+    email, initiatedBy: profile.id, name: employee.staff_name, phones: [employee.whatsapp_phone, employee.phone], storeId: employee.store_id, userId: created.user.id,
+  });
   revalidatePath("/app/staff-accounts");
-  return { ok: true, message: "Staff account created. Share the temporary code privately; it will not be shown again." };
+  return { ok: true, message: `Staff account created. Share the temporary code privately; it will not be shown again.${notice}` };
 }
 
 export async function resetStaffTemporaryPassword(
