@@ -105,7 +105,8 @@ export async function syncWhatsAppStatuses({ force = false } = {}): Promise<Sync
       updates.push({ delivered_at: indiaTime(log.deliveryTime?.value) ?? indiaTime(log.readTime?.value), id: row.id, read_at: indiaTime(log.readTime?.value), status: "read" });
     } else if (status === "delivered" && row.status !== "delivered") {
       updates.push({ delivered_at: indiaTime(log.deliveryTime?.value), id: row.id, status: "delivered" });
-    } else if (status === "failed" && row.status === "accepted") {
+    } else if ((status === "failed" || (status === "hold" && log.failureReason)) && row.status === "accepted") {
+      // "hold" with a reason is MSG91 reporting a message WhatsApp refused.
       updates.push({ error_code: log.failureReason?.slice(0, 120) || "msg91_failed", failed_at: indiaTime(log.statusUpdatedAt), id: row.id, status: "failed" });
     }
   }
