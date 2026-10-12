@@ -1,27 +1,14 @@
 import "server-only";
 
 import { emailConfigured, sendEmail, simpleEmailHtml } from "@/lib/email/send";
-import { getMsg91Config } from "@/lib/msg91/config";
-import { getMsg91TemplateStatus, sendMsg91Template } from "@/lib/msg91/client";
-import { claimWhatsAppDeliveries, finishWhatsAppDeliveries } from "@/lib/msg91/deliveries";
-import { whatsappUnitCost } from "@/lib/msg91/budget";
 import { createAdminClient } from "@/lib/supabase/server";
 
 // Password reset links and "your account is ready" notices, sent by the app
 // itself (Supabase's built-in mailer only delivers to the project team).
 
-// Meta rejected v1/v2 as "incorrect category" (mentions of a code or password
-// read as a login-code message). v3 is a plain notice; m1 is the same text as
-// a marketing template, used only if the utility one is never approved.
-const accountReadyTemplates = process.env.MSG91_ACCOUNT_READY_TEMPLATE?.trim()
-  ? [{ category: "utility" as const, name: process.env.MSG91_ACCOUNT_READY_TEMPLATE.trim() }]
-  : [{ category: "utility" as const, name: "gpbm_account_active_v3" }, { category: "marketing" as const, name: "gpbm_account_active_m1" }];
-export const accountReadyTemplateBody = [
-  "Hello {{1}}, your staff account on GPBM Retail is now active.",
-  "",
-  "Login email: {{2}}",
-  "Open retail.gpbm.in to sign in. Your store manager can help if you have any trouble.",
-].join("\n");
+// A WhatsApp "account ready" template was tried (four wordings, utility and
+// marketing); Meta rejects any message about account login as the wrong
+// category, so this notice goes by email only.
 
 function siteUrl() {
   return (process.env.NEXT_PUBLIC_SITE_URL || "https://retail.gpbm.in").replace(/\/$/, "");
@@ -82,18 +69,9 @@ export async function sendPasswordResetEmail(email: string, origin = siteUrl()):
   return sent.ok ? { ok: true } : { ok: false, message: "The reset email could not be sent. Please retry." };
 }
 
-function whatsappNumber(...values: Array<string | null | undefined>) {
-  for (const value of values) {
-    const digits = (value ?? "").replace(/\D/g, "").replace(/^(?:91|0)(?=[6-9]\d{9}$)/, "");
-    if (/^[6-9]\d{9}$/.test(digits)) return `91${digits}`;
-  }
-  return null;
-}
-
 /**
- * Tells a person their account is ready, by email and (when a mobile and an
- * approved template exist) WhatsApp. Never throws: account creation must not
- * fail because a notice could not go out. Returns a short line for the UI.
+ * Emails a person that their account is ready. Never throws: account creation
+ * must not fail because a notice could not go out. Returns a short line for the UI.
  */
 export async function notifyAccountReady(input: {
   email: string;
@@ -122,39 +100,8 @@ export async function notifyAccountReady(input: {
       to: input.email,
     });
     if (mail.ok) sentBy.push("email");
-
-    const to = whatsappNumber(...input.phones);
-    const admin = createAdminClient();
-    if (to && admin) {
-      const { data: store } = input.storeId
-        ? await admin.from("stores").select("id,code").eq("id", input.storeId).maybeSingle()
-        : await admin.from("stores").select("id,code").eq("code", "GP").maybeSingle();
-      const code = store?.code?.toUpperCase();
-      const config = code === "GP" || code === "BM" ? getMsg91Config(code) : null;
-      let template: (typeof accountReadyTemplates)[number] | null = null;
-      for (const candidate of config ? accountReadyTemplates : []) {
-        if ((await getMsg91TemplateStatus(config!, candidate.name)) === "approved") { template = candidate; break; }
-      }
-      if (store && config && template) {
-        const dedupeKey = `account-ready:${input.userId}`;
-        const { claims } = await claimWhatsAppDeliveries([{
-          brandCode: config.brand, dedupeKey, initiatedBy: input.initiatedBy, kind: "account_ready", recipient: to,
-          referenceId: input.userId, storeId: store.id, templateName: template.name,
-          unitCostInr: template.category === "marketing" ? whatsappUnitCost("customer_follow_up") : whatsappUnitCost("account_ready"),
-        }]);
-        const claim = claims.find((item) => item.dedupeKey === dedupeKey);
-        if (claim) {
-          const delivery = await sendMsg91Template(config, template.name, [{
-            components: { body_1: { type: "text", value: firstName.slice(0, 60) }, body_2: { type: "text", value: input.email.slice(0, 120) } },
-            to,
-          }]);
-          await finishWhatsAppDeliveries([claim.id], delivery);
-          if (delivery.ok) sentBy.push("WhatsApp");
-        }
-      }
-    }
   } catch (error) {
     console.error("account_ready_notice_failed", error instanceof Error ? error.message : "unknown");
   }
-  return sentBy.length ? ` Login details sent by ${sentBy.join(" and ")}.` : "";
+  return sentBy.length ? " Login details sent by email." : "";
 }

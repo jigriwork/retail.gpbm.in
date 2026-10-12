@@ -7684,6 +7684,7 @@ export type Database = {
       sync_payroll_receivables: { Args: { p_batch?: string }; Returns: Json }
       commit_payroll_import: { Args: { p_import: string; p_confirm?: boolean; p_token?: string }; Returns: Json }
       prepare_payroll_import: { Args: { p_month: string; p_label: string; p_fingerprint: string; p_file_name: string; p_rows: Json }; Returns: Json }
+      apply_whatsapp_status_updates: { Args: { p_updates: Json }; Returns: number }
       record_payslip_delivery: { Args: { p_generated: string; p_kind: string; p_method: string; p_note?: string }; Returns: undefined }
       finish_payslip_pdf: { Args: { p_job: string; p_file_name: string }; Returns: Json }
       begin_payslip_pdf: { Args: { p_row: string }; Returns: Json }

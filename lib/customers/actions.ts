@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { AccountsActionState } from "@/lib/accounts/master-actions";
 import { canAccessStore, requireOwner, requireProfile } from "@/lib/auth/session";
 import { customerMessage, type MessageKind, messageKinds, whatsAppUrl } from "@/lib/customers/messages";
+import { syncWhatsAppStatuses } from "@/lib/msg91/log-sync";
 import { createClient } from "@/lib/supabase/server";
 
 type State = AccountsActionState;
@@ -66,4 +67,12 @@ export async function saveReviewLink(_state: State, formData: FormData): Promise
   if (error) return { ok: false, message: "Could not save the link." };
   revalidatePath("/app/customers");
   return { ok: true, message: url ? "Review link saved. Thank-you messages will include it." : "Review link removed." };
+}
+
+export async function refreshWhatsAppStatus(): Promise<State> {
+  if (!(await requireOwner())) return { ok: false, message: "Only the owner can check WhatsApp delivery." };
+  const result = await syncWhatsAppStatuses({ force: true });
+  if (!result.ok) return { ok: false, message: "MSG91's logs could not be read just now. Please retry in a minute." };
+  revalidatePath("/app/customers/whatsapp");
+  return { ok: true, message: `Checked ${result.checked} messages against MSG91: ${result.updated} updated.` };
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { runCustomerFollowups } from "@/lib/msg91/followup-automation";
+import { syncWhatsAppStatuses } from "@/lib/msg91/log-sync";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -11,7 +12,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    return NextResponse.json(await runCustomerFollowups());
+    const statusSync = await syncWhatsAppStatuses({ force: true }).catch(() => null);
+    return NextResponse.json({ ...(await runCustomerFollowups()), statusSync });
   } catch (error) {
     console.error("customer_followup_cron_failed", error);
     return NextResponse.json({ error: "Customer follow-up run failed." }, { status: 500 });

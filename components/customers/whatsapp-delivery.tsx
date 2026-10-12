@@ -20,6 +20,7 @@ const failureReasons: Record<string, string> = {
   "131056": "Too many messages to this number",
   "132001": "Template missing or not approved",
   msg91_timeout: "MSG91 did not answer in time",
+  not_in_msg91_logs: "MSG91 has no record (never sent)",
   msg91_unavailable: "MSG91 not configured",
 };
 
@@ -59,7 +60,7 @@ export function DeliveryTiles({ counts, name }: { counts: DeliveryCounts; name: 
         <Tile hint={percent(counts.read, counts.total)} label="Read" value={String(counts.read)} />
         <Tile hint={percent(counts.failed, counts.total)} label="Failed" tone={counts.failed ? "bad" : undefined} value={String(counts.failed)} />
       </dl>
-      {counts.waiting ? <p className="mt-2 text-xs text-muted">{counts.waiting} still waiting for a delivery report.</p> : null}
+      {counts.waiting ? <p className="mt-2 text-xs text-muted">{counts.waiting} without a report: just sent, or older than the 4 days MSG91 keeps logs.</p> : null}
     </div>
   );
 }

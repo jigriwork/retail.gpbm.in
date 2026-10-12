@@ -1,18 +1,21 @@
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/app/access-denied";
+import { ActionForm } from "@/components/accounts/action-form";
 import { Notice, Panel } from "@/components/accounts/fields";
 import { DeliveryList, DeliveryTiles } from "@/components/customers/whatsapp-delivery";
 import { money } from "@/lib/accounts/format";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
+import { refreshWhatsAppStatus } from "@/lib/customers/actions";
 import { whatsappBudgetSnapshot } from "@/lib/msg91/budget";
 import { deliveryCounts, recentDeliveries } from "@/lib/msg91/delivery-report";
+import { syncWhatsAppStatuses } from "@/lib/msg91/log-sync";
 
 export default async function CustomerWhatsAppPage({ searchParams }: { searchParams: Promise<{ store?: string }> }) {
   const { profile } = await requireProfile();
   if (profile?.role !== "owner") return <AccessDenied message="WhatsApp delivery is visible to the owner." />;
-  const stores = await getAccessibleStores(profile);
-  const params = await searchParams;
+  // Fresh statuses from MSG91's logs (at most every 5 minutes).
+  const [stores, params] = await Promise.all([getAccessibleStores(profile), searchParams, syncWhatsAppStatuses().catch(() => null)]);
   const store = stores.find((item) => item.id === params.store) ?? null;
   const shown = store ? [store] : stores;
   const [budgets, totals, deliveries] = await Promise.all([
@@ -20,7 +23,6 @@ export default async function CustomerWhatsAppPage({ searchParams }: { searchPar
     Promise.all(shown.map(async (item) => ({ item, counts: await deliveryCounts(item.id) }))),
     recentDeliveries(shown.map((item) => item.id), 50),
   ]);
-  const noReports = totals.some(({ counts }) => counts.total >= 5 && counts.reached === 0 && counts.failed === 0);
 
   return (
     <div className="space-y-5">
@@ -48,9 +50,13 @@ export default async function CustomerWhatsAppPage({ searchParams }: { searchPar
         })}
       </nav>
 
-      {noReports ? <Notice>MSG91 has not sent back any delivery reports, so every message still shows “Sent to MSG91”. Delivered / read / failed will fill in once the MSG91 webhook is switched on.</Notice> : null}
+      <Notice tone="info">Statuses are read from MSG91&apos;s own WhatsApp logs every time this page opens (MSG91 keeps them about 4 days). “MSG91 has no record” means MSG91 accepted the message but never sent it.</Notice>
 
-      <Panel description="Last 30 days. Delivered includes read." title="Delivery">
+      <Panel
+        action={<ActionForm action={refreshWhatsAppStatus} className="flex items-center gap-2" submitLabel="Check MSG91 now" variant="secondary"><span /></ActionForm>}
+        description="Last 30 days. Delivered includes read."
+        title="Delivery"
+      >
         <div className="grid gap-3 lg:grid-cols-2">
           {totals.map(({ item, counts }) => <DeliveryTiles counts={counts} key={item.id} name={item.name} />)}
         </div>
