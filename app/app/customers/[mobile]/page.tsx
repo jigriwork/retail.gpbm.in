@@ -97,16 +97,24 @@ export default async function CustomerPage({ params, searchParams }: { params: P
         </div>
       </Panel>
 
-      <Panel title="Messages sent">
+      <Panel description="“Sent by the app” went through MSG91 automatically. “Opened on a phone” means someone tapped a WhatsApp button above; the app can't see whether they pressed send." title="WhatsApp history">
         {messages.length ? (
           <ul className="space-y-1 text-sm text-muted">
-            {messages.map((item) => <li key={item.id}>{shortDate(item.sent_at.slice(0, 10))} · {kindLabels[item.kind] ?? item.kind} · {item.stores?.name} · by {item.profiles?.full_name ?? "—"}</li>)}
+            {messages.map((item) => {
+              // Automatic sends log their timeline entry within seconds of the MSG91 delivery record.
+              const automatic = deliveries.some((row) => Math.abs(Date.parse(row.created_at) - Date.parse(item.sent_at)) < 5 * 60 * 1000);
+              return (
+                <li key={item.id}>
+                  {shortDate(item.sent_at.slice(0, 10))} · {kindLabels[item.kind] ?? item.kind} · {item.stores?.name} · {profile.role !== "owner" ? `by ${item.profiles?.full_name ?? "—"}` : automatic ? "sent by the app" : `opened on a phone by ${item.profiles?.full_name ?? "—"}`}
+                </li>
+              );
+            })}
           </ul>
         ) : <Empty>None yet.</Empty>}
       </Panel>
 
       {profile.role === "owner" ? (
-        <Panel description="Sent automatically through MSG91, with WhatsApp's delivery report." title="WhatsApp delivery">
+        <Panel description="Sent automatically by the app through MSG91, with WhatsApp's delivery report." title="Sent automatically (MSG91)">
           <DeliveryList rows={deliveries} showRecipient={false} />
         </Panel>
       ) : null}

@@ -41,7 +41,7 @@ export function DeliveryStatus({ row }: { row: DeliveryRow }) {
   if (row.status === "read") return <Badge tone="good">✓✓ Read {when(row.read_at)}</Badge>;
   if (row.status === "delivered") return <Badge>✓✓ Delivered {when(row.delivered_at)}</Badge>;
   if (row.status === "failed") return <Badge tone="bad">Failed · {failureReason(row.error_code)}</Badge>;
-  if (row.status === "accepted") return <Badge>✓ Sent {when(row.accepted_at)}</Badge>;
+  if (row.status === "accepted") return <Badge>✓ Sent to MSG91 {when(row.accepted_at)}</Badge>;
   return <Badge tone="warn">Sending…</Badge>;
 }
 

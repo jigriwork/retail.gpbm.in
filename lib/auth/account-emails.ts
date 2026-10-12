@@ -10,13 +10,17 @@ import { createAdminClient } from "@/lib/supabase/server";
 // Password reset links and "your account is ready" notices, sent by the app
 // itself (Supabase's built-in mailer only delivers to the project team).
 
-export const accountReadyTemplate = process.env.MSG91_ACCOUNT_READY_TEMPLATE?.trim() || "gpbm_account_ready_v1";
+// Meta rejected v1/v2 as "incorrect category" (mentions of a code or password
+// read as a login-code message). v3 is a plain notice; m1 is the same text as
+// a marketing template, used only if the utility one is never approved.
+const accountReadyTemplates = process.env.MSG91_ACCOUNT_READY_TEMPLATE?.trim()
+  ? [{ category: "utility" as const, name: process.env.MSG91_ACCOUNT_READY_TEMPLATE.trim() }]
+  : [{ category: "utility" as const, name: "gpbm_account_active_v3" }, { category: "marketing" as const, name: "gpbm_account_active_m1" }];
 export const accountReadyTemplateBody = [
-  "Hello {{1}}, your GPBM Retail account is approved ✅",
+  "Hello {{1}}, your staff account on GPBM Retail is now active.",
   "",
-  "Log in at https://retail.gpbm.in with your email {{2}} and the temporary code your manager gave you. Please change the code after you log in.",
-  "",
-  "– Team GPBM",
+  "Login email: {{2}}",
+  "Open retail.gpbm.in to sign in. Your store manager can help if you have any trouble.",
 ].join("\n");
 
 function siteUrl() {
@@ -127,15 +131,20 @@ export async function notifyAccountReady(input: {
         : await admin.from("stores").select("id,code").eq("code", "GP").maybeSingle();
       const code = store?.code?.toUpperCase();
       const config = code === "GP" || code === "BM" ? getMsg91Config(code) : null;
-      if (store && config && (await getMsg91TemplateStatus(config, accountReadyTemplate)) === "approved") {
+      let template: (typeof accountReadyTemplates)[number] | null = null;
+      for (const candidate of config ? accountReadyTemplates : []) {
+        if ((await getMsg91TemplateStatus(config!, candidate.name)) === "approved") { template = candidate; break; }
+      }
+      if (store && config && template) {
         const dedupeKey = `account-ready:${input.userId}`;
         const { claims } = await claimWhatsAppDeliveries([{
           brandCode: config.brand, dedupeKey, initiatedBy: input.initiatedBy, kind: "account_ready", recipient: to,
-          referenceId: input.userId, storeId: store.id, templateName: accountReadyTemplate, unitCostInr: whatsappUnitCost("account_ready"),
+          referenceId: input.userId, storeId: store.id, templateName: template.name,
+          unitCostInr: template.category === "marketing" ? whatsappUnitCost("customer_follow_up") : whatsappUnitCost("account_ready"),
         }]);
         const claim = claims.find((item) => item.dedupeKey === dedupeKey);
         if (claim) {
-          const delivery = await sendMsg91Template(config, accountReadyTemplate, [{
+          const delivery = await sendMsg91Template(config, template.name, [{
             components: { body_1: { type: "text", value: firstName.slice(0, 60) }, body_2: { type: "text", value: input.email.slice(0, 120) } },
             to,
           }]);

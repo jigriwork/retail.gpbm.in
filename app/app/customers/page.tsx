@@ -4,14 +4,13 @@ import { AccessDenied } from "@/components/app/access-denied";
 import { ActionForm } from "@/components/accounts/action-form";
 import { Badge, Empty, Field, inputClass, Notice, Pager, Panel } from "@/components/accounts/fields";
 import { WhatsAppButton } from "@/components/customers/whatsapp-button";
-import { DeliveryList, DeliveryTiles } from "@/components/customers/whatsapp-delivery";
 import { indiaToday, money, shortDate } from "@/lib/accounts/format";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { isLimitedView } from "@/lib/auth/view";
 import { saveReviewLink } from "@/lib/customers/actions";
 import { customerKpis, customerSegments, listCustomers } from "@/lib/customers/queries";
 import { whatsappBudgetSnapshot } from "@/lib/msg91/budget";
-import { deliveryCounts, recentDeliveries } from "@/lib/msg91/delivery-report";
+import { deliveryCounts } from "@/lib/msg91/delivery-report";
 import { addDays, monthStart } from "@/lib/money/format";
 
 const pageSize = 50;
@@ -36,14 +35,13 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const whatsappBudgets = isOwner
     ? await Promise.all(stores.map(async (item) => ({ item, snapshot: await whatsappBudgetSnapshot(item.id) })))
     : [];
-  const deliveryStores = store ? [store] : stores;
-  const [deliveryTotals, deliveries] = isOwner
-    ? await Promise.all([
-      Promise.all(deliveryStores.map(async (item) => ({ item, counts: await deliveryCounts(item.id) }))),
-      recentDeliveries(deliveryStores.map((item) => item.id)),
-    ])
-    : [[], []];
-  const noReports = deliveryTotals.some(({ counts }) => counts.total >= 5 && counts.reached === 0 && counts.failed === 0);
+  const deliveryTotals = isOwner ? await Promise.all(stores.map((item) => deliveryCounts(item.id))) : [];
+  const sent30 = deliveryTotals.reduce((sum, counts) => sum + counts.total, 0);
+  const read30 = deliveryTotals.reduce((sum, counts) => sum + counts.read, 0);
+  const spent = whatsappBudgets.reduce((sum, { snapshot }) => sum + snapshot.spent, 0);
+  const budget = whatsappBudgets.reduce((sum, { snapshot }) => sum + snapshot.budget, 0);
+  const year = today.slice(0, 4);
+  const day = (value: string) => { const text = shortDate(value); return value.startsWith(year) ? text.replace(` ${year}`, "") : text; };
   const scopeParam = store?.id ?? "all";
   const segmentInfo = customerSegments.find((item) => item.value === segment)!;
   const capture = kpis?.bills ? Math.round((kpis.bills_with_mobile / kpis.bills) * 100) : 0;
@@ -73,7 +71,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
       </nav>
 
       {kpis ? (
-        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat hint="Bills with a valid mobile this month" label="Mobile captured" value={`${capture}%`} />
           <Stat hint={`${kpis.new_customers} new · ${kpis.returning_customers} returning`} label="Customers this month" value={String(kpis.customers)} />
           <Stat hint={`${kpis.repeat_customers_all_time} of ${kpis.customers_all_time} have bought twice or more`} label="Repeat customers" value={`${repeatRate}%`} />
@@ -83,36 +81,13 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
       {kpis && capture < 90 ? <Notice>Ask the counter to enter the customer&apos;s mobile on every bill in Logic: only {capture}% of this month&apos;s bills have one.</Notice> : null}
 
       {isOwner ? (
-        <Panel description="Each store has its own ₹1,500 monthly limit. GP usage never reduces BM's allowance, and BM usage never reduces GP's." title="WhatsApp budget by store">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {whatsappBudgets.map(({ item, snapshot }) => (
-              <div className="rounded-2xl border border-border bg-background p-4" key={item.id}>
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="font-semibold">{item.name}</p>
-                  <p className="text-sm font-semibold">{money(snapshot.spent)} / {money(snapshot.budget)}</p>
-                </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-border">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (snapshot.spent / snapshot.budget) * 100)}%` }} />
-                </div>
-                <p className="mt-2 text-xs leading-5 text-muted">
-                  {money(snapshot.remaining)} left · {snapshot.customerThankYous} thank-yous · {snapshot.payslips} payslips · {snapshot.followups}/{snapshot.followupLimit} follow-ups
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-muted">A ₹100 safety buffer and ₹25 salary-message reserve are kept inside each store&apos;s limit.</p>
-        </Panel>
-      ) : null}
-
-      {isOwner ? (
-        <Panel description="Messages the app sent through MSG91 in the last 30 days, with the delivery report WhatsApp sends back. Messages opened from the WhatsApp buttons below are sent from your phone and are not tracked here." title="WhatsApp delivery">
-          <div className="grid gap-3 lg:grid-cols-2">
-            {deliveryTotals.map(({ item, counts }) => <DeliveryTiles counts={counts} key={item.id} name={item.name} />)}
-          </div>
-          {noReports ? <div className="mt-3"><Notice>No delivery reports have come back yet. Check that the MSG91 webhook points to this app.</Notice></div> : null}
-          <h3 className="mb-2 mt-5 text-sm font-semibold">Latest messages</h3>
-          <DeliveryList rows={deliveries} />
-        </Panel>
+        <Link className="flex flex-wrap items-center justify-between gap-3 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary" href="/app/customers/whatsapp">
+          <span>
+            <span className="block font-semibold">WhatsApp messages</span>
+            <span className="text-sm text-muted">{sent30} sent in 30 days · {read30} read · {money(spent)} of {money(budget)} used this month</span>
+          </span>
+          <span className="text-sm font-semibold text-primary">Open →</span>
+        </Link>
       ) : null}
 
       <Panel
@@ -146,16 +121,19 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
           <div className="space-y-2">
             {list.rows.map((customer) => (
               <div className="rounded-2xl border border-border bg-background p-3 text-sm" key={customer.mobile}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Link className="font-semibold underline" href={`/app/customers/${customer.mobile}${store ? `?store=${store.id}` : ""}`}>{customer.name ?? "No name"}</Link>
-                  <span className="flex flex-wrap gap-2">
-                    {customer.do_not_contact ? <Badge tone="bad">Do not contact</Badge> : customer.marketing_consent ? <Badge tone="good">Agreed to offers</Badge> : <Badge>No offer consent</Badge>}
+                <div className="flex items-start justify-between gap-2">
+                  <Link className="min-w-0 truncate font-semibold underline" href={`/app/customers/${customer.mobile}${store ? `?store=${store.id}` : ""}`}>{customer.name ?? "No name"}</Link>
+                  <span className="flex shrink-0 flex-wrap justify-end gap-1">
+                    {customer.do_not_contact ? <Badge tone="bad">Do not contact</Badge> : customer.marketing_consent ? <Badge tone="good">Offers OK</Badge> : <Badge>No consent</Badge>}
                     {customer.store_count > 1 ? <Badge>Both stores</Badge> : null}
                   </span>
                 </div>
                 <p className="mt-1 text-muted">
-                  {customer.mobile} · {customer.bills} bill{customer.bills === 1 ? "" : "s"}{limited ? "" : ` · ${money(customer.spend)}`} · last {shortDate(customer.last_visit)} · first {shortDate(customer.first_visit)}
-                  {customer.last_message_at ? ` · messaged ${shortDate(customer.last_message_at.slice(0, 10))}` : ""}
+                  {customer.mobile} · {customer.bills} bill{customer.bills === 1 ? "" : "s"}{limited ? "" : ` · ${money(customer.spend)}`}
+                </p>
+                <p className="text-xs text-muted">
+                  Last visit {day(customer.last_visit)} · first {day(customer.first_visit)}
+                  {customer.last_message_at ? ` · last WhatsApp ${day(customer.last_message_at.slice(0, 10))}` : ""}
                 </p>
                 {store && !customer.do_not_contact ? (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -192,9 +170,9 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
 
 function Stat({ hint, label, value }: { hint: string; label: string; value: string }) {
   return (
-    <div className="rounded-[1.35rem] border border-border bg-card p-4 shadow-sm">
+    <div className="min-w-0 rounded-[1.35rem] border border-border bg-card p-3 shadow-sm sm:p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
+      <p className="mt-1 break-words text-xl font-semibold sm:text-2xl">{value}</p>
       <p className="mt-1 text-xs leading-5 text-muted">{hint}</p>
     </div>
   );

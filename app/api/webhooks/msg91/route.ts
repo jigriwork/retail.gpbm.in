@@ -132,12 +132,19 @@ export async function POST(request: Request) {
 
   const status = statusFor(event);
   if (status && mobile) {
-    let query = admin.from("whatsapp_deliveries")
-      .select("id,status")
-      .eq("recipient", `91${mobile}`);
-    if (requestId) query = query.eq("provider_request_id", requestId);
-    if (templateName) query = query.eq("template_name", templateName);
-    const { data: deliveries } = await query.order("created_at", { ascending: false }).limit(requestId ? 50 : 1);
+    const lookup = (byRequest: boolean) => {
+      let query = admin.from("whatsapp_deliveries")
+        .select("id,status")
+        .eq("recipient", `91${mobile}`)
+        .gte("created_at", new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString());
+      if (byRequest) query = query.eq("provider_request_id", requestId);
+      if (templateName) query = query.eq("template_name", templateName);
+      return query.order("created_at", { ascending: false }).limit(byRequest ? 50 : 1);
+    };
+    // Bulk sends store the batch request id; MSG91 may report a per-message id,
+    // so fall back to this number's latest message with the same template.
+    let { data: deliveries } = requestId ? await lookup(true) : { data: null };
+    if (!deliveries?.length) ({ data: deliveries } = await lookup(false));
     const rank = { processing: 0, accepted: 1, delivered: 2, read: 3, failed: 4 } as const;
     const now = new Date().toISOString();
     for (const delivery of deliveries ?? []) {
