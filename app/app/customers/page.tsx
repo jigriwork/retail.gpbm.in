@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AccessDenied } from "@/components/app/access-denied";
 import { ActionForm } from "@/components/accounts/action-form";
 import { Badge, Empty, Field, inputClass, Notice, Pager, Panel } from "@/components/accounts/fields";
+import { WhatsAppApiButton } from "@/components/customers/whatsapp-api-button";
 import { WhatsAppButton } from "@/components/customers/whatsapp-button";
 import { indiaToday, money, shortDate } from "@/lib/accounts/format";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
@@ -138,7 +139,9 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                 {store && !customer.do_not_contact ? (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {customer.last_visit >= addDays(today, -3) ? <WhatsAppButton kind="thank_you" label="Thank you + review" mobile={customer.mobile} storeId={store.id} /> : null}
+                    {customer.marketing_consent && customer.last_visit >= addDays(today, -3) ? <WhatsAppApiButton kind="thank_you" label="Send thank you via API" mobile={customer.mobile} storeId={store.id} /> : null}
                     {customer.marketing_consent && customer.last_visit < addDays(today, -60) ? <WhatsAppButton kind="lapsed_offer" label="We miss you" mobile={customer.mobile} storeId={store.id} /> : null}
+                    {customer.marketing_consent && customer.last_visit < addDays(today, -60) ? <WhatsAppApiButton kind="lapsed_offer" label="Send we miss you via API" mobile={customer.mobile} storeId={store.id} /> : null}
                     {customer.marketing_consent && segment === "birthday" ? <WhatsAppButton kind="birthday" label="Birthday wish" mobile={customer.mobile} storeId={store.id} /> : null}
                   </div>
                 ) : null}

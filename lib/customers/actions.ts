@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { AccountsActionState } from "@/lib/accounts/master-actions";
 import { canAccessStore, requireOwner, requireProfile } from "@/lib/auth/session";
 import { customerMessage, type MessageKind, messageKinds, whatsAppUrl } from "@/lib/customers/messages";
+import { retryDroppedMessages, sendCustomerTemplate, type ApiMessageKind } from "@/lib/msg91/customer-send";
 import { syncWhatsAppStatuses } from "@/lib/msg91/log-sync";
 import { createClient } from "@/lib/supabase/server";
 
@@ -73,6 +74,21 @@ export async function refreshWhatsAppStatus(): Promise<State> {
   if (!(await requireOwner())) return { ok: false, message: "Only the owner can check WhatsApp delivery." };
   const result = await syncWhatsAppStatuses({ force: true });
   if (!result.ok) return { ok: false, message: "MSG91's logs could not be read just now. Please retry in a minute." };
+  const retry = await retryDroppedMessages();
   revalidatePath("/app/customers/whatsapp");
-  return { ok: true, message: `Checked ${result.checked} messages against MSG91: ${result.updated} updated.` };
+  return { ok: true, message: `Checked ${result.checked} messages against MSG91: ${result.updated} updated${retry.sent ? `, ${retry.sent} dropped message${retry.sent === 1 ? "" : "s"} sent again` : ""}.` };
+}
+
+/** "Send via WhatsApp API": sends the approved template to one customer through MSG91. */
+export async function sendCustomerViaApi(mobile: string, storeId: string, kind: ApiMessageKind) {
+  const profile = await staffProfile();
+  if (!profile || !isMobile(mobile) || !["thank_you", "lapsed_offer"].includes(kind) || !(await canAccessStore(storeId, profile))) {
+    return { ok: false, message: "You cannot message this customer." };
+  }
+  const result = await sendCustomerTemplate({ initiatedBy: profile.id, kind, mobile, storeId });
+  if (result.ok) {
+    revalidatePath("/app/customers");
+    revalidatePath(`/app/customers/${mobile}`);
+  }
+  return result;
 }

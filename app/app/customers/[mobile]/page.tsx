@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AccessDenied } from "@/components/app/access-denied";
 import { ActionForm } from "@/components/accounts/action-form";
 import { Badge, Check, Empty, Field, inputClass, Panel } from "@/components/accounts/fields";
+import { WhatsAppApiButton } from "@/components/customers/whatsapp-api-button";
 import { WhatsAppButton } from "@/components/customers/whatsapp-button";
 import { DeliveryList } from "@/components/customers/whatsapp-delivery";
 import { indiaToday, money, shortDate } from "@/lib/accounts/format";
@@ -52,7 +53,9 @@ export default async function CustomerPage({ params, searchParams }: { params: P
         {store && !details?.do_not_contact ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {lastVisit >= addDays(today, -3) ? <WhatsAppButton kind="thank_you" label="Thank you + review" mobile={mobile} storeId={store.id} /> : null}
+            {details?.marketing_consent && lastVisit >= addDays(today, -3) ? <WhatsAppApiButton kind="thank_you" label="Send thank you via API" mobile={mobile} storeId={store.id} /> : null}
             {details?.marketing_consent ? <WhatsAppButton kind="lapsed_offer" label="We miss you" mobile={mobile} storeId={store.id} /> : null}
+            {details?.marketing_consent ? <WhatsAppApiButton kind="lapsed_offer" label="Send we miss you via API" mobile={mobile} storeId={store.id} /> : null}
             {details?.marketing_consent && details.birthday ? <WhatsAppButton kind="birthday" label="Birthday wish" mobile={mobile} storeId={store.id} /> : null}
           </div>
         ) : null}

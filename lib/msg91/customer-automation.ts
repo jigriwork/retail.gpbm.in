@@ -29,7 +29,7 @@ function chunks<T>(items: T[], size: number) {
   return Array.from({ length: Math.ceil(items.length / size) }, (_, index) => items.slice(index * size, (index + 1) * size));
 }
 
-function cleanName(value: string | null | undefined) {
+export function cleanName(value: string | null | undefined) {
   const name = value?.trim().replace(/\s+/g, " ");
   if (!name || /^(nil+|na|n\/a|cash|customer|walk ?in)$/i.test(name)) return "Customer";
   return name.split(" ")[0].slice(0, 80);

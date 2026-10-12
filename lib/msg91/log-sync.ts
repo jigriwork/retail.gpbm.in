@@ -82,7 +82,7 @@ export async function syncWhatsAppStatuses({ force = false } = {}): Promise<Sync
   const windowStart = new Date(Date.parse(`${days[days.length - 1]}T00:00:00+05:30`)).toISOString();
   const droppedStart = Date.parse(`${days[droppedCheckDays - 1]}T00:00:00+05:30`);
   const { data: rows, error } = await admin.from("whatsapp_deliveries")
-    .select("id,recipient,provider_request_id,status,created_at")
+    .select("id,recipient,provider_request_id,status,created_at,accepted_at")
     .gte("created_at", windowStart)
     .in("status", ["accepted", "delivered", "failed"])
     .not("provider_request_id", "is", null)
@@ -93,8 +93,9 @@ export async function syncWhatsAppStatuses({ force = false } = {}): Promise<Sync
   for (const row of rows ?? []) {
     const log = logs.get(`${row.provider_request_id}|${row.recipient}`);
     if (!log) {
-      const created = Date.parse(row.created_at);
-      if (row.status === "accepted" && created >= droppedStart && Date.now() - created > notLoggedAfterMs) {
+      // A resend keeps its row, so judge by when MSG91 last accepted it.
+      const accepted = Date.parse(row.accepted_at ?? row.created_at);
+      if (row.status === "accepted" && accepted >= droppedStart && Date.now() - accepted > notLoggedAfterMs) {
         updates.push({ error_code: "not_in_msg91_logs", failed_at: new Date().toISOString(), id: row.id, status: "failed" });
       }
       continue;
