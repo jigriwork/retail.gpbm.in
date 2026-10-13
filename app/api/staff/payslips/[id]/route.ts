@@ -6,12 +6,12 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { profile } = await requireProfile();
-  if (profile.role !== "staff") return new NextResponse("Not found", { status: 404 });
+  if (!["staff", "manager", "cashier"].includes(profile.role)) return new NextResponse("Not found", { status: 404 });
   const token = await getSalaryGrantToken();
   const supabase = await createClient();
   const [{ data: granted }, { data: employeeId }] = await Promise.all([
     supabase.rpc("validate_sensitive_access_grant", { p_purpose: "salary", p_token: token }),
-    supabase.rpc("current_staff_employee_id"),
+    supabase.rpc("current_payroll_employee_id"),
   ]);
   if (!granted || !employeeId) return new NextResponse("Recent password verification required", { status: 401 });
   const admin = createAdminClient();

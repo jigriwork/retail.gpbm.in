@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { LockKeyhole, LogOut, Settings, ShieldCheck, UsersRound } from "lucide-react";
+import { LockKeyhole, LogOut, Settings, ShieldCheck, UsersRound, Wallet } from "lucide-react";
 
 import { BottomNav } from "@/components/app/bottom-nav";
 import { ChromeMeasure } from "@/components/app/chrome-measure";
@@ -104,6 +104,11 @@ export default async function ProtectedAppLayout({
               href="/app/users"
             >
               <UsersRound className="size-4" />
+            </Link>
+          ) : null}
+          {["manager", "cashier"].includes(profile.role) ? (
+            <Link aria-label="My salary" className="flex size-9 shrink-0 items-center justify-center rounded-xl text-muted hover:text-foreground" href="/app/salary">
+              <Wallet className="size-4" />
             </Link>
           ) : null}
           <ChatLink href="/app/chat" />

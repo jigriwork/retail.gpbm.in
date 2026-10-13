@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 import { notifyAccountReady } from "@/lib/auth/account-emails";
+import { passwordProblem } from "@/lib/auth/password-rules";
 import { requireProfile } from "@/lib/auth/session";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -30,7 +31,7 @@ function validTemporaryPassword(password: string) {
 }
 
 function validPrivatePassword(password: string) {
-  return /^\d{6,8}$/.test(password);
+  return !passwordProblem(password);
 }
 
 async function verifyCurrentPassword(email: string, password: string) {
@@ -336,8 +337,8 @@ export async function changeStaffPassword(
   if (profile?.role !== "staff" || !profile.email) return { ok: false, message: "Staff password change denied." };
   const currentPassword = value(formData, "currentPassword");
   const newPassword = value(formData, "newPassword");
-  if (!validPrivatePassword(newPassword)) return { ok: false, message: "Use a 6–8 digit PIN." };
-  if (newPassword !== value(formData, "confirmPassword")) return { ok: false, message: "PINs do not match." };
+  if (!validPrivatePassword(newPassword)) return { ok: false, message: passwordProblem(newPassword) ?? "Choose another password." };
+  if (newPassword !== value(formData, "confirmPassword")) return { ok: false, message: "Passwords do not match." };
   const supabase = await createClient();
   const { data: link } = await supabase.from("employee_auth_links")
     .select("must_change_password").eq("auth_user_id", user.id).maybeSingle();
@@ -350,7 +351,7 @@ export async function changeStaffPassword(
   const { error: finishError } = await supabase.rpc("finish_own_staff_password_change");
   if (finishError) return { ok: false, message: "Password changed, but account finalization failed. Contact the owner." };
   revalidatePath("/staff");
-  return { ok: true, message: "Private PIN saved. Your dashboard is now available." };
+  return { ok: true, message: "Password saved." };
 }
 
 export async function verifySalaryPassword(
@@ -358,7 +359,7 @@ export async function verifySalaryPassword(
   formData: FormData,
 ): Promise<StaffActionState> {
   const { user, profile } = await requireProfile();
-  if (profile?.role !== "staff" || !profile.email) return { ok: false, message: "Salary access denied." };
+  if (!["staff", "manager", "cashier"].includes(profile?.role ?? "") || !profile.email) return { ok: false, message: "Salary access denied." };
   if (!(await verifyCurrentPassword(profile.email, value(formData, "currentPassword")))) return { ok: false, message: "Password is incorrect." };
   const admin = createAdminClient();
   if (!admin) return { ok: false, message: "Secure salary access is unavailable." };
@@ -372,6 +373,7 @@ export async function verifySalaryPassword(
   cookieStore.set("gpbm_staff_salary_grant", token, { httpOnly: true, maxAge: 600, path: "/", sameSite: "strict", secure: process.env.NODE_ENV === "production" });
   revalidatePath("/staff/salary");
   revalidatePath("/staff/payslips");
+  revalidatePath("/app/salary");
   return { ok: true, message: "Salary access unlocked for 10 minutes." };
 }
 

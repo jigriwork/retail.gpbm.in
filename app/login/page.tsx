@@ -96,7 +96,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           ) : null}
           {error === "phone" ? (
             <p className="mb-5 rounded-2xl border border-accent/40 bg-accent-soft px-4 py-3 text-sm font-medium leading-6 text-accent-ink">
-              Login has changed: use your mobile number. The first time, a code comes on WhatsApp and you choose your own PIN.
+              Login has changed: use your mobile number. The first time, a code comes on WhatsApp and you choose your own password.
             </p>
           ) : null}
           <PhoneLoginForm />

@@ -11,7 +11,7 @@ const phoneKey = "gpbm-login-phone";
 const rememberMaxAge = 400 * 24 * 60 * 60;
 type Step = "phone" | "pin" | "code";
 
-/** Mobile number, then the PIN, or a WhatsApp code the first time / after "Forgot PIN". */
+/** Mobile number, then the password, or a WhatsApp code the first time / after "Forgot password". */
 export function PhoneLoginForm() {
   const router = useRouter();
   const phoneRef = useRef<HTMLInputElement>(null);
@@ -63,11 +63,12 @@ export function PhoneLoginForm() {
         />
       </label>
       {step !== "phone" ? (
-        <label className="block text-sm font-medium">{step === "pin" ? "Your 6-digit PIN" : "6-digit code from WhatsApp"}
+        <label className="block text-sm font-medium">{step === "pin" ? "Your password" : "6-digit code from WhatsApp"}
           <input
-            autoComplete={step === "pin" ? "current-password" : "one-time-code"} autoFocus className={`mt-1 ${input}`} inputMode="numeric"
-            maxLength={6} onChange={(event) => setSecret(event.target.value.replace(/\D/g, ""))} pattern="\d{6}" required
-            type={step === "pin" ? "password" : "text"} value={secret}
+            autoComplete={step === "pin" ? "current-password" : "one-time-code"} autoFocus className={`mt-1 ${input}`}
+            inputMode={step === "pin" ? "text" : "numeric"} maxLength={step === "pin" ? 72 : 6}
+            onChange={(event) => setSecret(step === "pin" ? event.target.value : event.target.value.replace(/\D/g, ""))}
+            required type={step === "pin" ? "password" : "text"} value={secret}
           />
         </label>
       ) : null}
@@ -80,7 +81,7 @@ export function PhoneLoginForm() {
         <div className="flex flex-wrap justify-between gap-2 text-sm">
           <button className="font-semibold text-muted" onClick={() => { setStep("phone"); setSecret(""); setMessage(null); }} type="button">Change number</button>
           <button className="font-semibold text-primary" disabled={pending} onClick={() => run(() => resendLoginCode(phone()))} type="button">
-            {step === "pin" ? "Forgot PIN? Get a WhatsApp code" : "Send a new code"}
+            {step === "pin" ? "Forgot password? Get a WhatsApp code" : "Send a new code"}
           </button>
         </div>
       ) : null}
