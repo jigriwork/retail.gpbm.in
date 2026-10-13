@@ -2,7 +2,7 @@ import "server-only";
 
 import { indiaToday } from "@/lib/accounts/format";
 import { whatsappBudgetAllowance, whatsappUnitCost } from "@/lib/msg91/budget";
-import { getMsg91TemplateStatus, sendMsg91Template } from "@/lib/msg91/client";
+import { getMsg91TemplateStatus, sendMsg91Template, type Msg91Component } from "@/lib/msg91/client";
 import { getMsg91Config, type Msg91BrandConfig } from "@/lib/msg91/config";
 import { cleanName } from "@/lib/msg91/customer-automation";
 import { claimWhatsAppDeliveries, finishWhatsAppDeliveries } from "@/lib/msg91/deliveries";
@@ -30,8 +30,11 @@ async function customerFirstName(admin: Admin, mobile: string) {
   return cleanName(profile?.preferred_name ?? sale?.customer_name ?? contact?.name);
 }
 
-async function sendOne(config: Msg91BrandConfig, template: string, recipient: string, name: string, claimId: string) {
-  const delivery = await sendMsg91Template(config, template, [{ components: { body_1: { type: "text", value: name } }, to: recipient }]);
+async function sendOne(config: Msg91BrandConfig, template: string, recipient: string, name: string, claimId: string, receipt?: { billNo: string; day: string }) {
+  const components: Record<string, Msg91Component> = receipt
+    ? { body_1: { type: "text", value: name }, body_2: { type: "text", value: receipt.day }, body_3: { type: "text", value: receipt.billNo } }
+    : { body_1: { type: "text", value: name } };
+  const delivery = await sendMsg91Template(config, template, [{ components, to: recipient }]);
   await finishWhatsAppDeliveries([claimId], delivery);
   return delivery;
 }
@@ -44,13 +47,13 @@ export async function sendCustomerTemplate(input: { initiatedBy: string; kind: A
   const code = store?.code?.toUpperCase();
   const config = code === "GP" || code === "BM" ? getMsg91Config(code) : null;
   const map = kindMap[input.kind];
-  const template = config ? map.template(config) : "";
+  let template = config ? map.template(config) : "";
   if (!store || !config || !template) return { ok: false, message: "MSG91 is not set up for this store." };
 
   const today = indiaToday();
   const [{ data: profile }, { data: purchase }, { data: contact }] = await Promise.all([
     admin.from("customer_profiles").select("marketing_consent,do_not_contact").eq("mobile", input.mobile).maybeSingle(),
-    admin.from("sales_rows").select("sale_date").eq("customer_mobile", input.mobile).eq("store_id", store.id)
+    admin.from("sales_rows").select("sale_date,bill_no").eq("customer_mobile", input.mobile).eq("store_id", store.id)
       .order("sale_date", { ascending: false }).limit(1).maybeSingle(),
     admin.from("customer_contacts").select("mobile").eq("mobile", input.mobile).eq("store_id", store.id).maybeSingle(),
   ]);
@@ -65,6 +68,16 @@ export async function sendCustomerTemplate(input: { initiatedBy: string; kind: A
   const allowance = await whatsappBudgetAllowance(store.id, map.delivery, 1);
   if (!allowance.allowed) return { ok: false, message: "This store's WhatsApp budget for the month is used up." };
 
+  // A thank-you uses the utility purchase receipt once WhatsApp has approved it.
+  let receipt: { billNo: string; day: string } | undefined;
+  const receiptTemplate = process.env[`MSG91_${config.brand}_RECEIPT_TEMPLATE`]?.trim() || `${config.brand.toLowerCase()}_purchase_receipt_v1`;
+  if (input.kind === "thank_you" && purchase?.sale_date && (await getMsg91TemplateStatus(config, receiptTemplate)) === "approved") {
+    template = receiptTemplate;
+    receipt = {
+      billNo: purchase.bill_no?.trim() || "—",
+      day: new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${purchase.sale_date}T00:00:00Z`)),
+    };
+  }
   const recipient = `91${input.mobile}`;
   const dedupeKey = `button:${input.kind}:${store.id}:${input.mobile}:${today}`;
   const { claims } = await claimWhatsAppDeliveries([{
@@ -74,7 +87,7 @@ export async function sendCustomerTemplate(input: { initiatedBy: string; kind: A
   const claim = claims.find((item) => item.dedupeKey === dedupeKey);
   if (!claim) return { ok: false, message: "Already sent to this customer today." };
 
-  const delivery = await sendOne(config, template, recipient, await customerFirstName(admin, input.mobile), claim.id);
+  const delivery = await sendOne(config, template, recipient, await customerFirstName(admin, input.mobile), claim.id, receipt);
   if (!delivery.ok) return { ok: false, message: `MSG91 did not accept it (${delivery.errorCode ?? "error"}). Try again.` };
   await admin.from("customer_messages").insert({ kind: input.kind, mobile: input.mobile, sent_by: input.initiatedBy, store_id: store.id });
   return { ok: true, message: "Sent through MSG91 ✓" };
@@ -113,7 +126,17 @@ export async function retryDroppedMessages() {
     }]);
     const claim = claims.find((item) => item.dedupeKey === row.dedupe_key);
     if (!claim) continue;
-    const delivery = await sendOne(config, row.template_name, row.recipient, await customerFirstName(admin, mobile), claim.id);
+    let receipt: { billNo: string; day: string } | undefined;
+    if (/purchase_receipt/.test(row.template_name)) {
+      const { data: sale } = await admin.from("sales_rows").select("sale_date,bill_no").eq("customer_mobile", mobile).eq("store_id", row.store_id)
+        .order("sale_date", { ascending: false }).limit(1).maybeSingle();
+      if (!sale?.sale_date) continue;
+      receipt = {
+        billNo: sale.bill_no?.trim() || "—",
+        day: new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${sale.sale_date}T00:00:00Z`)),
+      };
+    }
+    const delivery = await sendOne(config, row.template_name, row.recipient, await customerFirstName(admin, mobile), claim.id, receipt);
     if (delivery.ok) sent += 1;
   }
   return { retried: rows?.length ?? 0, sent };

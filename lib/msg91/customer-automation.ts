@@ -2,7 +2,7 @@ import "server-only";
 
 import { normalizePhone } from "@/lib/employees/utils";
 import { whatsappBudgetAllowance, whatsappUnitCost } from "@/lib/msg91/budget";
-import { getMsg91TemplateStatus, sendMsg91Template, type Msg91Recipient } from "@/lib/msg91/client";
+import { getMsg91TemplateStatus, sendMsg91Template, type Msg91Component, type Msg91Recipient } from "@/lib/msg91/client";
 import { getMsg91Config } from "@/lib/msg91/config";
 import { claimWhatsAppDeliveries, finishWhatsAppDeliveries } from "@/lib/msg91/deliveries";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -58,7 +58,7 @@ export async function sendAutomaticCustomerThanks(input: {
   const admin = createAdminClient();
   if (!config || !admin) return { ...result, detail: "MSG91 is not fully configured for this store." };
 
-  const customers = new Map<string, { localMobile: string; name: string; net: number }>();
+  const customers = new Map<string, { billNo: string; localMobile: string; name: string; net: number }>();
   for (const row of input.rows) {
     if (!row.billNo || !row.customerPhone) continue;
     const phone = normalizePhone(row.customerPhone);
@@ -69,6 +69,7 @@ export async function sendAutomaticCustomerThanks(input: {
     const localMobile = phone.whatsappPhone.slice(2);
     const current = customers.get(phone.whatsappPhone);
     customers.set(phone.whatsappPhone, {
+      billNo: current?.billNo ?? String(row.billNo).trim(),
       localMobile,
       name: current?.name !== "Customer" ? current?.name ?? cleanName(row.customerName) : cleanName(row.customerName),
       net: (current?.net ?? 0) + Number(row.netSale ?? 0),
@@ -134,6 +135,7 @@ export async function sendAutomaticCustomerThanks(input: {
       return [];
     }
     return [{
+      billNo: customer.billNo,
       dedupeKey: `customer:${input.reportId}:${recipient}`,
       name: cleanName(profile.preferred_name ?? customer.name),
       recipient,
@@ -141,6 +143,14 @@ export async function sendAutomaticCustomerThanks(input: {
   });
   result.eligible = eligible.length;
   if (!eligible.length) return result;
+
+  // The utility purchase receipt (name, date, bill no., exchange rule, review
+  // button) replaces the marketing thank-you once WhatsApp approves it: about
+  // 7x cheaper and not held back by WhatsApp's marketing limits.
+  const receiptTemplate = process.env[`MSG91_${config.brand}_RECEIPT_TEMPLATE`]?.trim() || `${config.brand.toLowerCase()}_purchase_receipt_v1`;
+  const useReceipt = (await getMsg91TemplateStatus(config, receiptTemplate)) === "approved";
+  const templateName = useReceipt ? receiptTemplate : config.customerTemplate;
+  const saleDay = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${input.reportDate}T00:00:00Z`));
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data: recentDeliveries, error: recentError } = await admin
@@ -153,11 +163,12 @@ export async function sendAutomaticCustomerThanks(input: {
     .gte("created_at", thirtyDaysAgo);
   if (recentError) return { ...result, failed: eligible.length, detail: "Recent customer messages could not be checked." };
   const recentlyMessaged = new Set((recentDeliveries ?? []).map((delivery) => delivery.recipient));
-  const frequencyEligible = eligible.filter((customer) => !recentlyMessaged.has(customer.recipient));
+  // A receipt goes with every purchase; the marketing thank-you at most once a month.
+  const frequencyEligible = useReceipt ? eligible : eligible.filter((customer) => !recentlyMessaged.has(customer.recipient));
   result.duplicates += eligible.length - frequencyEligible.length;
   if (!frequencyEligible.length) return result;
 
-  const templateStatus = await getMsg91TemplateStatus(config, config.customerTemplate);
+  const templateStatus = useReceipt ? "approved" : await getMsg91TemplateStatus(config, config.customerTemplate);
   if (templateStatus !== "approved") {
     return { ...result, failed: eligible.length, detail: `Customer template is ${templateStatus} in MSG91.` };
   }
@@ -174,8 +185,8 @@ export async function sendAutomaticCustomerThanks(input: {
     recipient: customer.recipient,
     referenceId: input.reportId,
     storeId: input.storeId,
-    templateName: config.customerTemplate,
-    unitCostInr: whatsappUnitCost("customer_thank_you"),
+    templateName,
+    unitCostInr: useReceipt ? whatsappUnitCost("payslip") : whatsappUnitCost("customer_thank_you"),
   })));
   result.duplicates += reservation.skipped;
   const claimByKey = new Map(reservation.claims.map((claim) => [claim.dedupeKey, claim.id]));
@@ -183,10 +194,12 @@ export async function sendAutomaticCustomerThanks(input: {
 
   for (const batch of chunks(claimed, 50)) {
     const recipients: Msg91Recipient[] = batch.map((customer) => ({
-      components: { body_1: { type: "text", value: customer.name } },
+      components: (useReceipt
+        ? { body_1: { type: "text", value: customer.name }, body_2: { type: "text", value: saleDay }, body_3: { type: "text", value: customer.billNo || "—" } }
+        : { body_1: { type: "text", value: customer.name } }) as Record<string, Msg91Component>,
       to: customer.recipient,
     }));
-    const sent = await sendMsg91Template(config, config.customerTemplate, recipients);
+    const sent = await sendMsg91Template(config, templateName, recipients);
     const deliveryIds = batch.map((customer) => claimByKey.get(customer.dedupeKey)!).filter(Boolean);
     await finishWhatsAppDeliveries(deliveryIds, sent);
     if (!sent.ok) {
