@@ -21,8 +21,9 @@ export default async function NewEmployeePage({
 
   const { error, returnTo = "" } = await searchParams;
   const stores = await getActiveEmployeeStores(profile);
-  // A cashier's new staff go to the owner for approval before they are added.
-  if (profile.role === "cashier") {
+  // Managers and cashiers send new staff to the owner for approval; only the
+  // owner adds staff directly (the database refuses anyone else since 2026-09).
+  if (profile.role !== "owner") {
     return (
       <div className="space-y-5">
         <div>

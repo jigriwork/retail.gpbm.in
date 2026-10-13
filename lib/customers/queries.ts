@@ -3,7 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
 export type CustomerRow = {
-  mobile: string; name: string | null; first_visit: string; last_visit: string; bills: number; items: number; spend: number;
+  mobile: string; name: string | null; first_visit: string | null; last_visit: string | null; uploaded: boolean; bills: number; items: number; spend: number;
   store_count: number; marketing_consent: boolean; do_not_contact: boolean; birthday: string | null; last_message_at: string | null; total_count: number;
 };
 
@@ -19,6 +19,7 @@ export const customerSegments = [
   { value: "lapsed", label: "Lapsed", hint: "Two or more bills, but none in the last 90 days." },
   { value: "top", label: "Top spenders", hint: "Highest total spend." },
   { value: "birthday", label: "Birthdays this week", hint: "Birthday in the next 7 days (where recorded)." },
+  { value: "uploaded", label: "Uploaded lists", hint: "Numbers added from uploaded customer files, including people who have not bought yet." },
   { value: "all", label: "All", hint: "Everyone with a mobile on a bill." },
 ] as const;
 
@@ -56,5 +57,12 @@ export async function customerMessagesFor(mobile: string) {
   const supabase = await createClient();
   const { data } = await supabase.from("customer_messages").select("id,kind,sent_at,stores(name),profiles(full_name)")
     .eq("mobile", mobile).order("sent_at", { ascending: false }).limit(20);
+  return data ?? [];
+}
+
+/** Uploaded-list entries for this customer in the stores the user can see. */
+export async function customerContactsFor(mobile: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("customer_contacts").select("store_id,name,created_at,stores(name)").eq("mobile", mobile);
   return data ?? [];
 }

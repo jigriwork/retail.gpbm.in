@@ -564,6 +564,23 @@ export type Database = {
           }
         ]
       }
+      customer_contacts: {
+        Row: { store_id: string; mobile: string; name: string | null; batch_id: string | null; created_by: string | null; created_at: string; updated_at: string }
+        Insert: { store_id: string; mobile: string; name?: string | null; batch_id?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
+        Update: { store_id?: string; mobile?: string; name?: string | null; batch_id?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "customer_contacts_store_id_fkey"; columns: ["store_id"]; isOneToOne: false; referencedRelation: "stores"; referencedColumns: ["id"] },
+        ]
+      }
+      customer_import_batches: {
+        Row: { id: string; store_id: string; file_name: string; consent: boolean; rows_received: number; rows_valid: number; rows_new: number; created_by: string; created_at: string }
+        Insert: { id?: string; store_id: string; file_name: string; consent?: boolean; rows_received?: number; rows_valid?: number; rows_new?: number; created_by?: string; created_at?: string }
+        Update: { id?: string; store_id?: string; file_name?: string; consent?: boolean; rows_received?: number; rows_valid?: number; rows_new?: number; created_by?: string; created_at?: string }
+        Relationships: [
+          { foreignKeyName: "customer_import_batches_store_id_fkey"; columns: ["store_id"]; isOneToOne: false; referencedRelation: "stores"; referencedColumns: ["id"] },
+          { foreignKeyName: "customer_import_batches_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
       customer_messages: {
         Row: {
           id: string
@@ -7588,7 +7605,9 @@ export type Database = {
       customer_purchases: { Args: { p_mobile: string }; Returns: { sale_date: string; store_name: string; bill_no: string | null; item_name: string | null; brand: string | null; size: string | null; quantity: number | null; net_sale: number | null; staff_name: string | null; customer_name: string | null }[] }
       customer_kpis: { Args: { p_store: string | null; p_from: string; p_to: string }; Returns: Json }
       customer_followup_candidates: { Args: { p_store: string; p_limit?: number }; Returns: { mobile: string; name: string; last_visit: string; bills: number; spend: number }[] }
-      customer_list: { Args: { p_store: string | null; p_segment: string; p_search: string | null; p_limit: number; p_offset: number }; Returns: { mobile: string; name: string | null; first_visit: string; last_visit: string; bills: number; items: number; spend: number; store_count: number; marketing_consent: boolean; do_not_contact: boolean; birthday: string | null; last_message_at: string | null; total_count: number }[] }
+      customer_list: { Args: { p_store: string | null; p_segment: string; p_search: string | null; p_limit: number; p_offset: number }; Returns: { mobile: string; name: string | null; first_visit: string | null; last_visit: string | null; bills: number; items: number; spend: number; store_count: number; marketing_consent: boolean; do_not_contact: boolean; birthday: string | null; last_message_at: string | null; uploaded: boolean; total_count: number }[] }
+      start_customer_import: { Args: { p_store: string; p_file: string; p_consent: boolean }; Returns: string }
+      import_customer_contacts: { Args: { p_batch: string; p_rows: Json }; Returns: Json }
       log_customer_message: { Args: { p_mobile: string; p_store: string; p_kind: string }; Returns: undefined }
       save_customer_profile: { Args: { p_mobile: string; p_name: string | null; p_birthday: string | null; p_anniversary: string | null; p_consent: boolean; p_source: string | null; p_do_not_contact: boolean; p_note: string | null }; Returns: undefined }
       store_profit: { Args: { p_store: string; p_month: string }; Returns: Json }

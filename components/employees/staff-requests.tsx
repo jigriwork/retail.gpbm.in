@@ -4,7 +4,7 @@ import { shortDate } from "@/lib/accounts/format";
 import { decideStaffRequest } from "@/lib/cashier/actions";
 import { createClient } from "@/lib/supabase/server";
 
-/** Owner: new staff sent by cashiers, waiting for approval. Renders nothing when none are waiting. */
+/** Owner: new staff sent by managers and cashiers, waiting for approval. Renders nothing when none are waiting. */
 export async function StaffRequests() {
   const supabase = await createClient();
   const selection = "id,staff_name,phone,designation,joining_date,note,status,requested_at,decided_at,stores(name),profiles!staff_requests_requested_by_fkey(full_name)";

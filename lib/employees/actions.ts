@@ -71,8 +71,8 @@ async function canWriteEmployeeStore(storeId: string, profile: Profile) {
 
 export async function createEmployeeContact(formData: FormData) {
   const session = await requireContactUserOrRedirect();
-  // A cashier's new staff go to the owner for approval (Add staff page).
-  if (session.profile.role === "cashier") redirect("/app/employees/new?error=approval");
+  // Managers' and cashiers' new staff go to the owner for approval (Add staff page).
+  if (session.profile.role !== "owner") redirect("/app/employees/new?error=approval");
   const supabase = await createClient();
   const staffName = normalizeStaffName(readString(formData, "staffName"));
   const storeId = readString(formData, "storeId");

@@ -10,7 +10,7 @@ import { indiaToday, money, shortDate } from "@/lib/accounts/format";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { isLimitedView } from "@/lib/auth/view";
 import { saveCustomerProfile } from "@/lib/customers/actions";
-import { customerMessagesFor, customerProfile, customerPurchases } from "@/lib/customers/queries";
+import { customerContactsFor, customerMessagesFor, customerProfile, customerPurchases } from "@/lib/customers/queries";
 import { deliveriesTo } from "@/lib/msg91/delivery-report";
 import { addDays } from "@/lib/money/format";
 
@@ -21,12 +21,14 @@ export default async function CustomerPage({ params, searchParams }: { params: P
   if (!profile || !["owner", "manager"].includes(profile.role)) return <AccessDenied message="Customers are visible to the owner and store managers." />;
   const { mobile } = await params;
   if (!/^[6-9]\d{9}$/.test(mobile)) return <AccessDenied message="Customer not found." />;
-  const [purchases, details, messages, stores, limited, query] = await Promise.all([
-    customerPurchases(mobile), customerProfile(mobile), customerMessagesFor(mobile), getAccessibleStores(profile), isLimitedView(profile), searchParams,
+  const [purchases, details, messages, stores, limited, query, contacts] = await Promise.all([
+    customerPurchases(mobile), customerProfile(mobile), customerMessagesFor(mobile), getAccessibleStores(profile), isLimitedView(profile), searchParams, customerContactsFor(mobile),
   ]);
-  if (!purchases.length) return <AccessDenied message="Customer not found, or they have not bought at your store." />;
+  if (!purchases.length && !contacts.length) return <AccessDenied message="Customer not found, or they are not a customer of your store." />;
   const deliveries = profile.role === "owner" ? await deliveriesTo(mobile) : [];
-  const store = stores.find((item) => item.id === query.store) ?? stores.find((item) => purchases.some((row) => row.store_name === item.name));
+  const store = stores.find((item) => item.id === query.store)
+    ?? stores.find((item) => purchases.some((row) => row.store_name === item.name))
+    ?? stores.find((item) => contacts.some((row) => row.store_id === item.id));
   const bills = new Map<string, { date: string; store: string; total: number; items: typeof purchases }>();
   for (const row of purchases) {
     const key = `${row.store_name}|${row.bill_no}|${row.sale_date}`;
@@ -35,9 +37,9 @@ export default async function CustomerPage({ params, searchParams }: { params: P
     bill.items.push(row);
     bills.set(key, bill);
   }
-  const name = details?.preferred_name ?? purchases.find((row) => row.customer_name)?.customer_name ?? null;
+  const name = details?.preferred_name ?? purchases.find((row) => row.customer_name)?.customer_name ?? contacts.find((row) => row.name)?.name ?? null;
   const total = purchases.reduce((sum, row) => sum + Number(row.net_sale ?? 0), 0);
-  const lastVisit = purchases[0].sale_date;
+  const lastVisit: string | null = purchases[0]?.sale_date ?? null;
   const today = indiaToday();
 
   return (
@@ -45,15 +47,15 @@ export default async function CustomerPage({ params, searchParams }: { params: P
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <Link className="text-sm font-medium text-muted" href={`/app/customers${store ? `?store=${store.id}` : ""}`}>← Customers</Link>
         <h1 className="mt-2 text-3xl font-semibold">{name ?? "No name"}</h1>
-        <p className="mt-2 text-sm text-muted">{mobile} · {bills.size} bill{bills.size === 1 ? "" : "s"}{limited ? "" : ` · ${money(total)}`} · last visit {shortDate(lastVisit)}</p>
+        <p className="mt-2 text-sm text-muted">{mobile} · {bills.size} bill{bills.size === 1 ? "" : "s"}{limited ? "" : ` · ${money(total)}`}{lastVisit ? ` · last visit ${shortDate(lastVisit)}` : " · from an uploaded list, no purchase yet"}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {details?.do_not_contact ? <Badge tone="bad">Do not contact</Badge> : details?.marketing_consent ? <Badge tone="good">Agreed to offers {details.consent_at ? `· ${shortDate(details.consent_at.slice(0, 10))}` : ""}</Badge> : <Badge>No offer consent</Badge>}
           {details?.withdrawn_at && !details.marketing_consent ? <Badge>Withdrew {shortDate(details.withdrawn_at.slice(0, 10))}</Badge> : null}
         </div>
         {store && !details?.do_not_contact ? (
           <div className="mt-3 flex flex-wrap gap-2">
-            {lastVisit >= addDays(today, -3) ? <WhatsAppButton kind="thank_you" label="Thank you + review" mobile={mobile} storeId={store.id} /> : null}
-            {details?.marketing_consent && lastVisit >= addDays(today, -3) ? <WhatsAppApiButton kind="thank_you" label="Send thank you via API" mobile={mobile} storeId={store.id} /> : null}
+            {lastVisit && lastVisit >= addDays(today, -3) ? <WhatsAppButton kind="thank_you" label="Thank you + review" mobile={mobile} storeId={store.id} /> : null}
+            {details?.marketing_consent && lastVisit && lastVisit >= addDays(today, -3) ? <WhatsAppApiButton kind="thank_you" label="Send thank you via API" mobile={mobile} storeId={store.id} /> : null}
             {details?.marketing_consent ? <WhatsAppButton kind="lapsed_offer" label="We miss you" mobile={mobile} storeId={store.id} /> : null}
             {details?.marketing_consent ? <WhatsAppApiButton kind="lapsed_offer" label="Send we miss you via API" mobile={mobile} storeId={store.id} /> : null}
             {details?.marketing_consent && details.birthday ? <WhatsAppButton kind="birthday" label="Birthday wish" mobile={mobile} storeId={store.id} /> : null}

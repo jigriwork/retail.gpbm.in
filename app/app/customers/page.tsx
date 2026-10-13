@@ -53,7 +53,8 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <p className="text-sm font-medium text-muted">Customers</p>
         <h1 className="mt-2 text-3xl font-semibold">Your customers</h1>
-        <p className="mt-2 text-sm leading-6 text-muted">Built from the mobile number and name on each Logic bill. One customer is one mobile number, across stores.</p>
+        <p className="mt-2 text-sm leading-6 text-muted">Built from the mobile number and name on each Logic bill, plus numbers uploaded from customer files. One customer is one mobile number, across stores.</p>
+        <Link className="mt-3 inline-flex h-10 items-center rounded-xl border border-border px-4 text-sm font-semibold transition hover:border-primary" href="/app/customers/upload">⬆ Upload customer numbers</Link>
       </section>
 
       <nav aria-label="Store" className="-mx-1 flex gap-1 overflow-x-auto pb-1">
@@ -127,24 +128,29 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                   <span className="flex shrink-0 flex-wrap justify-end gap-1">
                     {customer.do_not_contact ? <Badge tone="bad">Do not contact</Badge> : customer.marketing_consent ? <Badge tone="good">Offers OK</Badge> : <Badge>No consent</Badge>}
                     {customer.store_count > 1 ? <Badge>Both stores</Badge> : null}
+                    {customer.uploaded && !customer.bills ? <Badge>Uploaded</Badge> : null}
                   </span>
                 </div>
                 <p className="mt-1 text-muted">
                   {customer.mobile} · {customer.bills} bill{customer.bills === 1 ? "" : "s"}{limited ? "" : ` · ${money(customer.spend)}`}
                 </p>
                 <p className="text-xs text-muted">
-                  Last visit {day(customer.last_visit)} · first {day(customer.first_visit)}
+                  {customer.last_visit && customer.first_visit ? `Last visit ${day(customer.last_visit)} · first ${day(customer.first_visit)}` : "From an uploaded list · no purchase yet"}
                   {customer.last_message_at ? ` · last WhatsApp ${day(customer.last_message_at.slice(0, 10))}` : ""}
                 </p>
-                {store && !customer.do_not_contact ? (
+                {store && !customer.do_not_contact ? (() => {
+                  const recent = customer.last_visit !== null && customer.last_visit >= addDays(today, -3);
+                  const away = customer.last_visit === null || customer.last_visit < addDays(today, -60);
+                  return (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {customer.last_visit >= addDays(today, -3) ? <WhatsAppButton kind="thank_you" label="Thank you + review" mobile={customer.mobile} storeId={store.id} /> : null}
-                    {customer.marketing_consent && customer.last_visit >= addDays(today, -3) ? <WhatsAppApiButton kind="thank_you" label="Send thank you via API" mobile={customer.mobile} storeId={store.id} /> : null}
-                    {customer.marketing_consent && customer.last_visit < addDays(today, -60) ? <WhatsAppButton kind="lapsed_offer" label="We miss you" mobile={customer.mobile} storeId={store.id} /> : null}
-                    {customer.marketing_consent && customer.last_visit < addDays(today, -60) ? <WhatsAppApiButton kind="lapsed_offer" label="Send we miss you via API" mobile={customer.mobile} storeId={store.id} /> : null}
+                    {recent ? <WhatsAppButton kind="thank_you" label="Thank you + review" mobile={customer.mobile} storeId={store.id} /> : null}
+                    {customer.marketing_consent && recent ? <WhatsAppApiButton kind="thank_you" label="Send thank you via API" mobile={customer.mobile} storeId={store.id} /> : null}
+                    {customer.marketing_consent && away ? <WhatsAppButton kind="lapsed_offer" label="We miss you" mobile={customer.mobile} storeId={store.id} /> : null}
+                    {customer.marketing_consent && away ? <WhatsAppApiButton kind="lapsed_offer" label="Send we miss you via API" mobile={customer.mobile} storeId={store.id} /> : null}
                     {customer.marketing_consent && segment === "birthday" ? <WhatsAppButton kind="birthday" label="Birthday wish" mobile={customer.mobile} storeId={store.id} /> : null}
                   </div>
-                ) : null}
+                  );
+                })() : null}
               </div>
             ))}
           </div>

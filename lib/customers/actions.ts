@@ -92,3 +92,26 @@ export async function sendCustomerViaApi(mobile: string, storeId: string, kind: 
   }
   return result;
 }
+
+/** Starts an upload of customer numbers for one store (owner, or that store's manager). */
+export async function startCustomerImport(storeId: string, fileName: string, consent: boolean) {
+  const profile = await staffProfile();
+  if (!profile || !(await canAccessStore(storeId, profile))) return { ok: false as const, message: "You cannot add customers for this store." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("start_customer_import", { p_consent: consent === true, p_file: String(fileName).slice(0, 200), p_store: storeId });
+  if (error || !data) return { ok: false as const, message: error?.code === "P0001" ? error.message : "The upload could not start. Please retry." };
+  return { ok: true as const, batchId: data };
+}
+
+/** Adds one part (at most 1,000 rows) of an upload; numbers are cleaned and checked in the database. */
+export async function importCustomerRows(batchId: string, rows: Array<{ m: string; n: string }>) {
+  const profile = await staffProfile();
+  if (!profile || typeof batchId !== "string" || !Array.isArray(rows) || rows.length > 1000) return { ok: false as const, message: "Invalid upload." };
+  const clean = rows.map((row) => ({ m: String(row?.m ?? "").slice(0, 30), n: String(row?.n ?? "").slice(0, 100) }));
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("import_customer_contacts", { p_batch: batchId, p_rows: clean });
+  if (error || !data) return { ok: false as const, message: error?.code === "P0001" ? error.message : "This part could not be saved. Please retry." };
+  revalidatePath("/app/customers");
+  const result = data as { new: number; received: number; valid: number };
+  return { ok: true as const, ...result };
+}

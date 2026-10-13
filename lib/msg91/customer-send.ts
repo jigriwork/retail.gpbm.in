@@ -21,12 +21,13 @@ const kindMap = {
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
 
 async function customerFirstName(admin: Admin, mobile: string) {
-  const [{ data: profile }, { data: sale }] = await Promise.all([
+  const [{ data: profile }, { data: sale }, { data: contact }] = await Promise.all([
     admin.from("customer_profiles").select("preferred_name").eq("mobile", mobile).maybeSingle(),
     admin.from("sales_rows").select("customer_name").eq("customer_mobile", mobile).not("customer_name", "is", null)
       .order("sale_date", { ascending: false }).limit(1).maybeSingle(),
+    admin.from("customer_contacts").select("name").eq("mobile", mobile).not("name", "is", null).limit(1).maybeSingle(),
   ]);
-  return cleanName(profile?.preferred_name ?? sale?.customer_name);
+  return cleanName(profile?.preferred_name ?? sale?.customer_name ?? contact?.name);
 }
 
 async function sendOne(config: Msg91BrandConfig, template: string, recipient: string, name: string, claimId: string) {
@@ -47,16 +48,17 @@ export async function sendCustomerTemplate(input: { initiatedBy: string; kind: A
   if (!store || !config || !template) return { ok: false, message: "MSG91 is not set up for this store." };
 
   const today = indiaToday();
-  const [{ data: profile }, { data: purchase }] = await Promise.all([
+  const [{ data: profile }, { data: purchase }, { data: contact }] = await Promise.all([
     admin.from("customer_profiles").select("marketing_consent,do_not_contact").eq("mobile", input.mobile).maybeSingle(),
     admin.from("sales_rows").select("sale_date").eq("customer_mobile", input.mobile).eq("store_id", store.id)
       .order("sale_date", { ascending: false }).limit(1).maybeSingle(),
+    admin.from("customer_contacts").select("mobile").eq("mobile", input.mobile).eq("store_id", store.id).maybeSingle(),
   ]);
-  if (!purchase) return { ok: false, message: "This customer has not bought at this store." };
+  if (!purchase && !contact) return { ok: false, message: "This is not a customer of this store." };
   if (profile?.do_not_contact) return { ok: false, message: "This customer asked not to be contacted." };
   // Both approved templates are MARKETING in WhatsApp's eyes.
   if (!profile?.marketing_consent) return { ok: false, message: "Needs the customer's consent first (tick it on their page)." };
-  if (input.kind === "thank_you" && (purchase.sale_date ?? "") < new Date(Date.parse(`${today}T00:00:00Z`) - 3 * 864e5).toISOString().slice(0, 10)) {
+  if (input.kind === "thank_you" && (purchase?.sale_date ?? "") < new Date(Date.parse(`${today}T00:00:00Z`) - 3 * 864e5).toISOString().slice(0, 10)) {
     return { ok: false, message: "A thank-you is only for a purchase in the last 3 days." };
   }
   if ((await getMsg91TemplateStatus(config, template)) !== "approved") return { ok: false, message: "The WhatsApp template is not approved in MSG91." };

@@ -71,7 +71,7 @@ export default async function EmployeesPage({
   return (
     <div className="space-y-5">
       {profile.role === "owner" ? <StaffRequests /> : null}
-      {profile.role === "cashier" ? <MyStaffRequests userId={profile.id} /> : null}
+      {profile.role !== "owner" ? <MyStaffRequests userId={profile.id} /> : null}
       <Link className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-border bg-card p-4 text-sm font-semibold shadow-sm transition hover:border-primary" href="/app/staff-match">
         <span>🔗 Match sales and salary slip names to staff (so each login shows its own sales and salary)</span>
         <span aria-hidden>→</span>
