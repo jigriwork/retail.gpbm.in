@@ -6,13 +6,19 @@ import type { Tables } from "@/lib/supabase/database.types";
 
 type Row = Tables<"payslip_rows">;
 
-export type SlipBrand = { address: string; logo: string | null; name: string };
+export type SlipBrand = { address: string; gstin: string | null; legalName: string | null; logo: string | null; name: string };
 
-export function slipBrand(row: Pick<Row, "store_name">): SlipBrand {
+// The business name on the slip comes from the store, not the salary sheet's
+// firm column (sheets mix "Go Planet" / "Gp Fashion" for Brand Mark staff).
+export function slipBrand(row: Pick<Row, "store_name" | "firm_name">): SlipBrand {
   const name = row.store_name ?? "";
-  if (/brand\s*mark/i.test(name)) return { address: "Spectrum Center, Old Bus Stand, Berhampur", logo: "/brands/brand-mark.png", name: "Brand Mark" };
-  if (/go\s*planet/i.test(name)) return { address: "City Mall, KK Complex, Berhampur", logo: "/brands/go-planet.png", name: "Go Planet" };
-  return { address: "", logo: null, name };
+  if (/brand\s*mark/i.test(name)) {
+    return { address: "Spectrum Center, Old Bus Stand, Berhampur", gstin: "21ABEFG6585H1ZC", legalName: "Brand Mark (A unit of GP Fashion)", logo: "/brands/brand-mark.png", name: "Brand Mark" };
+  }
+  if (/go\s*planet/i.test(name)) {
+    return { address: "City Mall, KK Complex, Berhampur", gstin: "21ADMPA3732E1Z8", legalName: "Go Planet", logo: "/brands/go-planet.png", name: "Go Planet" };
+  }
+  return { address: "", gstin: null, legalName: row.firm_name ?? null, logo: null, name };
 }
 
 export function slipLines(row: Row) {

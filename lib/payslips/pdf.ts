@@ -65,8 +65,9 @@ export async function renderPayslipPdf(row: PayslipRow) {
   rightText(page, "SALARY SLIP", right, top - 18, bold, 18, accent);
   rightText(page, month, right, top - 36, regular, 11, muted);
   top -= 72;
-  if (row.firm_name) text(page, row.firm_name, left, top, bold, 10.5);
-  if (brand.address) text(page, brand.address, left, top - 14, regular, 9.5, muted);
+  if (brand.legalName) text(page, brand.legalName, left, top, bold, 10.5);
+  const contact = [brand.address, brand.gstin ? `GSTIN ${brand.gstin}` : ""].filter(Boolean).join("  |  ");
+  if (contact) text(page, contact, left, top - 14, regular, 9.5, muted);
   top -= 30;
   page.drawLine({ color: line, end: { x: right, y: top }, start: { x: left, y: top }, thickness: 1 });
 

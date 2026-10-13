@@ -30,8 +30,8 @@ export function PayslipPreview({ row }: { row: Row }) {
         </div>
       </div>
       <div className="mt-4 border-b border-slate-200 pb-4">
-        {row.firm_name ? <p className="text-sm font-semibold">{row.firm_name}</p> : null}
-        {brand.address ? <p className="text-xs text-slate-500">{brand.address}</p> : null}
+        {brand.legalName ? <p className="text-sm font-semibold">{brand.legalName}</p> : null}
+        <p className="text-xs text-slate-500">{[brand.address, brand.gstin ? `GSTIN ${brand.gstin}` : ""].filter(Boolean).join(" · ")}</p>
       </div>
 
       <dl className="mt-5 grid grid-cols-2 gap-4">
