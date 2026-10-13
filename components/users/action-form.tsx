@@ -193,7 +193,7 @@ export function ManagerStoreAssignmentsForm({
       </div>
       <Button className="h-10 rounded-xl px-3 text-xs" disabled={pending} variant="secondary">
         {pending ? <Loader2 className="size-4 animate-spin" /> : null}
-        Save Assignments
+        Save stores
       </Button>
       {state.message ? (
         <p className={state.ok ? "text-xs text-success" : "text-xs text-danger"}>
@@ -352,7 +352,7 @@ export function LoginPhoneForm({
             placeholder="Not set"
             required
           />
-          <Button disabled={pending}>{pending ? <Loader2 className="size-4 animate-spin" /> : null}Save</Button>
+          <Button disabled={pending}>{pending ? <Loader2 className="size-4 animate-spin" /> : null}Save mobile</Button>
         </div>
       </label>
       {state.message ? <p className={state.ok ? "text-sm text-success" : "text-sm text-danger"}>{state.message}</p> : null}

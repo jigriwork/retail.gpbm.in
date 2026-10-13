@@ -333,7 +333,7 @@ export async function updateManagerStoreAssignments(formData: FormData) {
   });
 
   revalidatePath("/app/users");
-  return { ok: true, message: "Store assignments saved." };
+  return { ok: true, message: validSelectedStoreIds.length ? `Saved: ${validSelectedStoreIds.length} store${validSelectedStoreIds.length === 1 ? "" : "s"}.` : "Saved: no stores (they cannot see any store now)." };
 }
 
 export async function setProfileActive(formData: FormData) {
@@ -540,7 +540,7 @@ export async function setUserLoginPhone(formData: FormData) {
   const { data: taken } = await admin.from("profiles").select("id").eq("login_phone", phone).neq("id", userId).maybeSingle();
   if (taken) return { ok: false, message: "Another user already logs in with this number." };
   const { data: current } = await admin.from("profiles").select("login_phone").eq("id", userId).maybeSingle();
-  if (current?.login_phone === phone) return { ok: true, message: "No change." };
+  if (current?.login_phone === phone) return { ok: true, message: "This is already their login mobile." };
   const { error } = await admin.from("profiles").update({ login_phone: phone, phone_verified_at: null, pin_set_at: null }).eq("id", userId);
   if (error) return { ok: false, message: "Could not save the number." };
   await writeAuthAuditLog({ action: "set_login_phone", actorId: owner.profile.id, actorRole: owner.profile.role, entityId: userId, metadata: { phone_last4: phone.slice(-4) } });
