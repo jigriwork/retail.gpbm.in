@@ -4,15 +4,23 @@ import { shortDate } from "@/lib/accounts/format";
 import { decideStaffRequest } from "@/lib/cashier/actions";
 import { createClient } from "@/lib/supabase/server";
 
+function dayAgoIso() {
+  return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+}
+
 /** Owner: new staff sent by managers and cashiers, waiting for approval. Renders nothing when none are waiting. */
 export async function StaffRequests() {
   const supabase = await createClient();
   const selection = "id,staff_name,phone,designation,joining_date,note,status,requested_at,decided_at,stores(name),profiles!staff_requests_requested_by_fkey(full_name)";
   const [{ data: waiting }, { data: latestDecision }] = await Promise.all([
     supabase.from("staff_requests").select(selection).eq("status", "pending").order("requested_at").limit(50),
-    supabase.from("staff_requests").select(selection).neq("status", "pending").order("decided_at", { ascending: false }).limit(1),
+    supabase.from("staff_requests").select(`${selection},employee_contacts(is_active)`).neq("status", "pending")
+      .gte("decided_at", dayAgoIso())
+      .order("decided_at", { ascending: false }).limit(1),
   ]);
-  const data = [...(waiting ?? []), ...(latestDecision ?? [])];
+  // The last decision stays visible for a day as confirmation, unless that staff member was removed since.
+  const recentDecision = (latestDecision ?? []).filter((request) => request.status !== "approved" || request.employee_contacts?.is_active !== false);
+  const data = [...(waiting ?? []), ...recentDecision];
   if (!data?.length) return null;
   const pending = data.filter((request) => request.status === "pending").length;
   return (
