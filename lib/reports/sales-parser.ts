@@ -82,7 +82,8 @@ const headerAliases = {
     "taxable value",
   ],
   staffName: ["agent name", "staff", "staff name", "salesman", "sales person", "salesperson", "sold by", "user name"],
-  customerName: ["customer", "customer name", "party name"],
+  // Logic puts the customer's name in RCU NAME, next to RCU MOBILE NO.
+  customerName: ["rcu name", "customer", "customer name", "party name"],
   customerPhone: ["rcu mobile no.", "rcu mobile no", "mobile", "phone", "customer phone", "contact"],
 } satisfies Record<keyof Omit<ParsedSalesRow, "rawData">, string[]>;
 

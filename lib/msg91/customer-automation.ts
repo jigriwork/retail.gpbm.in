@@ -32,7 +32,9 @@ function chunks<T>(items: T[], size: number) {
 export function cleanName(value: string | null | undefined) {
   const name = value?.trim().replace(/\s+/g, " ");
   if (!name || /^(nil+|na|n\/a|cash|customer|walk ?in)$/i.test(name)) return "Customer";
-  return name.split(" ")[0].slice(0, 80);
+  // Bills are in capitals ("JAGDISH"); greet as "Jagdish". Initials like "N" alone stay as they are.
+  const first = name.split(" ")[0].slice(0, 80);
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
 }
 
 export async function sendAutomaticCustomerThanks(input: {
