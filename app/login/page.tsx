@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { LockKeyhole } from "lucide-react";
 
 import { LoginForm } from "@/components/auth/login-form";
+import { PhoneLoginForm } from "@/components/auth/phone-login-form";
 import { managerHoursLabel } from "@/lib/auth/access";
 import { signOut } from "@/lib/auth/actions";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
@@ -81,7 +82,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                 {greeting()} 👋
               </h2>
               <p className="mt-3 text-sm leading-6 text-muted">
-                Private access for GPBM Retail users only.
+                Log in with your mobile number.
               </p>
             </div>
             <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
@@ -93,7 +94,16 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               Store hours are over, so managers and cashiers were logged out. You can log in again from {managerHoursLabel.split(" to ")[0]}.
             </p>
           ) : null}
-          <LoginForm />
+          {error === "phone" ? (
+            <p className="mb-5 rounded-2xl border border-accent/40 bg-accent-soft px-4 py-3 text-sm font-medium leading-6 text-accent-ink">
+              Login has changed: use your mobile number. The first time, a code comes on WhatsApp and you choose your own PIN.
+            </p>
+          ) : null}
+          <PhoneLoginForm />
+          <details className="mt-5 text-sm">
+            <summary className="cursor-pointer font-semibold text-muted">Log in with email (only accounts without a mobile number)</summary>
+            <div className="mt-4"><LoginForm /></div>
+          </details>
           <div className="mt-5 space-y-1.5 border-t border-border pt-4 text-xs leading-5 text-muted">
             <p>Managers and cashiers can log in from {managerHoursLabel}.</p>
             <p>Tip: add this app to your phone&apos;s home screen (browser menu → &ldquo;Add to Home Screen&rdquo;) to open it like an app.</p>

@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { notifyAccountReady, sendPasswordResetEmail } from "@/lib/auth/account-emails";
 import { requireOwner, requireProfile } from "@/lib/auth/session";
 import { emailConfigured } from "@/lib/email/send";
+import { tenDigitMobile } from "@/lib/auth/phone-login";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -142,20 +143,19 @@ export async function createUserAccount(formData: FormData) {
     };
   }
 
-  const email = readString(formData, "email");
-  const password = readString(formData, "password");
   const fullName = readString(formData, "fullName");
-  const phone = readString(formData, "phone");
+  const phone = tenDigitMobile(readString(formData, "phone"));
   const requestedRole = readString(formData, "role") || "manager";
   const role = requestedRole === "owner" ? "owner" : requestedRole === "accountant" ? "accountant" : requestedRole === "cashier" ? "cashier" : "manager";
 
-  if (!email || !password || !fullName) {
-    return { ok: false, message: "Email, password, and full name are required." };
+  if (!fullName || !phone) {
+    return { ok: false, message: "Enter the full name and a 10-digit mobile number." };
   }
-
-  if (!["manager", "owner", "accountant", "cashier"].includes(role)) {
-    return { ok: false, message: "Choose Manager, Cashier, Accountant or Owner role." };
-  }
+  const { data: taken } = await admin.from("profiles").select("id").eq("login_phone", phone).maybeSingle();
+  if (taken) return { ok: false, message: "Another user already logs in with this mobile number." };
+  // Login is by mobile number; the email is internal only and never used.
+  const email = `${phone}@users.gpbm.in`;
+  const password = `${crypto.randomUUID()}Aa1`;
 
   const { data, error } = await admin.auth.admin.createUser({
     email,
@@ -163,7 +163,7 @@ export async function createUserAccount(formData: FormData) {
     email_confirm: true,
     user_metadata: {
       full_name: fullName,
-      phone: phone || null,
+      phone,
     },
   });
 
@@ -178,7 +178,8 @@ export async function createUserAccount(formData: FormData) {
     id: data.user.id,
     email,
     full_name: fullName,
-    phone: phone || null,
+    phone,
+    login_phone: phone,
     role,
     is_active: true,
   });
@@ -525,4 +526,24 @@ export async function forgotPassword(
     ok: true,
     message: "If an account exists for this email, a password reset link has been sent.",
   };
+}
+
+/** Owner sets the mobile number a user logs in with; a new number needs a fresh WhatsApp code. */
+export async function setUserLoginPhone(formData: FormData) {
+  const owner = await requireOwner();
+  if (!owner) return { ok: false, message: "Only the owner changes login numbers." };
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, message: "Login service is not configured." };
+  const userId = readString(formData, "userId");
+  const phone = tenDigitMobile(readString(formData, "phone"));
+  if (!userId || !phone) return { ok: false, message: "Enter a 10-digit mobile number." };
+  const { data: taken } = await admin.from("profiles").select("id").eq("login_phone", phone).neq("id", userId).maybeSingle();
+  if (taken) return { ok: false, message: "Another user already logs in with this number." };
+  const { data: current } = await admin.from("profiles").select("login_phone").eq("id", userId).maybeSingle();
+  if (current?.login_phone === phone) return { ok: true, message: "No change." };
+  const { error } = await admin.from("profiles").update({ login_phone: phone, phone_verified_at: null, pin_set_at: null }).eq("id", userId);
+  if (error) return { ok: false, message: "Could not save the number." };
+  await writeAuthAuditLog({ action: "set_login_phone", actorId: owner.profile.id, actorRole: owner.profile.role, entityId: userId, metadata: { phone_last4: phone.slice(-4) } });
+  revalidatePath("/app/users");
+  return { ok: true, message: "Saved. They log in with this number and a WhatsApp code." };
 }

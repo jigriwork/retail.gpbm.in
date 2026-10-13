@@ -564,6 +564,18 @@ export type Database = {
           }
         ]
       }
+      login_codes: {
+        Row: { id: string; phone: string; code_hash: string; expires_at: string; attempts: number; consumed_at: string | null; created_at: string }
+        Insert: { id?: string; phone: string; code_hash: string; expires_at: string; attempts?: number; consumed_at?: string | null; created_at?: string }
+        Update: { id?: string; phone?: string; code_hash?: string; expires_at?: string; attempts?: number; consumed_at?: string | null; created_at?: string }
+        Relationships: []
+      }
+      login_events: {
+        Row: { id: number; phone: string; kind: string; created_at: string }
+        Insert: { id?: number; phone: string; kind: string; created_at?: string }
+        Update: { id?: number; phone?: string; kind?: string; created_at?: string }
+        Relationships: []
+      }
       customer_contacts: {
         Row: { store_id: string; mobile: string; name: string | null; batch_id: string | null; created_by: string | null; created_at: string; updated_at: string }
         Insert: { store_id: string; mobile: string; name?: string | null; batch_id?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
@@ -6200,6 +6212,9 @@ export type Database = {
           full_name: string | null
           email: string | null
           phone: string | null
+          login_phone: string | null
+          phone_verified_at: string | null
+          pin_set_at: string | null
           role: string
           is_active: boolean | null
           created_at: string | null
@@ -6210,6 +6225,9 @@ export type Database = {
           full_name?: string | null
           email?: string | null
           phone?: string | null
+          login_phone?: string | null
+          phone_verified_at?: string | null
+          pin_set_at?: string | null
           role?: string
           is_active?: boolean | null
           created_at?: string | null
@@ -6220,6 +6238,9 @@ export type Database = {
           full_name?: string | null
           email?: string | null
           phone?: string | null
+          login_phone?: string | null
+          phone_verified_at?: string | null
+          pin_set_at?: string | null
           role?: string
           is_active?: boolean | null
           created_at?: string | null
@@ -7606,6 +7627,7 @@ export type Database = {
       customer_kpis: { Args: { p_store: string | null; p_from: string; p_to: string }; Returns: Json }
       customer_followup_candidates: { Args: { p_store: string; p_limit?: number }; Returns: { mobile: string; name: string; last_visit: string; bills: number; spend: number }[] }
       customer_list: { Args: { p_store: string | null; p_segment: string; p_search: string | null; p_limit: number; p_offset: number }; Returns: { mobile: string; name: string | null; first_visit: string | null; last_visit: string | null; bills: number; items: number; spend: number; store_count: number; marketing_consent: boolean; do_not_contact: boolean; birthday: string | null; last_message_at: string | null; uploaded: boolean; total_count: number }[] }
+      link_staff_login_by_phone: { Args: { p_employee: string; p_auth_user: string; p_email: string; p_phone: string }; Returns: undefined }
       start_customer_import: { Args: { p_store: string; p_file: string; p_consent: boolean }; Returns: string }
       import_customer_contacts: { Args: { p_batch: string; p_rows: Json }; Returns: Json }
       log_customer_message: { Args: { p_mobile: string; p_store: string; p_kind: string }; Returns: undefined }

@@ -22,7 +22,6 @@ export function CreateManagerForm({
   action: (formData: FormData) => Promise<ActionState>;
   disabled: boolean;
 }) {
-  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState("manager");
   const [state, formAction, pending] = useActionState(
     async (_previous: ActionState, formData: FormData) => action(formData),
@@ -42,37 +41,11 @@ export function CreateManagerForm({
         <input
           className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
           disabled={disabled}
+          inputMode="numeric"
           name="phone"
-          placeholder="Phone optional"
-        />
-        <input
-          className="h-12 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
-          disabled={disabled}
-          name="email"
-          placeholder="Email"
+          placeholder="Mobile number (used to log in)"
           required
-          type="email"
         />
-        <div className="relative">
-          <input
-            className="h-12 w-full rounded-2xl border border-border bg-card px-4 pr-12 text-sm outline-none focus:border-primary"
-            disabled={disabled}
-            minLength={6}
-            name="password"
-            placeholder="Temporary password"
-            required
-            type={showPassword ? "text" : "password"}
-          />
-          <button
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            className="absolute right-1 top-1/2 inline-flex size-10 -translate-y-1/2 items-center justify-center rounded-xl text-muted transition hover:bg-black/[0.04] hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-            disabled={disabled}
-            onClick={() => setShowPassword((current) => !current)}
-            type="button"
-          >
-            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-          </button>
-        </div>
         <label className="block sm:col-span-2">
           <span className="mb-2 block text-sm font-medium text-muted">Role</span>
           <select
@@ -104,6 +77,7 @@ export function CreateManagerForm({
           Cashiers close the day, record expenses, upload daily sales and stock, count stock and request new staff (you approve). They see only their own entries, never sales totals or shortages. Assign their store after creating.
         </p>
       ) : null}
+      <p className="text-sm text-muted">They log in with this mobile number: a code comes on WhatsApp, then they choose their own PIN.</p>
       <Button disabled={disabled || pending}>
         {pending ? <Loader2 className="size-4 animate-spin" /> : null}
         Create {role === "owner" ? "owner" : role === "accountant" ? "accountant" : role === "cashier" ? "cashier" : "manager"}
@@ -347,6 +321,41 @@ export function TemporaryPasswordResetForm({
           {state.message}
         </p>
       ) : null}
+    </form>
+  );
+}
+
+/** Owner: the mobile number a person logs in with. Changing it asks for a new WhatsApp code. */
+export function LoginPhoneForm({
+  action,
+  current,
+  userId,
+}: {
+  action: (formData: FormData) => Promise<ActionState>;
+  current: string | null;
+  userId: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    async (_previous: ActionState, formData: FormData) => action(formData),
+    initialState,
+  );
+  return (
+    <form action={formAction} className="space-y-2">
+      <input name="userId" type="hidden" value={userId} />
+      <label className="block text-sm font-medium text-muted">Login mobile
+        <div className="mt-1 flex gap-2">
+          <input
+            className="h-11 min-w-0 flex-1 rounded-2xl border border-border bg-card px-4 text-sm outline-none focus:border-primary"
+            defaultValue={current ?? ""}
+            inputMode="numeric"
+            name="phone"
+            placeholder="Not set"
+            required
+          />
+          <Button disabled={pending}>{pending ? <Loader2 className="size-4 animate-spin" /> : null}Save</Button>
+        </div>
+      </label>
+      {state.message ? <p className={state.ok ? "text-sm text-success" : "text-sm text-danger"}>{state.message}</p> : null}
     </form>
   );
 }

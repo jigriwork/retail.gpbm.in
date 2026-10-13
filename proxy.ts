@@ -49,8 +49,15 @@ export async function proxy(request: NextRequest) {
   const userId = typeof claims?.claims?.sub === "string" ? claims.claims.sub : null;
   const path = request.nextUrl.pathname;
 
-  if (userId && (path.startsWith("/app") || path.startsWith("/api/tia"))) {
+  if (userId && (path.startsWith("/app") || path.startsWith("/staff") || path.startsWith("/api/tia"))) {
     const access = await profileAccess(supabase, userId);
+    // Everyone logs in with their mobile number now: a session from before
+    // (or one that never proved the number) ends here.
+    if (access && access.needsPhone) {
+      await supabase.auth.signOut({ scope: "local" });
+      if (request.method !== "GET" && request.method !== "HEAD") return new NextResponse(null, { status: 401 });
+      return redirectKeepingCookies(response, new URL("/login?error=phone", request.url));
+    }
     if (access?.role === "accountant" && access.active && (path.startsWith("/api/tia") || !accountantAllows(path))) {
       if (request.method !== "GET" && request.method !== "HEAD") return new NextResponse(null, { status: 404 });
       return redirectKeepingCookies(response, new URL("/app/accounts", request.url));
@@ -92,15 +99,17 @@ type ProxySupabase = ReturnType<typeof createServerClient<Database>>;
 // Role and active flag, remembered for a minute so ordinary navigation does
 // not add a database read to every request.
 const accessTtlMs = 60_000;
-const accessCache = new Map<string, { at: number; role: string | null; active: boolean }>();
+const accessCache = new Map<string, { at: number; role: string | null; active: boolean; needsPhone: boolean }>();
 
 async function profileAccess(supabase: ProxySupabase, userId: string) {
   const hit = accessCache.get(userId);
   if (hit && Date.now() - hit.at < accessTtlMs) return hit;
-  const { data } = await supabase.from("profiles").select("role,is_active").eq("id", userId).maybeSingle();
+  const { data } = await supabase.from("profiles").select("role,is_active,login_phone,phone_verified_at").eq("id", userId).maybeSingle();
   if (!data) return null;
-  const entry = { at: Date.now(), role: data.role, active: data.is_active === true };
-  accessCache.set(userId, entry);
+  // Accounts with a login mobile must have proved it; the few without one keep email login for now.
+  const entry = { at: Date.now(), role: data.role, active: data.is_active === true, needsPhone: Boolean(data.login_phone) && !data.phone_verified_at };
+  // Never remember a "needs phone" answer, so a fresh code login is not refused from a stale entry.
+  if (!entry.needsPhone) accessCache.set(userId, entry);
   if (accessCache.size > 500) accessCache.delete(accessCache.keys().next().value!);
   return entry;
 }

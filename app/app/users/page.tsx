@@ -2,17 +2,15 @@ import { AccessDenied } from "@/components/app/access-denied";
 import {
   AssignStoreForm,
   CreateManagerForm,
+  LoginPhoneForm,
   ManagerStoreAssignmentsForm,
   ProfileActiveForm,
-  SendPasswordResetLinkForm,
-  TemporaryPasswordResetForm,
 } from "@/components/users/action-form";
 import {
   assignManagerToStore,
   createUserAccount,
-  ownerResetUserPassword,
-  sendPasswordResetLink,
   setProfileActive,
+  setUserLoginPhone,
   updateManagerStoreAssignments,
 } from "@/lib/auth/actions";
 import { requireOwner, requireProfile } from "@/lib/auth/session";
@@ -88,7 +86,7 @@ export default async function UsersPage() {
                   <h3 className="text-lg font-semibold">
                     {userProfile.full_name ?? userProfile.email ?? "Unnamed user"}
                   </h3>
-                  <p className="mt-1 text-sm text-muted">{userProfile.email}</p>
+                  <p className="mt-1 text-sm text-muted">{userProfile.login_phone ? `Logs in with ${userProfile.login_phone}` : "⚠️ No login mobile yet"}{userProfile.pin_set_at ? " · PIN set" : ""}</p>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
                     <span className="rounded-full border border-border px-3 py-1 capitalize text-muted">
                       {userProfile.role}
@@ -139,16 +137,11 @@ export default async function UsersPage() {
                       isActive={userProfile.is_active !== false}
                       userId={userProfile.id}
                     />
-                    <SendPasswordResetLinkForm action={sendPasswordResetLink} userId={userProfile.id} />
-                    <TemporaryPasswordResetForm
-                      action={ownerResetUserPassword}
-                      disabled={!serviceRoleConfigured}
-                      userId={userProfile.id}
-                    />
+                    <LoginPhoneForm action={setUserLoginPhone} current={userProfile.login_phone} userId={userProfile.id} />
                   </div>
                 ) : (
                   <div className="grid gap-3 sm:min-w-72">
-                    <SendPasswordResetLinkForm action={sendPasswordResetLink} userId={userProfile.id} />
+                    <LoginPhoneForm action={setUserLoginPhone} current={userProfile.login_phone} userId={userProfile.id} />
                   </div>
                 )}
               </div>

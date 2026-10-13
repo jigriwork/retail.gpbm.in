@@ -7,6 +7,7 @@ import { ChromeMeasure } from "@/components/app/chrome-measure";
 import { LiveClock } from "@/components/app/live-clock";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth/actions";
+import { SetPinScreen } from "@/components/auth/set-pin-screen";
 import { requireProfile } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { InstallApp } from "@/components/app/install-app";
@@ -26,6 +27,9 @@ export default async function ProtectedAppLayout({
   if (profile?.role === "staff") {
     redirect("/staff");
   }
+
+  // After a WhatsApp code login, everyone chooses their own PIN first.
+  if (profile?.login_phone && !profile.pin_set_at) return <SetPinScreen name={profile.full_name} />;
 
   if (!profile) {
     return (

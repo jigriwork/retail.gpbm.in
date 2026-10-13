@@ -51,6 +51,14 @@ export async function propagateContactPhone(contactId: string, input: string) {
 
   const admin = createAdminClient();
   if (!admin) throw new Error("Phone propagation is unavailable.");
+  // The staff-list number is also the staff member's login: only the owner or a manager may move it.
+  const { data: login } = await admin.from("employee_auth_links").select("auth_user_id").eq("employee_contact_id", contact.id).maybeSingle();
+  const loginPhone = phone.employeePhone.replace(/\D/g, "").slice(-10);
+  if (login) {
+    if (!["owner", "manager"].includes(actor.profile.role)) throw new Error("Only the owner or a manager can change the number of a staff member who has a login.");
+    const { data: taken } = await admin.from("profiles").select("id").eq("login_phone", loginPhone).neq("id", login.auth_user_id).maybeSingle();
+    if (taken) throw new Error("Another user already logs in with this number.");
+  }
   // Supabase caps result sets. Walk pages so older batches are not silently
   // omitted when a store has more than 1,000 payslip rows.
   const matchingRows: { id: string; batch_id: string | null; staff_name: string | null }[] = [];
@@ -83,6 +91,13 @@ export async function propagateContactPhone(contactId: string, input: string) {
     const { error: generatedError } = await admin.from("generated_payslips").update(values)
       .eq("store_id", contact.store_id).in("payslip_row_id", rowIds);
     if (generatedError) throw new Error("Unable to update generated payslip phones.");
+  }
+  if (login) {
+    // A new number logs in with a WhatsApp code to that number, then a new PIN.
+    const { data: current } = await admin.from("profiles").select("login_phone").eq("id", login.auth_user_id).maybeSingle();
+    if (current?.login_phone !== loginPhone) {
+      await admin.from("profiles").update({ login_phone: loginPhone, phone_verified_at: null, pin_set_at: null }).eq("id", login.auth_user_id);
+    }
   }
   const { error: completedError } = await admin.from("audit_logs").insert({ ...audit, action: "employee_phone_updated" });
   if (completedError) throw new Error("Phone updated, but completion audit failed.");

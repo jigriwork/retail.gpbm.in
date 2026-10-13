@@ -5,6 +5,8 @@ import type { Msg91BrandConfig } from "@/lib/msg91/config";
 const apiBase = "https://control.msg91.com/api/v5/whatsapp";
 
 export type Msg91Component = {
+  /** Buttons (such as a login code's "Copy code") need subtype "url". */
+  subtype?: "url";
   type: "document" | "text";
   value: string;
 };
