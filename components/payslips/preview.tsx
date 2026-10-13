@@ -1,56 +1,85 @@
+import Image from "next/image";
+
+import { rupeesInWords, slipBrand, slipFooter, slipLines } from "@/lib/payslips/layout";
+import { formatMoney, formatMonth } from "@/lib/payslips/utils";
 import type { Tables } from "@/lib/supabase/database.types";
-import { formatMoney, formatMonth, storePayslipHeading } from "@/lib/payslips/utils";
 
 type Row = Tables<"payslip_rows">;
 
+/** On-screen copy of the salary slip; same content and layout as the PDF. */
 export function PayslipPreview({ row }: { row: Row }) {
-  const sundayVisible = (row.sunday_present ?? 0) > 0 || (row.sunday_pay_amount ?? 0) > 0;
-  const rows = [
-    ["Firm", row.firm_name],
-    ["Store Name", row.store_name],
-    ["Salary Month", formatMonth(row.salary_month)],
-    ["Name", row.staff_name ?? ""],
-    ["Salary Amount", formatMoney(row.salary_amount)],
-    ["Divided by Days", formatMoney(row.divided_by_days)],
-    ["Absent Days", String(row.abs_days ?? 0)],
-    ["Absent Amount", formatMoney(row.abs_amount)],
-    ...(sundayVisible
-      ? [
-          ["Sunday Pay Rate", formatMoney(row.sunday_pay)],
-          ["Sunday Present", String(row.sunday_present ?? 0)],
-          ["Sunday Pay Amount", formatMoney(row.sunday_pay_amount)],
-        ]
-      : []),
-    ["Advance Deduction", formatMoney(row.advance)],
-    ["Commission", formatMoney(row.commission)],
-    ["Net Payable", formatMoney(row.net_payable)],
+  const brand = slipBrand(row);
+  const lines = slipLines(row);
+  const month = formatMonth(row.salary_month);
+  const details: Array<[string, string]> = [
+    ["Employee", row.staff_name ?? "—"],
+    ["Store", row.store_name ?? brand.name],
+    ["Salary month", month],
+    ["Days in month", String(row.divided_by_days ?? "—")],
   ];
 
   return (
-    <div className="mx-auto max-w-2xl bg-white p-6 text-black shadow-sm print:shadow-none">
-      <h1 className="text-center text-2xl font-bold">{storePayslipHeading(row.store_name)}</h1>
-      <p className="mt-2 text-center text-sm">
-        {row.store_name} | {formatMonth(row.salary_month)}
-      </p>
-
-      <table className="mx-auto mt-8 w-full max-w-xl border-collapse text-sm">
-        <tbody>
-          {rows.map(([label, value]) => (
-            <tr key={label}>
-              <th className="w-2/5 border border-black bg-neutral-200 px-3 py-2 text-left font-bold text-red-700">
-                {label}
-              </th>
-              <td className="border border-black px-3 py-2 text-left text-black">{value}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <div className="mt-10 flex flex-wrap justify-center gap-4 text-xs">
-        <span>Prepared By __________</span>
-        <span>Verified By __________</span>
-        <span>Received By __________</span>
+    <div className="mx-auto max-w-2xl rounded-2xl bg-white p-5 text-slate-900 shadow-sm sm:p-8 print:shadow-none">
+      <div className="flex items-start justify-between gap-4">
+        {brand.logo ? (
+          <Image alt={brand.name} className="h-12 w-auto sm:h-14" height={56} src={brand.logo} width={160} />
+        ) : <p className="text-xl font-bold">{brand.name}</p>}
+        <div className="text-right">
+          <p className="text-lg font-bold tracking-wide text-indigo-800 sm:text-xl">SALARY SLIP</p>
+          <p className="text-sm text-slate-500">{month}</p>
+        </div>
       </div>
+      <div className="mt-4 border-b border-slate-200 pb-4">
+        {row.firm_name ? <p className="text-sm font-semibold">{row.firm_name}</p> : null}
+        {brand.address ? <p className="text-xs text-slate-500">{brand.address}</p> : null}
+      </div>
+
+      <dl className="mt-5 grid grid-cols-2 gap-4">
+        {details.map(([label, value]) => (
+          <div key={label}>
+            <dt className="text-[0.65rem] font-bold uppercase tracking-wide text-slate-500">{label}</dt>
+            <dd className="mt-0.5 font-semibold">{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        {([
+          ["Earnings", lines.earnings, lines.totalEarnings],
+          ["Deductions", lines.deductions, lines.totalDeductions],
+        ] as const).map(([title, entries, total]) => (
+          <table className="w-full border border-slate-200 text-sm" key={title}>
+            <thead>
+              <tr className="bg-slate-50 text-[0.7rem] uppercase tracking-wide text-slate-500">
+                <th className="px-3 py-2 text-left font-bold">{title}</th>
+                <th className="px-3 py-2 text-right font-bold">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.length ? entries.map(([label, value]) => (
+                <tr key={label}>
+                  <td className="px-3 py-2">{label}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatMoney(value)}</td>
+                </tr>
+              )) : <tr><td className="px-3 py-2 text-slate-400" colSpan={2}>None</td></tr>}
+              <tr className="border-t border-slate-200 font-bold">
+                <td className="px-3 py-2">Total {title.toLowerCase()}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatMoney(total)}</td>
+              </tr>
+            </tbody>
+          </table>
+        ))}
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-indigo-800 px-4 py-3 text-white">
+        <div className="min-w-0">
+          <p className="text-[0.7rem] font-bold uppercase tracking-wide text-indigo-200">Net payable</p>
+          <p className="text-xs">{rupeesInWords(lines.net)}</p>
+        </div>
+        <p className="text-2xl font-bold tabular-nums">{formatMoney(lines.net)}</p>
+      </div>
+
+      <p className="mt-8 border-t border-slate-200 pt-3 text-xs font-semibold">{slipFooter}</p>
     </div>
   );
 }

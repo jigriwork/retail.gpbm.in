@@ -36,7 +36,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ["xlsx", "jszip"],
-  outputFileTracingIncludes: { "/*": ["./lib/spreadsheets/worker.cjs", "./node_modules/xlsx/**/*", "./node_modules/jszip/**/*"] },
+  // Payslip PDFs embed the store logos from public/brands on the server.
+  outputFileTracingIncludes: { "/*": ["./lib/spreadsheets/worker.cjs", "./node_modules/xlsx/**/*", "./node_modules/jszip/**/*", "./public/brands/**/*"] },
   experimental: {
     proxyClientMaxBodySize: "128kb",
     serverActions: {
