@@ -12,6 +12,7 @@ import { saveReviewLink } from "@/lib/customers/actions";
 import { customerKpis, customerSegments, listCustomers } from "@/lib/customers/queries";
 import { whatsappBudgetSnapshot } from "@/lib/msg91/budget";
 import { deliveryCounts } from "@/lib/msg91/delivery-report";
+import { customerRef, maskMobile } from "@/lib/customers/ref";
 import { addDays, monthStart } from "@/lib/money/format";
 
 const pageSize = 50;
@@ -27,7 +28,8 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const segment = customerSegments.some((item) => item.value === params.segment) ? params.segment! : "recent";
   const search = (params.q ?? "").slice(0, 40);
   const page = Math.max(0, Number(params.page) || 0);
-  const limited = await isLimitedView(profile);
+  // Only the owner sees customers' numbers and spend.
+  const limited = (await isLimitedView(profile)) || !isOwner;
   const today = indiaToday();
   const [list, kpis] = await Promise.all([
     listCustomers(store?.id ?? null, segment, search, page, pageSize),
@@ -121,10 +123,12 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         {!store ? <p className="mb-3 text-xs text-muted">Choose a store above to send WhatsApp messages from that store.</p> : null}
         {list.rows.length ? (
           <div className="space-y-2">
-            {list.rows.map((customer) => (
-              <div className="rounded-2xl border border-border bg-background p-3 text-sm" key={customer.mobile}>
+            {list.rows.map((customer) => {
+              const ref = isOwner ? customer.mobile : customerRef(customer.mobile);
+              return (
+              <div className="rounded-2xl border border-border bg-background p-3 text-sm" key={ref}>
                 <div className="flex items-start justify-between gap-2">
-                  <Link className="min-w-0 truncate font-semibold underline" href={`/app/customers/${customer.mobile}${store ? `?store=${store.id}` : ""}`}>{customer.name ?? "No name"}</Link>
+                  <Link className="min-w-0 truncate font-semibold underline" href={`/app/customers/${ref}${store ? `?store=${store.id}` : ""}`}>{customer.name ?? "No name"}</Link>
                   <span className="flex shrink-0 flex-wrap justify-end gap-1">
                     {customer.do_not_contact ? <Badge tone="bad">Do not contact</Badge> : customer.marketing_consent ? <Badge tone="good">Offers OK</Badge> : <Badge>No consent</Badge>}
                     {customer.store_count > 1 ? <Badge>Both stores</Badge> : null}
@@ -132,7 +136,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                   </span>
                 </div>
                 <p className="mt-1 text-muted">
-                  {customer.mobile} · {customer.bills} bill{customer.bills === 1 ? "" : "s"}{limited ? "" : ` · ${money(customer.spend)}`}
+                  {isOwner ? customer.mobile : maskMobile(customer.mobile)} · {customer.bills} bill{customer.bills === 1 ? "" : "s"}{limited ? "" : ` · ${money(customer.spend)}`}
                 </p>
                 <p className="text-xs text-muted">
                   {customer.last_visit && customer.first_visit ? `Last visit ${day(customer.last_visit)} · first ${day(customer.first_visit)}` : "From an uploaded list · no purchase yet"}
@@ -143,16 +147,17 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                   const away = customer.last_visit === null || customer.last_visit < addDays(today, -60);
                   return (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {recent ? <WhatsAppButton kind="thank_you" label="Thank you + review" mobile={customer.mobile} storeId={store.id} /> : null}
-                    {customer.marketing_consent && recent ? <WhatsAppApiButton kind="thank_you" label="Send thank you via API" mobile={customer.mobile} storeId={store.id} /> : null}
-                    {customer.marketing_consent && away ? <WhatsAppButton kind="lapsed_offer" label="We miss you" mobile={customer.mobile} storeId={store.id} /> : null}
-                    {customer.marketing_consent && away ? <WhatsAppApiButton kind="lapsed_offer" label="Send we miss you via API" mobile={customer.mobile} storeId={store.id} /> : null}
-                    {customer.marketing_consent && segment === "birthday" ? <WhatsAppButton kind="birthday" label="Birthday wish" mobile={customer.mobile} storeId={store.id} /> : null}
+                    {isOwner && recent ? <WhatsAppButton kind="thank_you" label="Thank you + review" mobile={ref} storeId={store.id} /> : null}
+                    {customer.marketing_consent && recent ? <WhatsAppApiButton kind="thank_you" label="Send thank you via API" mobile={ref} storeId={store.id} /> : null}
+                    {isOwner && customer.marketing_consent && away ? <WhatsAppButton kind="lapsed_offer" label="We miss you" mobile={ref} storeId={store.id} /> : null}
+                    {customer.marketing_consent && away ? <WhatsAppApiButton kind="lapsed_offer" label="Send we miss you via API" mobile={ref} storeId={store.id} /> : null}
+                    {isOwner && customer.marketing_consent && segment === "birthday" ? <WhatsAppButton kind="birthday" label="Birthday wish" mobile={ref} storeId={store.id} /> : null}
                   </div>
                   );
                 })() : null}
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : <Empty>No customers in this list.</Empty>}
         <Pager base="/app/customers" page={page} pageSize={pageSize} query={{ store: scopeParam, segment, ...(search ? { q: search } : {}) }} total={list.total} />

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { retryDroppedMessages } from "@/lib/msg91/customer-send";
 import { syncWhatsAppStatuses } from "@/lib/msg91/log-sync";
+import { runReceiptBackfill } from "@/lib/msg91/receipt-backfill";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -17,7 +18,9 @@ async function handle(request: Request) {
   try {
     const sync = await syncWhatsAppStatuses({ force: true });
     const retry = sync.ok ? await retryDroppedMessages() : { retried: 0, sent: 0, skipped: "sync_failed" };
-    return NextResponse.json({ retry, sync });
+    // One-time: once a store's purchase receipt is approved, test it to the owner and resend failed thank-yous.
+    const receipts = await runReceiptBackfill().catch((error) => ({ error: error instanceof Error ? error.message : "failed" }));
+    return NextResponse.json({ receipts, retry, sync });
   } catch (error) {
     console.error("whatsapp_sync_failed", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "WhatsApp sync failed." }, { status: 500 });

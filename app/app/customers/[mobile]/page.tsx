@@ -12,6 +12,7 @@ import { isLimitedView } from "@/lib/auth/view";
 import { saveCustomerProfile } from "@/lib/customers/actions";
 import { customerContactsFor, customerMessagesFor, customerProfile, customerPurchases } from "@/lib/customers/queries";
 import { deliveriesTo } from "@/lib/msg91/delivery-report";
+import { customerRef, maskMobile, resolveCustomerRef } from "@/lib/customers/ref";
 import { addDays } from "@/lib/money/format";
 
 const kindLabels: Record<string, string> = { thank_you: "Thank you + review", lapsed_offer: "We miss you", birthday: "Birthday wish", custom: "Message" };
@@ -19,11 +20,16 @@ const kindLabels: Record<string, string> = { thank_you: "Thank you + review", la
 export default async function CustomerPage({ params, searchParams }: { params: Promise<{ mobile: string }>; searchParams: Promise<{ store?: string }> }) {
   const { profile } = await requireProfile();
   if (!profile || !["owner", "manager"].includes(profile.role)) return <AccessDenied message="Customers are visible to the owner and store managers." />;
-  const { mobile } = await params;
-  if (!/^[6-9]\d{9}$/.test(mobile)) return <AccessDenied message="Customer not found." />;
-  const [purchases, details, messages, stores, limited, query, contacts] = await Promise.all([
+  // The address carries the number for the owner and an encrypted reference for everyone else.
+  const { mobile: param } = await params;
+  const mobile = resolveCustomerRef(decodeURIComponent(param)) ?? "";
+  if (!mobile) return <AccessDenied message="Customer not found." />;
+  const isOwner = profile.role === "owner";
+  const ref = isOwner ? mobile : customerRef(mobile);
+  const [purchases, details, messages, stores, limitedView, query, contacts] = await Promise.all([
     customerPurchases(mobile), customerProfile(mobile), customerMessagesFor(mobile), getAccessibleStores(profile), isLimitedView(profile), searchParams, customerContactsFor(mobile),
   ]);
+  const limited = limitedView || !isOwner;
   if (!purchases.length && !contacts.length) return <AccessDenied message="Customer not found, or they are not a customer of your store." />;
   const deliveries = profile.role === "owner" ? await deliveriesTo(mobile) : [];
   const store = stores.find((item) => item.id === query.store)
@@ -47,25 +53,25 @@ export default async function CustomerPage({ params, searchParams }: { params: P
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <Link className="text-sm font-medium text-muted" href={`/app/customers${store ? `?store=${store.id}` : ""}`}>← Customers</Link>
         <h1 className="mt-2 text-3xl font-semibold">{name ?? "No name"}</h1>
-        <p className="mt-2 text-sm text-muted">{mobile} · {bills.size} bill{bills.size === 1 ? "" : "s"}{limited ? "" : ` · ${money(total)}`}{lastVisit ? ` · last visit ${shortDate(lastVisit)}` : " · from an uploaded list, no purchase yet"}</p>
+        <p className="mt-2 text-sm text-muted">{isOwner ? mobile : maskMobile(mobile)} · {bills.size} bill{bills.size === 1 ? "" : "s"}{limited ? "" : ` · ${money(total)}`}{lastVisit ? ` · last visit ${shortDate(lastVisit)}` : " · from an uploaded list, no purchase yet"}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {details?.do_not_contact ? <Badge tone="bad">Do not contact</Badge> : details?.marketing_consent ? <Badge tone="good">Agreed to offers {details.consent_at ? `· ${shortDate(details.consent_at.slice(0, 10))}` : ""}</Badge> : <Badge>No offer consent</Badge>}
           {details?.withdrawn_at && !details.marketing_consent ? <Badge>Withdrew {shortDate(details.withdrawn_at.slice(0, 10))}</Badge> : null}
         </div>
         {store && !details?.do_not_contact ? (
           <div className="mt-3 flex flex-wrap gap-2">
-            {lastVisit && lastVisit >= addDays(today, -3) ? <WhatsAppButton kind="thank_you" label="Thank you + review" mobile={mobile} storeId={store.id} /> : null}
-            {details?.marketing_consent && lastVisit && lastVisit >= addDays(today, -3) ? <WhatsAppApiButton kind="thank_you" label="Send thank you via API" mobile={mobile} storeId={store.id} /> : null}
-            {details?.marketing_consent ? <WhatsAppButton kind="lapsed_offer" label="We miss you" mobile={mobile} storeId={store.id} /> : null}
-            {details?.marketing_consent ? <WhatsAppApiButton kind="lapsed_offer" label="Send we miss you via API" mobile={mobile} storeId={store.id} /> : null}
-            {details?.marketing_consent && details.birthday ? <WhatsAppButton kind="birthday" label="Birthday wish" mobile={mobile} storeId={store.id} /> : null}
+            {isOwner && lastVisit && lastVisit >= addDays(today, -3) ? <WhatsAppButton kind="thank_you" label="Thank you + review" mobile={ref} storeId={store.id} /> : null}
+            {details?.marketing_consent && lastVisit && lastVisit >= addDays(today, -3) ? <WhatsAppApiButton kind="thank_you" label="Send thank you via API" mobile={ref} storeId={store.id} /> : null}
+            {isOwner && details?.marketing_consent ? <WhatsAppButton kind="lapsed_offer" label="We miss you" mobile={ref} storeId={store.id} /> : null}
+            {details?.marketing_consent ? <WhatsAppApiButton kind="lapsed_offer" label="Send we miss you via API" mobile={ref} storeId={store.id} /> : null}
+            {isOwner && details?.marketing_consent && details.birthday ? <WhatsAppButton kind="birthday" label="Birthday wish" mobile={ref} storeId={store.id} /> : null}
           </div>
         ) : null}
       </section>
 
       <Panel description="Record consent only when the customer agrees to receive offers on WhatsApp. They can withdraw any time; untick it then." title="Customer details & consent">
         <ActionForm action={saveCustomerProfile} className="grid gap-4 sm:grid-cols-2" submitLabel="Save">
-          <input name="mobile" type="hidden" value={mobile} />
+          <input name="mobile" type="hidden" value={ref} />
           <Field label="Name"><input className={inputClass} defaultValue={details?.preferred_name ?? ""} name="name" placeholder="As the customer likes to be called" /></Field>
           <Field label="Birthday"><input className={inputClass} defaultValue={details?.birthday ?? ""} name="birthday" type="date" /></Field>
           <Field label="Anniversary"><input className={inputClass} defaultValue={details?.anniversary ?? ""} name="anniversary" type="date" /></Field>

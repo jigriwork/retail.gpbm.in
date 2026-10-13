@@ -7,6 +7,7 @@ import { canAccessStore, requireOwner, requireProfile } from "@/lib/auth/session
 import { customerMessage, type MessageKind, messageKinds, whatsAppUrl } from "@/lib/customers/messages";
 import { retryDroppedMessages, sendCustomerTemplate, type ApiMessageKind } from "@/lib/msg91/customer-send";
 import { syncWhatsAppStatuses } from "@/lib/msg91/log-sync";
+import { resolveCustomerRef } from "@/lib/customers/ref";
 import { createClient } from "@/lib/supabase/server";
 
 type State = AccountsActionState;
@@ -25,7 +26,7 @@ async function staffProfile() {
 
 export async function saveCustomerProfile(_state: State, formData: FormData): Promise<State> {
   if (!(await staffProfile())) return { ok: false, message: "Your account cannot edit customers." };
-  const mobile = text(formData, "mobile", 10);
+  const mobile = resolveCustomerRef(text(formData, "mobile", 120)) ?? "";
   if (!isMobile(mobile)) return { ok: false, message: "Customer not found." };
   const consent = formData.get("consent") === "on";
   const source = text(formData, "consentSource", 20) || null;
@@ -42,8 +43,11 @@ export async function saveCustomerProfile(_state: State, formData: FormData): Pr
 }
 
 /** Logs the message and returns the WhatsApp link to open; refuses offers without consent. */
-export async function prepareCustomerMessage(mobile: string, storeId: string, kind: MessageKind) {
+export async function prepareCustomerMessage(ref: string, storeId: string, kind: MessageKind) {
   const profile = await staffProfile();
+  // Opening WhatsApp on the phone shows the number, so only the owner uses these buttons.
+  if (profile?.role !== "owner") return { ok: false as const, message: "Use “Send via API” instead." };
+  const mobile = resolveCustomerRef(ref) ?? "";
   if (!profile || !isMobile(mobile) || !messageKinds.some((item) => item.kind === kind) || !(await canAccessStore(storeId, profile))) {
     return { ok: false as const, message: "You cannot message this customer." };
   }
@@ -80,8 +84,9 @@ export async function refreshWhatsAppStatus(): Promise<State> {
 }
 
 /** "Send via WhatsApp API": sends the approved template to one customer through MSG91. */
-export async function sendCustomerViaApi(mobile: string, storeId: string, kind: ApiMessageKind) {
+export async function sendCustomerViaApi(ref: string, storeId: string, kind: ApiMessageKind) {
   const profile = await staffProfile();
+  const mobile = resolveCustomerRef(ref) ?? "";
   if (!profile || !isMobile(mobile) || !["thank_you", "lapsed_offer"].includes(kind) || !(await canAccessStore(storeId, profile))) {
     return { ok: false, message: "You cannot message this customer." };
   }
