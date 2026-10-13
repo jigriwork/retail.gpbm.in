@@ -6,7 +6,9 @@ import { Notice, Panel } from "@/components/accounts/fields";
 import { DeliveryList, DeliveryTiles } from "@/components/customers/whatsapp-delivery";
 import { money } from "@/lib/accounts/format";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
-import { refreshWhatsAppStatus } from "@/lib/customers/actions";
+import { confirmReceipt, refreshWhatsAppStatus, resendReceiptTest } from "@/lib/customers/actions";
+import { getMsg91Config } from "@/lib/msg91/config";
+import { receiptStage } from "@/lib/msg91/receipt-status";
 import { whatsappBudgetSnapshot } from "@/lib/msg91/budget";
 import { deliveryCounts, recentDeliveries } from "@/lib/msg91/delivery-report";
 import { syncWhatsAppStatuses } from "@/lib/msg91/log-sync";
@@ -18,6 +20,10 @@ export default async function CustomerWhatsAppPage({ searchParams }: { searchPar
   const [stores, params] = await Promise.all([getAccessibleStores(profile), searchParams, syncWhatsAppStatuses().catch(() => null)]);
   const store = stores.find((item) => item.id === params.store) ?? null;
   const shown = store ? [store] : stores;
+  const receipts = await Promise.all(stores.map(async (item) => {
+    const config = item.code === "GP" || item.code === "BM" ? getMsg91Config(item.code) : null;
+    return { item, stage: config ? await receiptStage(config, item.id) : null };
+  }));
   const [budgets, totals, deliveries] = await Promise.all([
     Promise.all(shown.map(async (item) => ({ item, snapshot: await whatsappBudgetSnapshot(item.id) }))),
     Promise.all(shown.map(async (item) => ({ item, counts: await deliveryCounts(item.id) }))),
@@ -51,6 +57,28 @@ export default async function CustomerWhatsAppPage({ searchParams }: { searchPar
       </nav>
 
       <Notice tone="info">Statuses are read from MSG91&apos;s own WhatsApp logs every time this page opens (MSG91 keeps them about 4 days). “MSG91 has no record” means MSG91 accepted the message but never sent it.</Notice>
+
+      <Panel description="The utility receipt (name, date, bill no., exchange rule, “Rate us on Google” button) replaces the marketing thank-you once WhatsApp approves it and you check the test on your phone." title="Purchase receipt">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {receipts.filter(({ stage }) => stage).map(({ item, stage }) => (
+            <div className="space-y-3 rounded-2xl border border-border bg-background p-4 text-sm" key={item.id}>
+              <p className="font-semibold">{item.name}</p>
+              <p className="text-muted">
+                {!stage!.approved ? "⏳ Waiting for WhatsApp to approve the template."
+                  : !stage!.testSent ? "✅ Approved. A test is being sent to your WhatsApp."
+                  : !stage!.confirmed ? "📱 Test sent to your WhatsApp. Tap “Rate us on Google” in it: if your Google review page opens, start sending."
+                  : "✅ Live: customers get the receipt after each sales upload."}
+              </p>
+              {stage!.approved && stage!.testSent && !stage!.confirmed ? (
+                <div className="flex flex-wrap gap-2">
+                  <ActionForm action={confirmReceipt} className="flex" submitLabel="Looks right — start sending"><input name="brand" type="hidden" value={item.code} /></ActionForm>
+                  <ActionForm action={resendReceiptTest} className="flex" submitLabel="Send test again" variant="secondary"><input name="brand" type="hidden" value={item.code} /></ActionForm>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </Panel>
 
       <Panel
         action={<ActionForm action={refreshWhatsAppStatus} className="flex items-center gap-2" submitLabel="Check MSG91 now" variant="secondary"><span /></ActionForm>}

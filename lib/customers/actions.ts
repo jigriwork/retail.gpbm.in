@@ -120,3 +120,35 @@ export async function importCustomerRows(batchId: string, rows: Array<{ m: strin
   const result = data as { new: number; received: number; valid: number };
   return { ok: true as const, ...result };
 }
+
+/** Owner: send the sample purchase receipt to their own WhatsApp again. */
+export async function resendReceiptTest(_state: State, formData: FormData): Promise<State> {
+  if (!(await requireOwner())) return { ok: false, message: "Only the owner." };
+  const brand = text(formData, "brand", 2) === "BM" ? "BM" : "GP";
+  const { sendReceiptTest } = await import("@/lib/msg91/receipt-backfill");
+  const result = await sendReceiptTest(brand);
+  revalidatePath("/app/customers/whatsapp");
+  return result;
+}
+
+/** Owner checked the test (the button opened the Google review page): start using the receipt. */
+export async function confirmReceipt(_state: State, formData: FormData): Promise<State> {
+  const owner = await requireOwner();
+  if (!owner) return { ok: false, message: "Only the owner." };
+  const brand = text(formData, "brand", 2) === "BM" ? "BM" : "GP";
+  const { getMsg91Config } = await import("@/lib/msg91/config");
+  const { receiptStage } = await import("@/lib/msg91/receipt-status");
+  const config = getMsg91Config(brand);
+  const supabase = await createClient();
+  const { data: store } = await supabase.from("stores").select("id").eq("code", brand).maybeSingle();
+  if (!config || !store) return { ok: false, message: "Store not configured." };
+  const stage = await receiptStage(config, store.id);
+  if (!stage.approved || !stage.testSent) return { ok: false, message: "Wait for the test receipt first." };
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  await createAdminClient()?.from("audit_logs").insert({
+    action: "receipt_confirmed", actor_id: owner.profile.id, actor_role: "owner", entity_id: null, entity_type: "whatsapp_deliveries",
+    metadata: { template: stage.template }, store_id: store.id,
+  });
+  revalidatePath("/app/customers/whatsapp");
+  return { ok: true, message: "Started. Receipts go with the next sales upload; failed thank-yous are resent within 30 minutes (9 AM–9 PM)." };
+}

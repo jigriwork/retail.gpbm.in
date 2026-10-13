@@ -6,6 +6,7 @@ import { getMsg91TemplateStatus, sendMsg91Template, type Msg91Component } from "
 import { getMsg91Config, type Msg91BrandConfig } from "@/lib/msg91/config";
 import { cleanName } from "@/lib/msg91/customer-automation";
 import { claimWhatsAppDeliveries, finishWhatsAppDeliveries } from "@/lib/msg91/deliveries";
+import { liveReceiptTemplate } from "@/lib/msg91/receipt-status";
 import { createAdminClient } from "@/lib/supabase/server";
 
 // One customer message through MSG91 (the "Send via WhatsApp API" buttons), and
@@ -70,8 +71,8 @@ export async function sendCustomerTemplate(input: { initiatedBy: string; kind: A
 
   // A thank-you uses the utility purchase receipt once WhatsApp has approved it.
   let receipt: { billNo: string; day: string } | undefined;
-  const receiptTemplate = process.env[`MSG91_${config.brand}_RECEIPT_TEMPLATE`]?.trim() || `${config.brand.toLowerCase()}_purchase_receipt_v1`;
-  if (input.kind === "thank_you" && purchase?.sale_date && (await getMsg91TemplateStatus(config, receiptTemplate)) === "approved") {
+  const receiptTemplate = input.kind === "thank_you" && purchase?.sale_date ? await liveReceiptTemplate(config, store.id) : null;
+  if (receiptTemplate && purchase?.sale_date) {
     template = receiptTemplate;
     receipt = {
       billNo: purchase.bill_no?.trim() || "—",

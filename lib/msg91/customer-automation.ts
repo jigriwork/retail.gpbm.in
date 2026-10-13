@@ -5,6 +5,7 @@ import { whatsappBudgetAllowance, whatsappUnitCost } from "@/lib/msg91/budget";
 import { getMsg91TemplateStatus, sendMsg91Template, type Msg91Component, type Msg91Recipient } from "@/lib/msg91/client";
 import { getMsg91Config } from "@/lib/msg91/config";
 import { claimWhatsAppDeliveries, finishWhatsAppDeliveries } from "@/lib/msg91/deliveries";
+import { liveReceiptTemplate } from "@/lib/msg91/receipt-status";
 import { createAdminClient } from "@/lib/supabase/server";
 
 type CustomerSale = {
@@ -147,9 +148,9 @@ export async function sendAutomaticCustomerThanks(input: {
   // The utility purchase receipt (name, date, bill no., exchange rule, review
   // button) replaces the marketing thank-you once WhatsApp approves it: about
   // 7x cheaper and not held back by WhatsApp's marketing limits.
-  const receiptTemplate = process.env[`MSG91_${config.brand}_RECEIPT_TEMPLATE`]?.trim() || `${config.brand.toLowerCase()}_purchase_receipt_v1`;
-  const useReceipt = (await getMsg91TemplateStatus(config, receiptTemplate)) === "approved";
-  const templateName = useReceipt ? receiptTemplate : config.customerTemplate;
+  const receiptTemplate = await liveReceiptTemplate(config, input.storeId);
+  const useReceipt = Boolean(receiptTemplate);
+  const templateName = receiptTemplate ?? config.customerTemplate;
   const saleDay = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${input.reportDate}T00:00:00Z`));
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
