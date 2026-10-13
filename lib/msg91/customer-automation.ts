@@ -137,7 +137,9 @@ export async function sendAutomaticCustomerThanks(input: {
     }
     return [{
       billNo: customer.billNo,
-      dedupeKey: `customer:${input.reportId}:${recipient}`,
+      // One message per customer, store and sales day: uploading a corrected
+      // report for the same day never messages the same customers again.
+      dedupeKey: `customer:${input.storeId}:${input.reportDate}:${recipient}`,
       name: cleanName(profile.preferred_name ?? customer.name),
       recipient,
     }];
@@ -164,8 +166,15 @@ export async function sendAutomaticCustomerThanks(input: {
     .gte("created_at", thirtyDaysAgo);
   if (recentError) return { ...result, failed: eligible.length, detail: "Recent customer messages could not be checked." };
   const recentlyMessaged = new Set((recentDeliveries ?? []).map((delivery) => delivery.recipient));
-  // A receipt goes with every purchase; the marketing thank-you at most once a month.
-  const frequencyEligible = useReceipt ? eligible : eligible.filter((customer) => !recentlyMessaged.has(customer.recipient));
+  // Already messaged for this store and sales day (e.g. a corrected report uploaded again)?
+  const { data: sameDay } = await admin.from("whatsapp_deliveries").select("recipient")
+    .eq("store_id", input.storeId).eq("kind", "customer_thank_you").eq("metadata->>report_date", input.reportDate)
+    .in("recipient", eligible.map((customer) => customer.recipient))
+    .in("status", ["processing", "accepted", "delivered", "read"]);
+  const messagedToday = new Set((sameDay ?? []).map((row) => row.recipient));
+  // A receipt goes with every purchase day; the marketing thank-you at most once a month.
+  const frequencyEligible = eligible.filter((customer) => !messagedToday.has(customer.recipient)
+    && (useReceipt || !recentlyMessaged.has(customer.recipient)));
   result.duplicates += eligible.length - frequencyEligible.length;
   if (!frequencyEligible.length) return result;
 
