@@ -8,7 +8,7 @@ import { propagateContactPhone, validatedEmployeePhone } from "@/lib/employees/p
 import { normalizeStaffName, staffNameKey } from "@/lib/employees/utils";
 import { uploadSalesReport } from "@/lib/reports/sales-actions";
 import { uploadStockReport } from "@/lib/reports/stock-actions";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 type State = AccountsActionState;
 type UploadState = { ok: boolean; message: string };
@@ -29,6 +29,17 @@ export async function cashierUploadStock(_state: UploadState, formData: FormData
   return { ok: result.ok, message: result.ok ? "Stock report uploaded. Thank you." : result.message };
 }
 
+/** Name of an active staff-list entry with this 10-digit number, if any (same person entered twice). */
+async function staffWithPhone(phone: string) {
+  const admin = createAdminClient();
+  if (!admin || !/^[6-9]\d{9}$/.test(phone)) return null;
+  const { data } = await admin.from("employee_contacts").select("staff_name,phone,whatsapp_phone,normalized_phone")
+    .eq("is_active", true).or(`phone.ilike.%${phone},whatsapp_phone.ilike.%${phone},normalized_phone.ilike.%${phone}`).limit(5);
+  const match = (data ?? []).find((row) => [row.phone, row.whatsapp_phone, row.normalized_phone]
+    .some((value) => String(value ?? "").replace(/\D/g, "").slice(-10) === phone));
+  return match?.staff_name ?? null;
+}
+
 export async function requestStaffMember(_state: State, formData: FormData): Promise<State> {
   const { profile } = await requireProfile();
   const storeId = text(formData, "storeId", 60);
@@ -45,6 +56,8 @@ export async function requestStaffMember(_state: State, formData: FormData): Pro
   }
   const joining = text(formData, "joiningDate", 10);
   const supabase = await createClient();
+  const existing = await staffWithPhone(phone);
+  if (existing) return { ok: false, message: `${existing} is already in the staff list with this number. No new staff needed.` };
   const { error } = await supabase.from("staff_requests").insert({
     store_id: storeId, staff_name: name, phone, designation: text(formData, "designation", 60) || null,
     joining_date: /^\d{4}-\d{2}-\d{2}$/.test(joining) ? joining : null, note: text(formData, "note", 300) || null, requested_by: profile.id,
@@ -80,6 +93,8 @@ export async function decideStaffRequest(_state: State, formData: FormData): Pro
   const { data: existing } = await supabase.from("employee_contacts").select("id")
     .eq("store_id", request.store_id).eq("normalized_staff_name", staffNameKey(request.staff_name)).maybeSingle();
   if (existing) return { ok: false, message: `${request.staff_name} already exists at this store. Reject the request or rename the staff member.` };
+  const samePhone = await staffWithPhone(request.phone);
+  if (samePhone) return { ok: false, message: `${samePhone} already has this number in the staff list. This looks like the same person: reject the request.` };
   const { data: contact, error } = await supabase.from("employee_contacts").insert({
     created_by: owner.profile.id, is_active: true, normalized_staff_name: staffNameKey(request.staff_name),
     staff_name: request.staff_name, store_id: request.store_id, designation: request.designation,
