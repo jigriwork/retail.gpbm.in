@@ -39,7 +39,14 @@ export function brandForNumber(integratedNumber: string | null | undefined): Msg
 
 /** The text a customer sent: typed text, a tapped button, or a label for media. */
 export function inboundBody(row: InboundLogRow) {
+  const parsed = parseContent(row);
+  // MSG91 escapes line breaks inside the text twice.
+  return { ...parsed, body: parsed.body.replace(/\\n/g, "\n").replace(/\\t/g, " ").slice(0, 4096) };
+}
+
+function parseContent(row: InboundLogRow) {
   const type = (row.messageType ?? "text").toLowerCase();
+  if (type === "unsupported") return { body: "Message WhatsApp could not show (open WhatsApp on the phone)", type };
   let content: unknown = row.content ?? "";
   if (typeof content === "string" && /^\s*[{[]/.test(content)) {
     try {
@@ -52,6 +59,7 @@ export function inboundBody(row: InboundLogRow) {
   const record = (content ?? {}) as Record<string, unknown>;
   const pick = (value: unknown) => (value && typeof value === "object" ? value as Record<string, unknown> : {});
   if (typeof record.text === "string") return { body: record.text.slice(0, 4096), type };
+  if (typeof record.reaction === "string") return { body: `Reacted ${record.reaction}`, type: "reaction" };
   const button = pick(record.button);
   if (typeof button.text === "string") return { body: button.text.slice(0, 4096), type: "button" };
   for (const [key, label] of Object.entries(mediaLabels)) {
