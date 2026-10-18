@@ -1,6 +1,6 @@
 {
   "name": "retail.gpbm.in",
-  "version": "10.15.1",
+  "version": "10.15.2",
   "private": true,
   "scripts": {
     "dev": "next dev",

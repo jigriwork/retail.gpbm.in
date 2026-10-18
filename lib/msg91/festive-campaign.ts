@@ -6,16 +6,19 @@ import { cleanName } from "@/lib/msg91/customer-automation";
 import { claimWhatsAppDeliveries, finishWhatsAppDeliveries } from "@/lib/msg91/deliveries";
 import { createAdminClient } from "@/lib/supabase/server";
 
-// Brand Mark festive offer (owner, 18 Oct): half of the list was sent on
-// 18 Oct, the rest goes from the 30-minute WhatsApp job on 19 Oct from 10 AM.
-// The list lives in audit_logs (action festive_campaign_list). The whole
-// campaign never books more than ₹1,500; failures MSG91 confirmed are not counted.
+// Brand Mark festive offer (owner, 18 Oct): 1,100 were sent on 18 Oct; on
+// 19 Oct the 30-minute WhatsApp job keeps sending down the list from 10 AM.
+// The list lives in audit_logs (action festive_campaign_list). The owner wants
+// the whole ₹1,500 used: failures MSG91 confirmed are not counted, so their
+// money goes to the next customers on later runs, until the budget is spent.
 
 const template = "bm_festive_welcome_v1";
 const sendDay = "2026-10-19";
 const budgetInr = 1500;
 const rateInr = 0.8631;
 const batchesPerRun = 10;
+// Meta caps how many new people one number can message a day.
+const dailyAttemptCap = 2500;
 const ownerNumber = "917809790000";
 
 const text = (value: string): Msg91Component => ({ type: "text", value });
@@ -35,13 +38,14 @@ export async function runFestiveCampaign() {
   const config = getMsg91Config("BM");
   if (!listRow?.store_id || !listRow.actor_id || !meta?.recipients?.length || !config) return { skipped: "no_list" };
 
-  const { data: booked, error } = await admin.from("whatsapp_deliveries").select("recipient,status")
+  const { data: booked, error } = await admin.from("whatsapp_deliveries").select("recipient,status,created_at")
     .eq("kind", "customer_campaign").eq("template_name", template).limit(10000);
   if (error) return { skipped: "deliveries_unavailable" };
   const already = new Set((booked ?? []).map((row) => row.recipient));
   const slots = Math.floor((budgetInr - (booked ?? []).filter((row) => row.status !== "failed").length * rateInr + 1e-8) / rateInr);
+  const attemptedToday = (booked ?? []).filter((row) => row.created_at >= `${sendDay}T04:30:00Z`).length;
   const todo = meta.recipients.map((row) => ({ name: cleanName(row.name), recipient: `91${row.mobile}` }))
-    .filter((row) => !already.has(row.recipient)).slice(0, Math.max(0, slots));
+    .filter((row) => !already.has(row.recipient)).slice(0, Math.max(0, Math.min(slots, dailyAttemptCap - attemptedToday)));
 
   let sent = 0;
   let stopped: string | null = null;
@@ -61,7 +65,11 @@ export async function runFestiveCampaign() {
     sent += claimed.length;
   }
 
-  const finished = stopped !== null || todo.length <= batchesPerRun * 50;
+  // Done at the day's last run (8:30 PM), or when the list or Meta's daily cap
+  // runs out; until then, each run spends money freed by confirmed failures.
+  const listLeft = meta.recipients.filter((row) => !already.has(`91${row.mobile}`)).length - sent;
+  const lastRun = india.getUTCHours() === 20 && india.getUTCMinutes() >= 25;
+  const finished = stopped !== null || lastRun || listLeft <= 0 || attemptedToday + sent >= dailyAttemptCap;
   if (finished) {
     const { count } = await admin.from("whatsapp_deliveries").select("id", { count: "exact", head: true })
       .eq("kind", "customer_campaign").eq("template_name", template).neq("status", "failed");
@@ -74,8 +82,8 @@ export async function runFestiveCampaign() {
       await sendMsg91Template(gp, "gpbm_owner_night_plan_v2", [{ to: ownerNumber, components: {
         body_1: text("Brand Mark festive offer, day 2"),
         body_2: text(stopped ? `⚠️ Sending stopped: MSG91 refused a batch (${stopped})` : "✅ Day 2 messages sent automatically"),
-        body_3: text(`Total messages booked so far (both days, not failed): ${count ?? "?"}`),
-        body_4: text(`Budget: within ₹${budgetInr}`), body_5: text("—"), body_6: text("—"), body_7: text("—"), body_8: text("—"),
+        body_3: text(`Messages that went through, both days: ${count ?? "?"}`),
+        body_4: text(`Spent about ₹${Math.round((count ?? 0) * rateInr)} of ₹${budgetInr}`), body_5: text("—"), body_6: text("—"), body_7: text("—"), body_8: text("—"),
         body_9: text("Counter staff: show message = flat 10% off or free gift, till 8 Nov"),
         body_10: text("https://retail.gpbm.in/app/customers/whatsapp"),
       } }]);
