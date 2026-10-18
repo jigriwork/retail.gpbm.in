@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { retryDroppedMessages } from "@/lib/msg91/customer-send";
+import { runFestiveCampaign } from "@/lib/msg91/festive-campaign";
 import { syncWhatsAppStatuses } from "@/lib/msg91/log-sync";
 import { runReceiptBackfill } from "@/lib/msg91/receipt-backfill";
 
@@ -20,7 +21,9 @@ async function handle(request: Request) {
     const retry = sync.ok ? await retryDroppedMessages() : { retried: 0, sent: 0, skipped: "sync_failed" };
     // One-time: once a store's purchase receipt is approved, test it to the owner and resend failed thank-yous.
     const receipts = await runReceiptBackfill().catch((error) => ({ error: error instanceof Error ? error.message : "failed" }));
-    return NextResponse.json({ receipts, retry, sync });
+    // One-off: day 2 of the Brand Mark festive offer (19 Oct, from 10 AM).
+    const festive = sync.ok ? await runFestiveCampaign().catch((error) => ({ error: error instanceof Error ? error.message : "failed" })) : { skipped: "sync_failed" };
+    return NextResponse.json({ festive, receipts, retry, sync });
   } catch (error) {
     console.error("whatsapp_sync_failed", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "WhatsApp sync failed." }, { status: 500 });
