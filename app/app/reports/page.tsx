@@ -8,6 +8,10 @@ import {
   FileText,
   FileSpreadsheet,
   LineChart,
+  Megaphone,
+  MessageCircle,
+  MessageSquareText,
+  Moon,
   PackageSearch,
   Phone,
   ShieldAlert,
@@ -23,6 +27,7 @@ import { SalesReportList } from "@/components/reports/sales-report-list";
 import { MissingStaffSalesWarning, SuspiciousSalesReportWarning } from "@/components/reports/sales-report-warnings";
 import { getAccessibleStores, requireProfile } from "@/lib/auth/session";
 import { isLimitedView } from "@/lib/auth/view";
+import { inboxBrands, unreadChatCount } from "@/lib/msg91/inbox-queries";
 import {
   getRecentSalesReports,
   getStoreSalesStatuses,
@@ -40,20 +45,96 @@ function formatMoney(value?: number) {
   }).format(value ?? 0);
 }
 
+type Tag = { label: string; tone?: "good" | "bad" | "warn" | "muted" };
+
+const tagTones = {
+  bad: "border-danger/30 bg-danger/5 text-danger",
+  good: "border-success/30 bg-success/5 text-success",
+  muted: "border-border text-muted",
+  warn: "border-accent/40 bg-accent-soft text-accent-ink",
+};
+
+function Tags({ tags }: { tags: Tag[] }) {
+  if (!tags.length) return null;
+  return (
+    <span className="mt-3 flex flex-wrap gap-1">
+      {tags.map((tag) => (
+        <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${tagTones[tag.tone ?? "muted"]}`} key={tag.label}>{tag.label}</span>
+      ))}
+    </span>
+  );
+}
+
+function ReportTile({ children, description, href, icon: Icon, tags = [], title }: {
+  children?: React.ReactNode;
+  description: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tags?: Tag[];
+  title: string;
+}) {
+  return (
+    <Link className="flex flex-col rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary" href={href}>
+      <span className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+          <Icon className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">{title}</span>
+          <span className="mt-0.5 block text-sm leading-5 text-muted">{description}</span>
+        </span>
+      </span>
+      <Tags tags={tags} />
+      {children}
+    </Link>
+  );
+}
+
+/** A titled group of report tiles; a group with nothing visible for this person is left out. */
+function Group({ children, title }: { children: React.ReactNode; title: string }) {
+  const items = (Array.isArray(children) ? children : [children]).filter(Boolean);
+  if (!items.length) return null;
+  return (
+    <section className="space-y-3">
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{items}</div>
+    </section>
+  );
+}
+
+function StoreStatuses({ rows }: { rows: Array<{ done: boolean; id: string; name: string }> }) {
+  return (
+    <span className="mt-3 block space-y-2">
+      {rows.map((row) => (
+        <span className="flex items-center justify-between gap-3 text-sm" key={row.id}>
+          <span className="font-medium">{row.name}</span>
+          <span className={`rounded-full border border-border px-3 py-1 text-xs font-semibold ${row.done ? "text-success" : "text-danger"}`}>
+            {row.done ? "Uploaded" : "Missing"}
+          </span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 export default async function ReportsPage() {
   const { profile } = await requireProfile();
   const stores = await getAccessibleStores(profile);
-  const [statuses, recentReports, salaryOverview, stockOverview] = await Promise.all([
+  const brands = await inboxBrands(profile);
+  const [statuses, recentReports, salaryOverview, stockOverview, unreadChats] = await Promise.all([
     getStoreSalesStatuses(stores),
     getRecentSalesReports(6),
     getSalaryAttendanceOverview(stores),
     getStockOverview(stores),
+    unreadChatCount(brands).catch(() => 0),
   ]);
   const missingStores = statuses.filter((status) => !status.yesterdayReport);
   const limited = await isLimitedView(profile);
+  const owner = profile?.role === "owner";
+  const ownerTag: Tag = { label: "Owner only", tone: "warn" };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <ImportStatus />
       <section className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
         <p className="text-sm font-medium text-muted">Reports</p>
@@ -63,7 +144,7 @@ export default async function ReportsPage() {
         </p>
       </section>
 
-      {profile?.role === "owner" ? (
+      {owner ? (
         <Link
           className="flex items-center gap-4 rounded-[1.35rem] border border-accent/40 bg-accent-soft p-4 shadow-sm transition hover:border-accent"
           href="/app/reports/correction"
@@ -80,89 +161,24 @@ export default async function ReportsPage() {
         </Link>
       ) : null}
 
-      <Link
-        className="flex items-center gap-4 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
-        href="/app/money"
-      >
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-          <Wallet className="size-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Store money</span>
-          <span className="block text-sm leading-5 text-muted">
-            {profile?.role === "owner" ? "Day close, expenses and monthly profit per store." : "Close the day's cash and record store expenses."}
-          </span>
-        </span>
-      </Link>
-
-      <Link
-        className="flex items-center gap-4 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
-        href="/app/customers"
-      >
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-          <Contact className="size-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Customers</span>
-          <span className="block text-sm leading-5 text-muted">Repeat and lapsed customers from the bills, with WhatsApp thank-you and offer messages.</span>
-        </span>
-      </Link>
-
-      <Link
-        className="flex items-center gap-4 rounded-[1.35rem] border border-primary/30 bg-primary-soft p-4 shadow-sm transition hover:border-primary"
-        href="/app/reports/sold"
-      >
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
-          <PackageSearch className="size-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold">What sold, what did not</span>
-          <span className="block text-sm leading-5 text-muted">Pick any dates: pieces sold by brand, item and size, and what is still in stock without a sale.</span>
-        </span>
-      </Link>
-
-      {limited ? null : <Link
-        className="flex items-center gap-4 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
-        href="/app/buying"
-      >
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-          <ShoppingBag className="size-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Buying & stock</span>
-          <span className="block text-sm leading-5 text-muted">Sell-through, reorder by size, transfers between stores, markdown list, budgets and stock counts.</span>
-        </span>
-      </Link>}
-
-      {limited ? null : (
-        <Link
-          className="flex items-center gap-4 rounded-[1.35rem] border border-border bg-card p-4 shadow-sm transition hover:border-primary"
-          href="/app/reports/incentives"
-        >
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-            <Trophy className="size-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-semibold">Staff incentives</span>
-            <span className="block text-sm leading-5 text-muted">Leaderboard with average bill, items per bill, targets and incentive per salesperson.</span>
-          </span>
-        </Link>
-      )}
-
-      <section className="grid gap-3 lg:grid-cols-3">
-        <div className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm lg:col-span-2">
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">📤 Daily uploads</h2>
+        <div className="rounded-[1.35rem] border border-border bg-card p-5 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
                 <BarChart3 className="size-5" />
+              </span>
+              <div>
+                <h3 className="text-xl font-semibold">Daily Sales Upload</h3>
+                <p className="mt-1 text-sm leading-6 text-muted">
+                  Upload store-wise daily sales files and convert them into searchable sales rows.
+                </p>
+                <Tags tags={[{ label: "Every day" }]} />
               </div>
-              <h2 className="text-2xl font-semibold">Daily Sales Upload</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Upload store-wise daily sales files and convert them into searchable sales rows.
-              </p>
             </div>
             <Link
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-deep"
               href="/app/reports/sales"
             >
               <UploadCloud className="size-4" />
@@ -230,196 +246,194 @@ export default async function ReportsPage() {
           ) : null}
         </div>
 
-        <div className="space-y-3">
-          {!limited ? (
-          <Link
-              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-              href="/app/reports/business"
-            >
-              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-                <ChartNoAxesCombined className="size-5" />
-              </div>
-              <h2 className="text-2xl font-semibold">Buying & Restock Report</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Search brand/product/category/size, compare stock vs sales, and find what to reorder or avoid buying.
-              </p>
-            </Link>
-          ) : null}
-          {!limited ? (
-          <Link
-              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-              href="/app/reports/sales/analytics"
-            >
-              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-                <LineChart className="size-5" />
-              </div>
-              <h2 className="text-2xl font-semibold">Sales Analytics</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Track sales trends, targets, daily movement, brands and categories from uploaded sales rows.
-              </p>
-            </Link>
-          ) : null}
-          {!limited ? (
-          <Link
-              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-              href="/app/reports/staff"
-            >
-              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-                <UserRoundCheck className="size-5" />
-              </div>
-              <h2 className="text-2xl font-semibold">Staff Sales Report</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Check staff performance for daily, weekly and monthly sales.
-              </p>
-            </Link>
-          ) : null}
-          <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-            href="/app/reports/staff-aliases"
-          >
-            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-              <UserRoundCog className="size-5" />
-            </div>
-            <h2 className="text-2xl font-semibold">Staff Name Aliases</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Map sales report agent names to staff directory contacts.
-            </p>
-          </Link>
-          <Link
-            className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ReportTile
+            description="Upload the stock file every week (Monday) so stock and sizes stay right."
             href="/app/reports/stock"
+            icon={FileSpreadsheet}
+            tags={[{ label: "Every Monday" }]}
+            title="Stock Upload"
           >
-            <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-              <FileSpreadsheet className="size-5" />
-            </div>
-            <h2 className="text-2xl font-semibold">Stock Upload</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Upload the stock file every week (Monday) so stock and sizes stay right.
-            </p>
-            <div className="mt-4 space-y-2">
-              {stockOverview.statuses.map((status) => (
-                <div className="flex items-center justify-between gap-3 text-sm" key={status.store.id}>
-                  <span className="font-medium">{status.store.name}</span>
-                  <span
-                    className={
-                      status.report
-                        ? "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success"
-                        : "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger"
-                    }
-                  >
-                    {status.report ? "Uploaded" : "Missing"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Link>
+            <StoreStatuses rows={stockOverview.statuses.map((status) => ({ done: Boolean(status.report), id: status.store.id, name: status.store.name }))} />
+          </ReportTile>
           {!limited ? (
-          <Link
-              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-              href="/app/reports/stock/analytics"
-            >
-              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-                <PackageSearch className="size-5" />
-              </div>
-              <h2 className="text-2xl font-semibold">Stock Analytics</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Review stock movement, possible dead stock, high-stock low-sale items and reorder signals.
-              </p>
-            </Link>
-          ) : null}
-          {!limited ? (
-          <Link
-              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
+            <ReportTile
+              description={`Due day 1. Salary day 3. Current month: ${salaryOverview.periodMonth}.`}
               href="/app/reports/salary-attendance"
+              icon={CalendarClock}
+              tags={[{ label: "Every month" }]}
+              title="Salary Attendance"
             >
-              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-                <CalendarClock className="size-5" />
-              </div>
-              <h2 className="text-2xl font-semibold">Salary Attendance</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Due day 1. Salary day 3. Current month: {salaryOverview.periodMonth}.
-              </p>
-              <div className="mt-4 space-y-2">
-                {salaryOverview.statuses.map((status) => (
-                  <div className="flex items-center justify-between gap-3 text-sm" key={status.store.id}>
-                    <span className="font-medium">{status.store.name}</span>
-                    <span
-                      className={
-                        status.report
-                          ? "rounded-full border border-border px-3 py-1 text-xs font-semibold text-success"
-                          : "rounded-full border border-border px-3 py-1 text-xs font-semibold text-danger"
-                      }
-                    >
-                      {status.report ? "Uploaded" : "Missing"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Link>
-          ) : null}
-          {!limited ? (
-          <Link
-              className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-              href="/app/employees"
-            >
-              <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-                <Phone className="size-5" />
-              </div>
-              <h2 className="text-2xl font-semibold">Staff Phone Directory</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                Phone numbers for assigned store staff.
-              </p>
-            </Link>
-          ) : null}
-          {profile?.role === "owner" ? (
-            <>
-              <Link
-                className="block rounded-[1.35rem] border border-primary/30 bg-primary-soft p-5 shadow-sm transition hover:border-primary"
-                href="/app/owner/night"
-              >
-                <h2 className="text-2xl font-semibold">🌙 Plan for tomorrow</h2>
-                <p className="mt-2 text-sm leading-6 text-muted">
-                  The 11 PM plan: idle stock and why, sizes running out, moves between stores, staff to praise or coach, tomorrow&apos;s to-dos.
-                </p>
-              </Link>
-              <Link
-                className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-                href="/app/owner/notify"
-              >
-                <h2 className="text-2xl font-semibold">📣 Send a notification</h2>
-                <p className="mt-2 text-sm leading-6 text-muted">To everyone, a store, managers, staff or one person. It rings on their phone. Team requests: 🔔 → Requests.</p>
-              </Link>
-              <Link
-                className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-                href="/app/reports/correction"
-              >
-                <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-                  <ShieldAlert className="size-5" />
-                </div>
-                <h2 className="text-2xl font-semibold">Data Correction Center</h2>
-                <p className="mt-2 text-sm leading-6 text-muted">
-                  Delete or replace a wrong sales or stock upload, and import past sales. Owner only.
-                </p>
-              </Link>
-              <Link
-                className="block rounded-[1.35rem] border border-border bg-card p-5 shadow-sm transition hover:border-primary"
-                href="/app/payslips"
-              >
-                <div className="mb-4 flex size-11 items-center justify-center rounded-2xl border border-border">
-                  <FileText className="size-5" />
-                </div>
-                <h2 className="text-2xl font-semibold">Payslip Generation</h2>
-                <p className="mt-2 text-sm leading-6 text-muted">
-                  Owner-only salary sheet upload, review, PDF generation and ZIP download.
-                </p>
-              </Link>
-            </>
+              <StoreStatuses rows={salaryOverview.statuses.map((status) => ({ done: Boolean(status.report), id: status.store.id, name: status.store.name }))} />
+            </ReportTile>
           ) : null}
         </div>
       </section>
 
+      <Group title="📈 Sales">
+        {!limited ? (
+          <ReportTile
+            description="Track sales trends, targets, daily movement, brands and categories from uploaded sales rows."
+            href="/app/reports/sales/analytics"
+            icon={LineChart}
+            key="sales-analytics"
+            title="Sales Analytics"
+          />
+        ) : null}
+        {!limited ? (
+          <ReportTile
+            description="Check staff performance for daily, weekly and monthly sales."
+            href="/app/reports/staff"
+            icon={UserRoundCheck}
+            key="staff-sales"
+            title="Staff Sales Report"
+          />
+        ) : null}
+        {!limited ? (
+          <ReportTile
+            description="Leaderboard with average bill, items per bill, targets and incentive per salesperson."
+            href="/app/reports/incentives"
+            icon={Trophy}
+            key="incentives"
+            title="Staff incentives"
+          />
+        ) : null}
+        <ReportTile
+          description="Pick any dates: pieces sold by brand, item and size, and what is still in stock without a sale."
+          href="/app/reports/sold"
+          icon={PackageSearch}
+          key="sold"
+          title="What sold, what did not"
+        />
+      </Group>
+
+      <Group title="📦 Stock & buying">
+        {!limited ? (
+          <ReportTile
+            description="Sell-through, reorder by size, transfers between stores, markdown list, budgets and stock counts."
+            href="/app/buying"
+            icon={ShoppingBag}
+            key="buying"
+            title="Buying & stock"
+          />
+        ) : null}
+        {!limited ? (
+          <ReportTile
+            description="Search brand/product/category/size, compare stock vs sales, and find what to reorder or avoid buying."
+            href="/app/reports/business"
+            icon={ChartNoAxesCombined}
+            key="restock"
+            title="Buying & Restock Report"
+          />
+        ) : null}
+        {!limited ? (
+          <ReportTile
+            description="Review stock movement, possible dead stock, high-stock low-sale items and reorder signals."
+            href="/app/reports/stock/analytics"
+            icon={PackageSearch}
+            key="stock-analytics"
+            title="Stock Analytics"
+          />
+        ) : null}
+      </Group>
+
+      <Group title="💬 Customers & WhatsApp">
+        <ReportTile
+          description="Repeat and lapsed customers from the bills, with WhatsApp thank-you and offer messages."
+          href="/app/customers"
+          icon={Contact}
+          key="customers"
+          title="Customers"
+        />
+        {brands.length ? (
+          <ReportTile
+            description="Customers' replies to the stores' WhatsApp numbers. Read them and reply within 24 hours."
+            href="/app/reports/whatsapp"
+            icon={MessageCircle}
+            key="whatsapp-inbox"
+            tags={unreadChats ? [{ label: `${unreadChats} new`, tone: "good" }] : [{ label: "New" }]}
+            title="WhatsApp messages"
+          />
+        ) : null}
+        {owner ? (
+          <ReportTile
+            description="Receipts, offers, payslips and owner reports sent through MSG91: delivered, read or failed, and the monthly budget."
+            href="/app/customers/whatsapp"
+            icon={MessageSquareText}
+            key="whatsapp-delivery"
+            tags={[ownerTag]}
+            title="Message delivery"
+          />
+        ) : null}
+      </Group>
+
+      <Group title="💰 Money & staff">
+        <ReportTile
+          description={owner ? "Day close, expenses and monthly profit per store." : "Close the day's cash and record store expenses."}
+          href="/app/money"
+          icon={Wallet}
+          key="money"
+          title="Store money"
+        />
+        {owner ? (
+          <ReportTile
+            description="Owner-only salary sheet upload, review, PDF generation and ZIP download."
+            href="/app/payslips"
+            icon={FileText}
+            key="payslips"
+            tags={[ownerTag]}
+            title="Payslip Generation"
+          />
+        ) : null}
+        {!limited ? (
+          <ReportTile
+            description="Phone numbers for assigned store staff."
+            href="/app/employees"
+            icon={Phone}
+            key="phones"
+            title="Staff Phone Directory"
+          />
+        ) : null}
+        <ReportTile
+          description="Map sales report agent names to staff directory contacts."
+          href="/app/reports/staff-aliases"
+          icon={UserRoundCog}
+          key="aliases"
+          title="Staff Name Aliases"
+        />
+      </Group>
+
+      {owner ? (
+        <Group title="🔒 Owner tools">
+          <ReportTile
+            description="The 11 PM plan: idle stock and why, sizes running out, moves between stores, staff to praise or coach, tomorrow's to-dos."
+            href="/app/owner/night"
+            icon={Moon}
+            key="night"
+            tags={[ownerTag]}
+            title="🌙 Plan for tomorrow"
+          />
+          <ReportTile
+            description="To everyone, a store, managers, staff or one person. It rings on their phone. Team requests: 🔔 → Requests."
+            href="/app/owner/notify"
+            icon={Megaphone}
+            key="notify"
+            tags={[ownerTag]}
+            title="📣 Send a notification"
+          />
+          <ReportTile
+            description="Delete or replace a wrong sales or stock upload, and import past sales. Owner only."
+            href="/app/reports/correction"
+            icon={ShieldAlert}
+            key="correction"
+            tags={[ownerTag]}
+            title="Data Correction Center"
+          />
+        </Group>
+      ) : null}
+
       <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Recent sales uploads</h2>
+        <h2 className="text-lg font-semibold">Recent sales uploads</h2>
         <SalesReportList hideAmounts={limited} reports={recentReports} />
       </section>
     </div>

@@ -798,9 +798,17 @@ export async function getBusinessReport(
     summary.itemsCount = sizeItems.get(size)?.size ?? 0;
   }
 
+  // Which rows make each list is unchanged (sales and stock together); the
+  // rows then show highest sales first, so nothing that showed before is cut.
+  const highestSalesFirst = (a: { netSales: number; soldQuantity: number; stockQuantity: number }, b: { netSales: number; soldQuantity: number; stockQuantity: number }) =>
+    b.netSales - a.netSales || b.soldQuantity - a.soldQuantity || b.stockQuantity - a.stockQuantity;
+  const mostStockFirst = (a: { soldQuantity: number; stockQuantity: number }, b: { soldQuantity: number; stockQuantity: number }) =>
+    b.stockQuantity - a.stockQuantity || b.soldQuantity - a.soldQuantity;
+
   const itemRows = [...itemMap.values()]
     .sort((a, b) => b.netSales + b.stockQuantity - (a.netSales + a.stockQuantity))
-    .slice(0, 50);
+    .slice(0, 50)
+    .sort(highestSalesFirst);
 
   const signalRows = [...signalMap.values()]
     .map((row) => ({
@@ -811,7 +819,8 @@ export async function getBusinessReport(
     .sort((a, b) => b.soldQuantity + b.stockQuantity - (a.soldQuantity + a.stockQuantity));
   const restockRows = signalRows
     .filter((row) => ["Restock Urgent", "Restock Soon", "Watch", "Do Not Reorder / Push Offer", "No Sale Stock"].includes(row.signal))
-    .slice(0, 50);
+    .slice(0, 50)
+    .sort(highestSalesFirst);
   const slowRows = signalRows
     .filter(
       (row) =>
@@ -819,11 +828,13 @@ export async function getBusinessReport(
           row.soldQuantity <= businessSignalThresholds.overstockSoldQuantity) ||
         (row.stockQuantity > 0 && row.soldQuantity === 0),
     )
-    .slice(0, 50);
+    .slice(0, 50)
+    .sort(mostStockFirst);
   const lowStockRows = signalRows
     .map((row) => ({ ...row, signal: lowStockSignal(row.stockQuantity, row.soldQuantity) }))
     .filter((row) => ["Very Low", "Low and Moving", "Out of Stock"].includes(row.signal))
-    .slice(0, 50);
+    .slice(0, 50)
+    .sort(highestSalesFirst);
 
   const fastMovingCount = [...itemMap.values()].filter((item) => movementStatus(item.soldQuantity, item.stockQuantity) === "Fast moving").length;
   const slowMovingCount = [...itemMap.values()].filter((item) => movementStatus(item.soldQuantity, item.stockQuantity) === "Slow moving").length;
@@ -837,8 +848,8 @@ export async function getBusinessReport(
   const missingStockStores = latestStockMonths.filter((item) => !item.month);
 
   return {
-    brandRows: [...brandMap.values()].sort((a, b) => b.netSales + b.stockQuantity - (a.netSales + a.stockQuantity)).slice(0, 50),
-    categoryRows: [...categoryMap.values()].sort((a, b) => b.netSales + b.stockQuantity - (a.netSales + a.stockQuantity)).slice(0, 50),
+    brandRows: [...brandMap.values()].sort((a, b) => b.netSales + b.stockQuantity - (a.netSales + a.stockQuantity)).slice(0, 50).sort(highestSalesFirst),
+    categoryRows: [...categoryMap.values()].sort((a, b) => b.netSales + b.stockQuantity - (a.netSales + a.stockQuantity)).slice(0, 50).sort(highestSalesFirst),
     dailyTrend: [...dailyMap.values()].sort((a, b) => a.date.localeCompare(b.date)),
     filters,
     itemRows,
@@ -851,7 +862,7 @@ export async function getBusinessReport(
     lowStockRows,
     restockRows,
     slowRows,
-    sizeRows: [...sizeMap.values()].sort((a, b) => b.stockQuantity + b.soldQuantity - (a.stockQuantity + a.soldQuantity)).slice(0, 80),
+    sizeRows: [...sizeMap.values()].sort((a, b) => b.stockQuantity + b.soldQuantity - (a.stockQuantity + a.soldQuantity)).slice(0, 80).sort(highestSalesFirst),
     staffRows: [...staffMap.values()]
       .map((staff) => ({
         billCount: staff.bills.size,

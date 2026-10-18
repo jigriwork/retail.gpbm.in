@@ -1,5 +1,6 @@
 import "server-only";
 
+import { saveInboundMessages, type InboundLogRow } from "@/lib/msg91/inbox";
 import type { Json } from "@/lib/supabase/database.types";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -72,6 +73,8 @@ export async function syncWhatsAppStatuses({ force = false } = {}): Promise<Sync
   const days = Array.from({ length: lookbackDays }, (_, index) => indiaDay(index));
   const pages = await Promise.all(days.map((day) => fetchDay(authKey, day)));
   if (pages.some((page) => page === null)) return { checked: 0, ok: false, skipped: "msg91_unavailable", updated: 0 };
+  // Customers' replies for the WhatsApp inbox are in the same logs.
+  const inbound = await saveInboundMessages(pages.flat() as InboundLogRow[]).catch(() => 0);
 
   const logs = new Map<string, LogRow>();
   for (const row of pages.flat() as LogRow[]) {
@@ -118,7 +121,7 @@ export async function syncWhatsAppStatuses({ force = false } = {}): Promise<Sync
   }
   await admin.from("audit_logs").insert({
     action: "whatsapp_status_sync", actor_id: null, actor_role: null, entity_id: null, entity_type: "whatsapp_deliveries",
-    metadata: { checked: rows?.length ?? 0, logged: logs.size, updated },
+    metadata: { checked: rows?.length ?? 0, inbound, logged: logs.size, updated },
   });
   return { checked: rows?.length ?? 0, ok: true, updated };
 }

@@ -189,3 +189,21 @@ export async function getMsg91TemplateInfo(config: Msg91BrandConfig, templateNam
     return { category: null, status: "unavailable" };
   }
 }
+
+/** A free-text reply; WhatsApp only delivers it within 24 hours of the customer's last message. */
+export async function sendMsg91Text(config: Msg91BrandConfig, to: string, text: string): Promise<Msg91SendResult> {
+  try {
+    const response = await fetch(`${apiBase}/whatsapp-outbound-message/`, {
+      body: JSON.stringify({ content_type: "text", integrated_number: config.integratedNumber, recipient_number: to, text }),
+      headers: { accept: "application/json", authkey: config.authKey, "content-type": "application/json" },
+      method: "POST",
+      signal: AbortSignal.timeout(15_000),
+    });
+    const body = await responseBody(response);
+    if (!response.ok || responseHasError(body)) return { errorCode: `msg91_${response.status}`, ok: false };
+    const data = object(object(body)?.data);
+    return { ok: true, requestId: typeof data?.message_uuid === "string" ? data.message_uuid : undefined };
+  } catch {
+    return { errorCode: "msg91_unreachable", ok: false };
+  }
+}
