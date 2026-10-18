@@ -3,6 +3,7 @@ import type { DeliveryCounts, DeliveryRow } from "@/lib/msg91/delivery-report";
 
 const kindLabels: Record<string, string> = {
   account_ready: "Account ready",
+  customer_campaign: "Festive offer",
   customer_follow_up: "We miss you",
   customer_thank_you: "Thank you",
   owner_night_plan: "Owner night plan",

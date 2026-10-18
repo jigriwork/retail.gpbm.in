@@ -2,7 +2,11 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/server";
 
-export type WhatsAppDeliveryKind = "account_ready" | "customer_follow_up" | "customer_thank_you" | "owner_night_plan" | "owner_summary" | "payslip";
+export type WhatsAppDeliveryKind = "account_ready" | "customer_campaign" | "customer_follow_up" | "customer_thank_you" | "owner_night_plan" | "owner_summary" | "payslip";
+
+// The owners' reports (about ₹8 a month) and one-off campaigns, which the owner
+// funds separately, never use the store's customer and salary message budget.
+const outsideStoreBudget = new Set(["customer_campaign", "owner_night_plan", "owner_summary"]);
 
 function positiveNumber(name: string, fallback: number) {
   const parsed = Number(process.env[name]);
@@ -65,9 +69,7 @@ async function monthDeliveries(storeId: string) {
 export async function whatsappBudgetAllowance(storeId: string, kind: WhatsAppDeliveryKind, requested: number) {
   const config = whatsappBudgetConfig();
   const rows = await monthDeliveries(storeId);
-  // The owners' daily summary (about ₹8 a month) never uses the store's
-  // customer and salary message budget.
-  const counted = rows.filter((row) => row.kind !== "owner_summary" && row.kind !== "owner_night_plan" && ["processing", "accepted", "delivered", "read"].includes(row.status));
+  const counted = rows.filter((row) => !outsideStoreBudget.has(row.kind) && ["processing", "accepted", "delivered", "read"].includes(row.status));
   const spent = counted.reduce((sum, row) => sum + Number(row.unit_cost_inr || 0), 0);
   const unitCost = whatsappUnitCost(kind);
   const ceiling = kind === "payslip"
@@ -93,9 +95,7 @@ export async function whatsappBudgetAllowance(storeId: string, kind: WhatsAppDel
 export async function whatsappBudgetSnapshot(storeId: string) {
   const config = whatsappBudgetConfig();
   const rows = await monthDeliveries(storeId);
-  // The owners' daily summary (about ₹8 a month) never uses the store's
-  // customer and salary message budget.
-  const counted = rows.filter((row) => row.kind !== "owner_summary" && row.kind !== "owner_night_plan" && ["processing", "accepted", "delivered", "read"].includes(row.status));
+  const counted = rows.filter((row) => !outsideStoreBudget.has(row.kind) && ["processing", "accepted", "delivered", "read"].includes(row.status));
   const spent = counted.reduce((sum, row) => sum + Number(row.unit_cost_inr || 0), 0);
   return {
     budget: config.budget,
