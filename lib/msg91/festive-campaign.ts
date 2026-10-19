@@ -38,12 +38,19 @@ export async function runFestiveCampaign() {
   const config = getMsg91Config("BM");
   if (!listRow?.store_id || !listRow.actor_id || !meta?.recipients?.length || !config) return { skipped: "no_list" };
 
-  const { data: booked, error } = await admin.from("whatsapp_deliveries").select("recipient,status,created_at")
-    .eq("kind", "customer_campaign").eq("template_name", template).limit(10000);
-  if (error) return { skipped: "deliveries_unavailable" };
-  const already = new Set((booked ?? []).map((row) => row.recipient));
-  const slots = Math.floor((budgetInr - (booked ?? []).filter((row) => row.status !== "failed").length * rateInr + 1e-8) / rateInr);
-  const attemptedToday = (booked ?? []).filter((row) => row.created_at >= `${sendDay}T04:30:00Z`).length;
+  // The database returns at most 1,000 rows per request, so read every page:
+  // a partial list would resend to people already messaged and misjudge the budget.
+  const booked: Array<{ created_at: string; recipient: string; status: string }> = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await admin.from("whatsapp_deliveries").select("recipient,status,created_at")
+      .eq("kind", "customer_campaign").eq("template_name", template).order("id").range(from, from + 999);
+    if (error) return { skipped: "deliveries_unavailable" };
+    booked.push(...(data ?? []));
+    if ((data?.length ?? 0) < 1000) break;
+  }
+  const already = new Set(booked.map((row) => row.recipient));
+  const slots = Math.floor((budgetInr - booked.filter((row) => row.status !== "failed").length * rateInr + 1e-8) / rateInr);
+  const attemptedToday = booked.filter((row) => row.created_at >= `${sendDay}T04:30:00Z`).length;
   const todo = meta.recipients.map((row) => ({ name: cleanName(row.name), recipient: `91${row.mobile}` }))
     .filter((row) => !already.has(row.recipient)).slice(0, Math.max(0, Math.min(slots, dailyAttemptCap - attemptedToday)));
 

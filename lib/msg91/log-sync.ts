@@ -84,13 +84,20 @@ export async function syncWhatsAppStatuses({ force = false } = {}): Promise<Sync
 
   const windowStart = new Date(Date.parse(`${days[days.length - 1]}T00:00:00+05:30`)).toISOString();
   const droppedStart = Date.parse(`${days[droppedCheckDays - 1]}T00:00:00+05:30`);
-  const { data: rows, error } = await admin.from("whatsapp_deliveries")
-    .select("id,recipient,provider_request_id,status,created_at,accepted_at")
-    .gte("created_at", windowStart)
-    .in("status", ["accepted", "delivered", "failed"])
-    .not("provider_request_id", "is", null)
-    .limit(5000);
-  if (error) return { checked: 0, ok: false, skipped: "database", updated: 0 };
+  // At most 1,000 rows come back per request, so read every page.
+  const rows: Array<{ accepted_at: string | null; created_at: string; id: string; provider_request_id: string | null; recipient: string; status: string }> = [];
+  for (let from = 0; from < 10000; from += 1000) {
+    const { data, error } = await admin.from("whatsapp_deliveries")
+      .select("id,recipient,provider_request_id,status,created_at,accepted_at")
+      .gte("created_at", windowStart)
+      .in("status", ["accepted", "delivered", "failed"])
+      .not("provider_request_id", "is", null)
+      .order("id")
+      .range(from, from + 999);
+    if (error) return { checked: 0, ok: false, skipped: "database", updated: 0 };
+    rows.push(...(data ?? []));
+    if ((data?.length ?? 0) < 1000) break;
+  }
 
   const updates: Array<Record<string, string | null>> = [];
   for (const row of rows ?? []) {
