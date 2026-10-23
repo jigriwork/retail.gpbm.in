@@ -79,9 +79,12 @@ function RankingList({
 export default async function SalesAnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ storeId?: string; period?: string; start?: string; end?: string }>;
+  searchParams: Promise<{ storeId?: string | string[]; period?: string; start?: string; end?: string }>;
 }) {
-  const { storeId, period: rawPeriod, start, end } = await searchParams;
+  const { storeId: rawStoreId, period: rawPeriod, start, end } = await searchParams;
+  // Duplicate query keys can exist in old/bookmarked URLs. The visible select is
+  // submitted last, so prefer the last value instead of falling back to all stores.
+  const storeId = Array.isArray(rawStoreId) ? rawStoreId.at(-1) : rawStoreId;
   const { profile } = await requireProfile();
   const stores = await getAccessibleStores(profile);
   const dateRange = resolveRange({ end, period: rawPeriod, start }, "yesterday");
@@ -118,7 +121,7 @@ export default async function SalesAnalyticsPage({
         </p>
       </div>
 
-      <PeriodPicker keep={{ storeId }} path="/app/reports/sales/analytics" range={dateRange}>
+      <PeriodPicker editableKeys={["storeId"]} keep={{ storeId }} path="/app/reports/sales/analytics" range={dateRange}>
         <label className="col-span-2 block text-xs font-medium text-muted sm:col-span-1">Store
           <select className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary" defaultValue={storeId ?? "all"} name="storeId">
             <option value="all">All accessible stores</option>

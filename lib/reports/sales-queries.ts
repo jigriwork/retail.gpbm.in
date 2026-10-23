@@ -45,13 +45,15 @@ export type StoreSalesStatus = {
   yesterdayReport: SalesReportWithStore | null;
   latestReport: SalesReportWithStore | null;
   recentReports: SalesReportWithStore[];
-  /** Net sale per day for the last 30 days, oldest first; null where no report was uploaded. */
+  /** Net sale per day for the last 31 days, oldest first; null where no report was uploaded. */
   dailySales?: Array<{ date: string; sale: number | null }>;
   /** Consecutive days with an uploaded report, ending today or yesterday. */
   uploadStreak?: number;
 };
 
-const salesHistoryDays = 30;
+// A 31-day window guarantees that the Today chart can show every day in the
+// current month, including on the 31st.
+const salesHistoryDays = 31;
 
 function salesHistory(storeReports: SalesReportWithStore[], todayDate: string) {
   const byDate = new Map<string, SalesReportWithStore>();

@@ -41,9 +41,10 @@ function storeLabel(profileRole: string | null | undefined, storeName?: string) 
 export default async function StaffSalesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ storeId?: string; period?: string; start?: string; end?: string }>;
+  searchParams: Promise<{ storeId?: string | string[]; period?: string; start?: string; end?: string }>;
 }) {
-  const { storeId, period: rawPeriod, start, end } = await searchParams;
+  const { storeId: rawStoreId, period: rawPeriod, start, end } = await searchParams;
+  const storeId = Array.isArray(rawStoreId) ? rawStoreId.at(-1) : rawStoreId;
   const { profile } = await requireProfile();
   const stores = await getAccessibleStores(profile);
   const dateRange = resolveRange({ end, period: rawPeriod, start }, "yesterday");
@@ -92,7 +93,7 @@ export default async function StaffSalesPage({
         </p>
       </div>
 
-      <PeriodPicker keep={{ storeId }} path="/app/reports/staff" range={dateRange}>
+      <PeriodPicker editableKeys={["storeId"]} keep={{ storeId }} path="/app/reports/staff" range={dateRange}>
         <label className="col-span-2 block text-xs font-medium text-muted sm:col-span-1">Store
           <select className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary" defaultValue={storeId ?? "all"} name="storeId">
             <option value="all">{storeLabel(profile?.role)}</option>

@@ -13,7 +13,8 @@ export type TrendSeries = {
   points: Array<{ date: string; sale: number | null }>;
 };
 
-const ranges = [7, 14, 30] as const;
+const ranges = [7, 14, 30, "mtd"] as const;
+type TrendRange = (typeof ranges)[number];
 
 function compactMoney(value: number) {
   if (value >= 100000) return `₹${(value / 100000).toFixed(value >= 1000000 ? 1 : 2)}L`;
@@ -33,16 +34,22 @@ function shortDate(date: string) {
 
 /** Net sales per day for each store, from reports the page already loaded. */
 export function SalesTrendChart({ series }: { series: TrendSeries[] }) {
-  const [range, setRange] = useState<(typeof ranges)[number]>(14);
-  const dates = series[0]?.points.slice(-range).map((point) => point.date) ?? [];
+  const [range, setRange] = useState<TrendRange>(14);
+  const allDates = series[0]?.points.map((point) => point.date) ?? [];
+  const latestDate = allDates.at(-1);
+  const monthStart = latestDate ? `${latestDate.slice(0, 7)}-01` : "";
+  const dates = range === "mtd"
+    ? allDates.filter((date) => date >= monthStart)
+    : allDates.slice(-range);
   const rows = dates.map((date) => {
     const row: Record<string, number | string | null> = { date };
     for (const item of series) row[item.name] = item.points.find((point) => point.date === date)?.sale ?? null;
     return row;
   });
-  const totals = series.map((item) =>
-    item.points.slice(-range).reduce((sum, point) => sum + (point.sale ?? 0), 0),
-  );
+  const visibleDates = new Set(dates);
+  const totals = series.map((item) => item.points
+    .filter((point) => visibleDates.has(point.date))
+    .reduce((sum, point) => sum + (point.sale ?? 0), 0));
   const hasData = totals.some((total) => total > 0);
 
   return (
@@ -61,7 +68,7 @@ export function SalesTrendChart({ series }: { series: TrendSeries[] }) {
               onClick={() => setRange(value)}
               type="button"
             >
-              {value}D
+              {value === "mtd" ? "MTD" : `${value}D`}
             </button>
           ))}
         </div>
@@ -125,7 +132,7 @@ export function SalesTrendChart({ series }: { series: TrendSeries[] }) {
         </div>
       ) : (
         <p className="mt-4 rounded-2xl bg-background px-4 py-6 text-center text-sm text-muted">
-          No sales uploaded in the last {range} days yet.
+          No sales uploaded {range === "mtd" ? "this month" : `in the last ${range} days`} yet.
         </p>
       )}
       <p className="mt-2 text-xs text-muted">Net sale per day from uploaded sales reports. Gaps are days with no upload.</p>

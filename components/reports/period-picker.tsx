@@ -8,8 +8,10 @@ import { type PickedRange, rangeLabel, rangePresets, type RangePreset } from "@/
  * the page's other filters (store, brand…); `children` adds more fields to
  * the dates form, e.g. a store choice.
  */
-export function PeriodPicker({ children, keep = {}, path, presets, range }: {
+export function PeriodPicker({ children, editableKeys = [], keep = {}, path, presets, range }: {
   children?: React.ReactNode;
+  /** Keys rendered as editable fields in `children`; do not duplicate them as hidden inputs. */
+  editableKeys?: string[];
   keep?: Record<string, string | undefined>;
   path: string;
   presets?: RangePreset[];
@@ -32,7 +34,7 @@ export function PeriodPicker({ children, keep = {}, path, presets, range }: {
         ))}
       </nav>
       <form action={path} className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end">
-        {kept.filter(([name]) => !["start", "end", "period"].includes(name)).map(([name, value]) => <input key={name} name={name} type="hidden" value={value} />)}
+        {kept.filter(([name]) => !["start", "end", "period", ...editableKeys].includes(name)).map(([name, value]) => <input key={name} name={name} type="hidden" value={value} />)}
         {children}
         <label className="block text-xs font-medium text-muted">From
           <input className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary" defaultValue={range.startDate} name="start" type="date" />
