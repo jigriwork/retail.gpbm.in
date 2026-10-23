@@ -42,7 +42,7 @@ const subscribeStore = (listener: () => void) => { window.addEventListener("gpbm
  * phone's subscription up to date. On iPhone, notifications need the app
  * installed on the home screen first (the Install card covers that).
  */
-export function EnableNotifications() {
+export function EnableNotifications({ required = false }: { required?: boolean }) {
   const current = useSyncExternalStore(subscribeStore, mode, () => "hidden" as Mode);
 
   // Already allowed: make sure the server knows this phone (once per visit).
@@ -53,7 +53,7 @@ export function EnableNotifications() {
   }, []);
 
   if (current === "hidden") return null;
-  const later = () => { write(laterKey, String(Date.now() + 3 * 86_400_000)); changed(); };
+  const later = () => { write(laterKey, String(Date.now() + (required ? 86_400_000 : 3 * 86_400_000))); changed(); };
   async function allow() {
     const permission = await Notification.requestPermission();
     if (permission === "granted") await subscribe().catch(() => undefined);
@@ -66,18 +66,20 @@ export function EnableNotifications() {
       <div className="flex items-start gap-3 pr-6">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent text-black"><BellRing className="size-5" /></span>
         <div className="min-w-0">
-          <p className="font-semibold">{current === "blocked" ? "Notifications are blocked" : "Turn on notifications"}</p>
+          <p className="font-semibold">{current === "blocked" ? "Notifications are blocked" : required ? "Turn on work notifications" : "Turn on notifications"}</p>
           <p className="mt-0.5 text-sm leading-5 text-muted">
             {current === "blocked"
               ? "Allow notifications for retail.gpbm.in in your phone's browser or app settings to hear about new tasks, replies and notices."
-              : "Hear a sound when you get a new task, a reply to your request, or a notice from the owner."}
+              : required
+                ? "Required for your morning and evening motivation, new tasks, replies and important store notices."
+                : "Hear a sound when you get a new task, a reply to your request, or a notice from the owner."}
           </p>
         </div>
       </div>
       {current === "ask" ? (
         <div className="mt-3 flex gap-2">
           <button className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white" onClick={allow} type="button"><BellRing className="size-4" /> Turn on</button>
-          <button className="h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold" onClick={later} type="button">Not now</button>
+          <button className="h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold" onClick={later} type="button">{required ? "Remind me tomorrow" : "Not now"}</button>
         </div>
       ) : null}
     </section>

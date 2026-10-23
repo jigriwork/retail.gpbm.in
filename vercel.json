@@ -11,6 +11,14 @@
     {
       "path": "/api/cron/owner-summary",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/staff-motivation/morning",
+      "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/staff-motivation/evening",
+      "schedule": "30 13 * * *"
     }
   ]
 }

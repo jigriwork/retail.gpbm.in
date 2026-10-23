@@ -40,6 +40,7 @@ export async function notifyUsers(userIds: Array<string | null | undefined>, not
     await Promise.allSettled((subscriptions ?? []).map(async (subscription) => {
       try {
         await webpush.sendNotification({ endpoint: subscription.endpoint, keys: { auth: subscription.auth, p256dh: subscription.p256dh } }, payload, { TTL: 12 * 3600, urgency: "high" });
+        await admin.from("push_subscriptions").update({ failures: 0, last_success_at: new Date().toISOString() }).eq("id", subscription.id);
       } catch (error) {
         const status = (error as { statusCode?: number }).statusCode;
         // Gone (uninstalled / permission removed): forget this phone.
