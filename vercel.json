@@ -19,10 +19,6 @@
     {
       "path": "/api/cron/staff-motivation/evening",
       "schedule": "30 13 * * *"
-    },
-    {
-      "path": "/api/cron/staff-motivation/release",
-      "schedule": "0 12 * * *"
     }
   ]
 }
