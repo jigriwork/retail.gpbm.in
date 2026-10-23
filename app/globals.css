@@ -59,6 +59,133 @@ h2 {
   letter-spacing: -0.01em;
 }
 
+/* Full-app opening reveal: lightweight CSS motion, shared by every user role. */
+@keyframes opening-backdrop-in {
+  from { opacity: 0; }
+}
+
+@keyframes opening-backdrop-out {
+  to { opacity: 0; visibility: hidden; }
+}
+
+@keyframes opening-logo-in {
+  0% { opacity: 0; transform: translateY(16px) scale(0.72) rotate(-7deg); }
+  58% { opacity: 1; transform: translateY(-3px) scale(1.06) rotate(1deg); }
+  100% { transform: translateY(0) scale(1) rotate(0); }
+}
+
+@keyframes opening-ring-out {
+  0% { opacity: 0.65; transform: scale(0.55); }
+  100% { opacity: 0; transform: scale(1.65); }
+}
+
+@keyframes opening-orb-drift {
+  0% { transform: translate3d(-3%, 2%, 0) scale(0.9); }
+  100% { transform: translate3d(6%, -4%, 0) scale(1.08); }
+}
+
+@keyframes opening-line-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes opening-dot-in {
+  0%, 72% { opacity: 0; transform: scale(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes opening-copy-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.app-opening-reveal {
+  animation: opening-backdrop-in 0.18s ease-out both;
+  background:
+    radial-gradient(circle at 50% 42%, rgb(99 102 241 / 0.26), transparent 30%),
+    linear-gradient(145deg, #12102d 0%, #1e1b4b 52%, #29236b 100%);
+}
+
+.app-opening-reveal-exit {
+  animation: opening-backdrop-out 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.app-opening-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(2px);
+  animation: opening-orb-drift 1s ease-in-out alternate both;
+}
+
+.app-opening-orb-one {
+  width: min(72vw, 38rem);
+  aspect-ratio: 1;
+  left: -22%;
+  top: -28%;
+  background: radial-gradient(circle, rgb(244 169 56 / 0.18), transparent 66%);
+}
+
+.app-opening-orb-two {
+  width: min(82vw, 44rem);
+  aspect-ratio: 1;
+  bottom: -38%;
+  right: -28%;
+  background: radial-gradient(circle, rgb(99 102 241 / 0.28), transparent 67%);
+  animation-direction: alternate-reverse;
+}
+
+.app-opening-logo-wrap {
+  animation: opening-logo-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.04s both;
+}
+
+.app-opening-logo {
+  width: 100%;
+  height: 100%;
+}
+
+.app-opening-logo-glow {
+  position: absolute;
+  inset: 8%;
+  border-radius: 1.7rem;
+  background: rgb(244 169 56 / 0.36);
+  filter: blur(24px);
+}
+
+.app-opening-ring {
+  position: absolute;
+  inset: -15%;
+  border: 1px solid rgb(255 255 255 / 0.28);
+  border-radius: 2.2rem;
+  animation: opening-ring-out 0.65s ease-out 0.14s both;
+}
+
+.app-opening-ring-two {
+  animation-delay: 0.24s;
+}
+
+.app-opening-chart-line {
+  stroke: #f4a938;
+  stroke-linecap: round;
+  stroke-width: 3;
+  stroke-dasharray: 190;
+  stroke-dashoffset: 190;
+  animation: opening-line-draw 0.32s cubic-bezier(0.4, 0, 0.2, 1) 0.18s forwards;
+}
+
+.app-opening-chart-dot {
+  fill: #f4a938;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: opening-dot-in 0.48s ease-out 0.16s both;
+}
+
+.app-opening-title {
+  animation: opening-copy-in 0.25s ease-out 0.24s both;
+}
+
+.app-opening-caption {
+  animation: opening-copy-in 0.25s ease-out 0.32s both;
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -126,6 +253,9 @@ button:not(:disabled):active {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .app-opening-reveal {
+    display: none;
+  }
   .rise-in,
   .pop-in,
   .page-enter > *,

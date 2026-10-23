@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 
 import { PointerProbe } from "@/components/app/pointer-probe";
+import { OpeningReveal } from "@/components/app/opening-reveal";
 
 import "./globals.css";
 
@@ -87,6 +88,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: installScript }} />
       </head>
       <body className="min-h-full bg-background font-sans text-foreground">
+        <OpeningReveal />
         {children}
         <PointerProbe />
       </body>
