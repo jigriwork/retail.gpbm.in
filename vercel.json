@@ -22,7 +22,7 @@
     },
     {
       "path": "/api/cron/staff-motivation/release",
-      "schedule": "* * * * *"
+      "schedule": "0 12 * * *"
     }
   ]
 }
