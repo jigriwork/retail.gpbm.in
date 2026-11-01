@@ -25,10 +25,10 @@ const cashierItems = [
   { label: "Sizes", href: "/app/sizes", icon: Ruler },
 ];
 
-export function BottomNav({ role }: { role?: string }) {
+export function BottomNav({ cashBook = false, role }: { cashBook?: boolean; role?: string }) {
   const pathname = usePathname();
   const visibleItems: Array<{ label: string; href: string; icon: typeof Home; exact?: boolean }> =
-    role === "accountant" ? accountantItems : role === "cashier" ? cashierItems : role === "owner" ? navItems : navItems.filter((item) => !item.ownerOnly);
+    role === "accountant" ? [...accountantItems, ...(cashBook ? [{ label: "Cash book", href: "/app/money", icon: Wallet, exact: true }] : [])] : role === "cashier" ? cashierItems : role === "owner" ? navItems : navItems.filter((item) => !item.ownerOnly);
   const columns = ["grid-cols-1", "grid-cols-1", "grid-cols-2", "grid-cols-3", "grid-cols-4", "grid-cols-5", "grid-cols-6"][visibleItems.length];
 
   return (

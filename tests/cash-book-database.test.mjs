@@ -59,7 +59,7 @@ select cash_book_add_entry(${BM}, '${d3}', 'home', 5000, null, 'I.B (Home)');
 select cash_book_add_entry(${BM}, '${d3}', 'donation', 1500, null, 'Sept Sadqa');
 `;
 
-test("the paper book of 2-4 Oct gives the same CB; next day opens with the counted cash; shortage shown", () => {
+test("the paper book of 2-4 Oct gives the same CB; next day opens with the calculated closing (bookkeeping roll-forward); shortage stays visible", () => {
   const out = results(sql(`begin; ${book}
 select cash_book_close_day(${BM}, '${d3}', 122077, 40112)::text;
 select (cash_book_day(${BM}, '${today}')->>'opening');
@@ -68,7 +68,7 @@ rollback;`));
   assert.equal(out[1], "3473.00", "3 Oct CB");
   const closed = JSON.parse(out[2]);
   assert.deepEqual([Number(closed.closing), Number(closed.counted), Number(closed.difference)], [40312, 40112, -200]);
-  assert.equal(out[3], "40112.00", "today opens with the counted cash");
+  assert.equal(out[3], "40312.00", "today opens with the previous calculated closing, not the counted cash");
 });
 
 test("cash sent to the other store waits there until received; summary facts carry the cash book", () => {
@@ -92,9 +92,9 @@ rollback;`));
   assert.deepEqual([Number(bm.cash.book), Number(bm.cash.counted), bm.cash.deposit], [40812, 40612, false]);
 });
 
-test("rules: days close in order, 3-day window, own entries, owner-only reopen, no Logic figure for the cashier", () => {
+test("rules: days close in order (entry allowed earlier), 3-day window, own entries, owner-only reopen, no Logic figure for the cashier", () => {
   const base = `begin; ${as(owner)} select cash_book_set_start(${BM}, '${d1}', 8148); ${as(cashier)}`;
-  fails(`${base} select cash_book_add_entry(${BM}, '${d2}', 'edc', 10); rollback;`, /Close .* first/);
+  fails(`${base} select cash_book_add_entry(${BM}, '${d2}', 'edc', 10); select cash_book_close_day(${BM}, '${d2}', 100, 100); rollback;`, /Close .* first/);
   fails(`begin; ${as(owner)} select cash_book_set_start(${BM}, (india_today() - 10)::date, 8148); ${as(cashier)} select cash_book_add_entry(${BM}, (india_today() - 10)::date, 'edc', 10); rollback;`, /Older days can be changed only by the owner/);
   fails(`${base} select cash_book_add_entry(${BM}, '${d1}', 'expense', 10); rollback;`, /expense type/);
   fails(`${base} select cash_book_add_entry(${BM}, '${d1}', 'other_out', 10); rollback;`, /what this money was for/);
@@ -102,10 +102,10 @@ test("rules: days close in order, 3-day window, own entries, owner-only reopen, 
 ${as(cashier)} select cash_book_delete_entry(:'e'); rollback;`, /Only the person who entered it/);
   assert.equal(sql(`${base} select cash_book_add_entry(${BM}, '${d1}', 'edc', 10) as e \\gset
 ${as(manager)} select cash_book_delete_entry(:'e'); select jsonb_array_length(cash_book_day(${BM}, '${d1}')->'entries'); rollback;`), "0");
-  fails(`${base} select cash_book_close_day(${BM}, '${d1}', 100, 100); select cash_book_reopen_day(${BM}, '${d1}'); rollback;`, /Only the owner can reopen/);
-  fails(`${base} select cash_book_close_day(${BM}, '${d1}', 100, 100); select cash_book_add_entry(${BM}, '${d1}', 'edc', 10); rollback;`, /This day is closed/);
-  fails(`${base} select cash_book_close_day(${BM}, '${d1}', 100, 100); select cash_book_close_day(${BM}, '${d2}', 100, 100);
-${as(owner)} select cash_book_reopen_day(${BM}, '${d1}'); rollback;`, /Later days are closed/);
+  fails(`${base} select cash_book_save_day(${BM}, '${d1}', '{"card":0,"upi":0}'); select cash_book_close_day(${BM}, '${d1}', 100, 100); select cash_book_reopen_day(${BM}, '${d1}'); rollback;`, /Only the owner can reopen/);
+  fails(`${base} select cash_book_save_day(${BM}, '${d1}', '{"card":0,"upi":0}'); select cash_book_close_day(${BM}, '${d1}', 100, 100); select cash_book_add_entry(${BM}, '${d1}', 'edc', 10); rollback;`, /This day is closed/);
+  fails(`${base} select cash_book_save_day(${BM}, '${d1}', '{"card":0,"upi":0}'); select cash_book_close_day(${BM}, '${d1}', 100, 100); select cash_book_save_day(${BM}, '${d2}', '{"card":0,"upi":0}'); select cash_book_close_day(${BM}, '${d2}', 100, 100);
+${as(owner)} select cash_book_reopen_day(${BM}, '${d1}', 'Recount of the drawer'); rollback;`, /Later days are closed/);
   assert.equal(sql(`${base} select cash_book_day(${BM}, '${d1}') ? 'report_sale', cash_book_day(${BM}, '${d1}')->'report_sale'; rollback;`), "t|null");
   fails(`begin; ${as(cashier)} select cash_book_day(${GP}, '${d1}'); rollback;`, /Store access denied/);
 });

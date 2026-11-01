@@ -22,14 +22,18 @@ test("month helpers handle month ends and leap years", () => {
   assert.equal(addDays("2026-10-01", -3), "2026-09-28");
 });
 
-test("managers can close the day and record expenses on a phone; accountants cannot open store money", () => {
+test("managers can close the day and record expenses on a phone; accountants reach only the cash book page (grant checked there), never Profit or Other expenses", () => {
   const { accountantAllows, handheldAllows } = fixture().load("@/lib/auth/access");
   assert.equal(handheldAllows("/app/money"), true);
   assert.equal(handheldAllows("/app/money/expenses"), true);
   assert.equal(handheldAllows("/app/customers"), true);
   assert.equal(handheldAllows("/app/stock-counts/abc"), true);
   assert.equal(handheldAllows("/app/buying"), false);
-  assert.equal(accountantAllows("/app/money"), false);
+  assert.equal(accountantAllows("/app/money"), true);
+  assert.equal(accountantAllows("/app/money/"), true);
+  assert.equal(accountantAllows("/app/money/profit"), false);
+  assert.equal(accountantAllows("/app/money/expenses"), false);
+  assert.equal(accountantAllows("/app/moneyx"), false);
   assert.equal(accountantAllows("/app/customers"), false);
 });
 

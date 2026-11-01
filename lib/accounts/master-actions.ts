@@ -427,12 +427,19 @@ export async function grantFinanceAccess(_state: AccountsActionState, formData: 
   const validTo = text(formData, "validTo") ? isoDateOrNull(text(formData, "validTo")) : null;
   if (!userId || !validFrom) return { ok: false, message: "Choose the person and the start date." };
   const flag = (key: string) => formData.get(key) === "on";
+  const accounts = flag("canView") || flag("canPost") || flag("canMasters") || flag("canApprove") || flag("canClose");
+  const cashBook = flag("cashBookView") || flag("cashBookEnter") || flag("cashBookOverride");
+  if (!accounts && !cashBook) return { ok: false, message: "Tick at least one permission (Accounts or Cash book)." };
   const values = {
     can_approve: flag("canApprove"),
     can_close_period: flag("canClose"),
     can_manage_masters: flag("canMasters"),
     can_post: flag("canPost"),
-    can_view: true,
+    // Accounts viewing only when asked for: a cash-book-only grant opens no Accounts data.
+    can_view: accounts,
+    cash_book_enter: flag("cashBookEnter"),
+    cash_book_override: flag("cashBookOverride"),
+    cash_book_view: cashBook,
     firm_id: optional(formData, "firmId"),
     granted_by: session.profile.id,
     note: optional(formData, "note", 500),

@@ -4242,6 +4242,9 @@ export type Database = {
           firm_id: string | null
           store_id: string | null
           can_view: boolean
+          cash_book_enter: boolean
+          cash_book_override: boolean
+          cash_book_view: boolean
           can_post: boolean
           can_manage_masters: boolean
           can_approve: boolean
@@ -4260,6 +4263,9 @@ export type Database = {
           firm_id?: string | null
           store_id?: string | null
           can_view?: boolean
+          cash_book_enter?: boolean
+          cash_book_override?: boolean
+          cash_book_view?: boolean
           can_post?: boolean
           can_manage_masters?: boolean
           can_approve?: boolean
@@ -4278,6 +4284,9 @@ export type Database = {
           firm_id?: string | null
           store_id?: string | null
           can_view?: boolean
+          cash_book_enter?: boolean
+          cash_book_override?: boolean
+          cash_book_view?: boolean
           can_post?: boolean
           can_manage_masters?: boolean
           can_approve?: boolean
@@ -7848,19 +7857,34 @@ export type Database = {
         Returns: Json
       }
       cash_book_add_entry: {
-        Args: { p_amount: number; p_category?: string; p_date: string; p_employee?: string; p_note?: string; p_other_store?: string; p_store: string; p_type: string }
+        Args: { p_amount: number; p_category?: string; p_client_key?: string; p_date: string; p_employee?: string; p_note?: string; p_other_store?: string; p_reference?: string; p_store: string; p_type: string }
         Returns: string
       }
+      cash_book_add_paid_expense: {
+        Args: { p_amount: number; p_category: string; p_client_key?: string; p_date: string; p_note?: string; p_paid_from: string; p_reference?: string; p_store: string }
+        Returns: string
+      }
+      cash_book_close: { Args: { p_date: string; p_revision?: number; p_store: string }; Returns: Json }
+      cash_book_close_through: { Args: { p_store: string; p_to: string }; Returns: Json }
+      cash_book_reopen_from: { Args: { p_date: string; p_reason: string; p_store: string }; Returns: number }
+      cash_book_import_legacy: { Args: { p_days: Json; p_dry_run?: boolean; p_source: Json; p_store: string }; Returns: Json }
+      cash_book_import_list: { Args: { p_store: string }; Returns: Json }
+      cash_book_month: { Args: { p_month: string; p_store: string }; Returns: Json }
+      cash_book_override_software: { Args: { p_amount: number; p_date: string; p_reason: string; p_store: string }; Returns: Json }
+      cash_book_restore_software: { Args: { p_date: string; p_reason?: string; p_store: string }; Returns: Json }
+      cash_book_save_day: { Args: { p_date: string; p_revision?: number; p_store: string; p_values: Json }; Returns: Json }
+      cash_book_staff: { Args: { p_store: string }; Returns: Json }
+      cash_book_stores: { Args: Record<PropertyKey, never>; Returns: Json }
       cash_book_close_day: {
         Args: { p_counted: number; p_date: string; p_note?: string; p_sale: number; p_store: string }
         Returns: Json
       }
       cash_book_day: { Args: { p_date: string; p_store: string }; Returns: Json }
-      cash_book_delete_entry: { Args: { p_entry: string }; Returns: undefined }
+      cash_book_delete_entry: { Args: { p_entry: string; p_reason?: string }; Returns: undefined }
       cash_book_history: { Args: { p_from: string; p_store: string; p_to: string }; Returns: Json }
       cash_book_other_stores: { Args: { p_store: string }; Returns: Json }
       cash_book_receive_transfer: { Args: { p_date: string; p_transfer: string }; Returns: string }
-      cash_book_reopen_day: { Args: { p_date: string; p_store: string }; Returns: undefined }
+      cash_book_reopen_day: { Args: { p_date: string; p_reason?: string; p_store: string }; Returns: undefined }
       cash_book_review_day: { Args: { p_date: string; p_note?: string; p_store: string }; Returns: undefined }
       cash_book_set_holiday: { Args: { p_day: string; p_note?: string; p_remove?: boolean }; Returns: undefined }
       cash_book_set_start: { Args: { p_date: string; p_opening: number; p_store: string }; Returns: undefined }

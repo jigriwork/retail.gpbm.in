@@ -54,11 +54,17 @@ export default async function AccessPage() {
               <Field label="Note"><input className={inputClass} name="note" placeholder="Monthly accountant" /></Field>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-              <p className="text-sm text-muted sm:col-span-2">Viewing is always included. Also allow:</p>
+              <p className="text-sm font-semibold sm:col-span-2">Accounts</p>
+              <Check defaultChecked label="View Accounts" name="canView" />
               <Check label="Enter purchases, payments, notes and returns" name="canPost" />
               <Check label="Add suppliers, brands, terms and stores" name="canMasters" />
               <Check label="Confirm terms and approve workings" name="canApprove" />
               <Check label="Close months" name="canClose" />
+              <p className="mt-2 text-sm font-semibold sm:col-span-2">Cash book (accountants only; never Profit or other pages)</p>
+              <Check label="View the cash book" name="cashBookView" />
+              <Check label="Enter and close cash book days" name="cashBookEnter" />
+              <Check label="Correct Software Sales (with a reason)" name="cashBookOverride" />
+              <p className="text-xs text-muted sm:col-span-2">Untick “View Accounts” for a cash-book-only accountant. Reopening closed days and setting the opening balance stay with the owner.</p>
             </div>
           </ActionForm>
         ) : <Empty>No accountant or manager accounts yet. Create one under Users.</Empty>}
@@ -76,8 +82,9 @@ export default async function AccessPage() {
                     <Badge tone={live ? "good" : "muted"}>{grant.revoked_at ? "removed" : live ? "active" : "not active"}</Badge>
                   </div>
                   <p className="mt-1 text-muted">
-                    {name(firms, grant.firm_id) ?? "All firms"} · {name(stores, grant.store_id) ?? "all stores"} · view
+                    {name(firms, grant.firm_id) ?? "All firms"} · {name(stores, grant.store_id) ?? "all stores"} · {grant.can_view || grant.can_post || grant.can_manage_masters || grant.can_approve || grant.can_close_period ? "accounts view" : "no accounts"}
                     {grant.can_post ? ", post" : ""}{grant.can_manage_masters ? ", masters" : ""}{grant.can_approve ? ", approve" : ""}{grant.can_close_period ? ", close months" : ""}
+                    {grant.cash_book_view || grant.cash_book_enter || grant.cash_book_override ? ` · cash book: ${[grant.cash_book_enter ? "enter" : "view", grant.cash_book_override ? "correct Software Sales" : ""].filter(Boolean).join(", ")}` : ""}
                     {" "}· {shortDate(grant.valid_from)} → {grant.valid_to ? shortDate(grant.valid_to) : "open"}{grant.note ? ` · ${grant.note}` : ""}
                   </p>
                   {!grant.revoked_at ? (

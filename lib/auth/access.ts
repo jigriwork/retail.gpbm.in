@@ -86,10 +86,14 @@ export function cashierAllows(pathname: string) {
     || path === "/app/settings/account";
 }
 
-/** Accountants work only in Accounts (plus their own password page). */
+/**
+ * Accountants work in Accounts (plus their own password page) and, only with
+ * a cash book grant, the cash book page itself. The page and every database
+ * function check the grant; Profit and Other expenses stay closed.
+ */
 export function accountantAllows(pathname: string) {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
-  return path === "/app/accounts" || path.startsWith("/app/accounts/") || path === "/app/settings/account";
+  return path === "/app/accounts" || path.startsWith("/app/accounts/") || path === "/app/settings/account" || path === "/app/money";
 }
 
 export function handheldAllows(pathname: string) {

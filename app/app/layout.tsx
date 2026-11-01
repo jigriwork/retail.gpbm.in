@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth/actions";
 import { SetPinScreen } from "@/components/auth/set-pin-screen";
 import { requireProfile } from "@/lib/auth/session";
+import { getCashBookStores } from "@/lib/cash-book/queries";
 import { redirect } from "next/navigation";
 import { InstallApp } from "@/components/app/install-app";
 import { ChatLink } from "@/components/chat/chat-link";
@@ -130,7 +131,7 @@ export default async function ProtectedAppLayout({
       </header>
 
       <main className="page-enter mx-auto w-full max-w-5xl px-3 py-4 sm:px-4 sm:py-5"><InstallApp /><EnableNotifications />{children}</main>
-      <BottomNav role={profile.role} />
+      <BottomNav cashBook={profile.role === "accountant" && (await getCashBookStores()).length > 0} role={profile.role} />
       <ChromeMeasure />
       <PushListener />
     </div>

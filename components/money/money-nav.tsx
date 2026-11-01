@@ -13,13 +13,14 @@ export function MoneyHeader({ description, title }: { description: string; title
 }
 
 /** Tabs for the money pages, keeping the chosen store; the store switch shows when there is more than one. */
-export function MoneyNav({ active, isCashier = false, isOwner, storeId, stores, extra = {} }: {
-  active: string; isCashier?: boolean; isOwner: boolean; storeId: string; stores: Pick<Store, "id" | "name">[]; extra?: Record<string, string>;
+export function MoneyNav({ active, cashBookOnly = false, isCashier = false, isOwner, storeId, stores, extra = {} }: {
+  active: string; cashBookOnly?: boolean; isCashier?: boolean; isOwner: boolean; storeId: string; stores: Pick<Store, "id" | "name">[]; extra?: Record<string, string>;
 }) {
   // Cash goes in the cash book; "Other expenses" are bank/UPI/owner-paid. Profit is owner-only.
+  // Accountants with a cash book grant see the cash book only.
   const links = [
     { href: "/app/money", label: "Cash book" },
-    ...(isCashier ? [] : [{ href: "/app/money/expenses", label: "Other expenses" }]),
+    ...(isCashier || cashBookOnly ? [] : [{ href: "/app/money/expenses", label: "Other expenses" }]),
     ...(isOwner ? [{ href: "/app/money/profit", label: "Profit" }] : []),
   ];
   const query = (params: Record<string, string>) => `?${new URLSearchParams(params)}`;
@@ -32,7 +33,7 @@ export function MoneyNav({ active, isCashier = false, isOwner, storeId, stores, 
             className={link.href === active
               ? "shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white"
               : "shrink-0 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted"}
-            href={`${link.href}${query({ store: storeId })}`}
+            href={`${link.href}${query({ ...(link.href === active ? extra : {}), store: storeId })}`}
             key={link.href}
           >
             {link.label}
