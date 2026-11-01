@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { AccountsActionState } from "@/lib/accounts/master-actions";
 import { requireProfile } from "@/lib/auth/session";
 import { cashCategories, cashEntryTypes } from "@/lib/cash-book/labels";
-import type { CashMonth } from "@/lib/cash-book/queries";
+import type { CashDay, CashMonth } from "@/lib/cash-book/queries";
 import { createClient } from "@/lib/supabase/server";
 
 type State = AccountsActionState;
@@ -134,24 +134,29 @@ export async function closeCashDay(_state: State, formData: FormData): Promise<S
  * record, never taken from the drawer); everything else is drawer cash.
  * clientKey makes a repeated submit save once.
  */
-export async function addCashEntry(_state: State, formData: FormData): Promise<State> {
-  const allowed = await storeFor(formData);
-  if (!allowed) return { ok: false, message: "You cannot use this store's cash book." };
-  const date = text(formData, "date", 10);
-  const type = text(formData, "type", 20);
-  const value = amount(formData, "amount");
-  const clientKey = text(formData, "clientKey", 40);
+export type LineInput = {
+  amount: string; category?: string; clientKey?: string; date: string; employeeId?: string; note?: string;
+  otherStoreId?: string; paidFrom?: string; reference?: string; type: string;
+};
+
+/** One validated line save, shared by the form and the grid. */
+async function saveLine(allowed: NonNullable<Awaited<ReturnType<typeof access>>>, line: LineInput): Promise<State> {
+  const clean = (value: string | undefined, max: number) => (value ?? "").trim().replace(/\s+/g, " ").slice(0, max);
+  const date = clean(line.date, 10);
+  const type = clean(line.type, 20);
+  const value = parseRupees(clean(line.amount, 30));
+  const clientKey = clean(line.clientKey, 40);
   if (!isDate(date)) return { ok: false, message: "Choose the day." };
   const option = cashEntryTypes.find((item) => item.value === type);
   if (!option) return { ok: false, message: "Choose what the money was for." };
   if (option.ownerOnly && allowed.profile.role !== "owner") return { ok: false, message: "Only the owner can record a cash adjustment." };
   if (value === null || Number.isNaN(value) || value <= 0) return { ok: false, message: "Enter the amount in rupees." };
-  const category = type === "expense" ? text(formData, "category", 30) : "";
+  const category = type === "expense" ? clean(line.category, 30) : "";
   if (type === "expense" && !cashCategories.some((item) => item.value === category)) return { ok: false, message: "Choose the expense type." };
-  const paidFrom = type === "expense" ? text(formData, "paidFrom", 10) || "cash" : "cash";
+  const paidFrom = type === "expense" ? clean(line.paidFrom, 10) || "cash" : "cash";
   if (!["cash", "upi", "bank"].includes(paidFrom)) return { ok: false, message: "Choose how it was paid." };
-  const note = text(formData, "note", 300) || undefined;
-  const reference = text(formData, "reference", 80) || undefined;
+  const note = clean(line.note, 300) || undefined;
+  const reference = clean(line.reference, 80) || undefined;
   const supabase = await createClient();
   if (paidFrom !== "cash") {
     const { error } = await supabase.rpc("cash_book_add_paid_expense", {
@@ -162,8 +167,8 @@ export async function addCashEntry(_state: State, formData: FormData): Promise<S
     refresh();
     return { ok: true, message: `Saved as paid by ${paidFrom === "upi" ? "UPI" : "bank"}; drawer cash is not reduced.` };
   }
-  const employee = type === "staff_payment" ? text(formData, "employeeId", 60) : "";
-  const otherStore = type === "to_store" ? text(formData, "otherStoreId", 60) : "";
+  const employee = type === "staff_payment" ? clean(line.employeeId, 60) : "";
+  const otherStore = type === "to_store" ? clean(line.otherStoreId, 60) : "";
   const { error } = await supabase.rpc("cash_book_add_entry", {
     p_amount: value, p_category: category || undefined, p_client_key: isUuid(clientKey) ? clientKey : undefined, p_date: date,
     p_employee: employee || undefined, p_note: note, p_other_store: otherStore || undefined, p_reference: reference,
@@ -172,6 +177,60 @@ export async function addCashEntry(_state: State, formData: FormData): Promise<S
   if (error) return { ok: false, message: dbMessage(error, "The line could not be saved. Please retry.") };
   refresh();
   return { ok: true, message: "Added." };
+}
+
+/**
+ * Adds a line. Expenses paid by UPI or bank go to "Other expenses" (one
+ * record, never taken from the drawer); everything else is drawer cash.
+ * clientKey makes a repeated submit save once.
+ */
+export async function addCashEntry(_state: State, formData: FormData): Promise<State> {
+  const allowed = await storeFor(formData);
+  if (!allowed) return { ok: false, message: "You cannot use this store's cash book." };
+  const field = (key: string) => text(formData, key, 300);
+  return saveLine(allowed, {
+    amount: field("amount"), category: field("category"), clientKey: field("clientKey"), date: field("date"), employeeId: field("employeeId"),
+    note: field("note"), otherStoreId: field("otherStoreId"), paidFrom: field("paidFrom"), reference: field("reference"), type: field("type"),
+  });
+}
+
+export type GridLines = Pick<CashDay, "entries" | "paid_expenses">;
+async function linesFor(storeId: string, date: string): Promise<GridLines | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("cash_book_day", { p_date: date, p_store: storeId });
+  if (!data) return null;
+  const day = data as unknown as CashDay;
+  return { entries: day.entries, paid_expenses: day.paid_expenses };
+}
+
+/** The lines of one day, for the grid's open row. */
+export async function loadCashLines(input: { storeId: string; date: string }): Promise<{ ok: boolean; message: string; lines?: GridLines | null }> {
+  const allowed = await access(input.storeId);
+  if (!allowed || !isDate(input.date)) return { ok: false, message: "You cannot use this store's cash book." };
+  const lines = await linesFor(allowed.storeId, input.date);
+  return lines ? { ok: true, message: "", lines } : { ok: false, message: "The day's lines could not be loaded." };
+}
+
+/** Adds a line from the grid; returns the refreshed month and the day's lines. */
+export async function addCashLineFromGrid(input: LineInput & { month: string; storeId: string }): Promise<GridResult & { lines?: GridLines | null }> {
+  const allowed = await access(input.storeId);
+  if (!allowed) return { ok: false, message: "You cannot use this store's cash book." };
+  if (!isDate(input.month)) return { ok: false, message: "Choose the month." };
+  const result = await saveLine(allowed, input);
+  const [month, lines] = await Promise.all([monthFor(allowed.storeId, input.month), linesFor(allowed.storeId, input.date)]);
+  return { ...result, month, lines };
+}
+
+/** Removes a line from the grid; returns the refreshed month and the day's lines. */
+export async function removeCashLineFromGrid(input: { date: string; entryId: string; month: string; storeId: string }): Promise<GridResult & { lines?: GridLines | null }> {
+  const allowed = await access(input.storeId);
+  if (!allowed) return { ok: false, message: "You cannot use this store's cash book." };
+  if (!isUuid(input.entryId) || !isDate(input.date) || !isDate(input.month)) return { ok: false, message: "Line not found." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("cash_book_delete_entry", { p_entry: input.entryId });
+  if (!error) refresh();
+  const [month, lines] = await Promise.all([monthFor(allowed.storeId, input.month), linesFor(allowed.storeId, input.date)]);
+  return { ok: !error, message: error ? dbMessage(error, "The line could not be removed. Please retry.") : "Removed.", month, lines };
 }
 
 export async function deleteCashEntry(_state: State, formData: FormData): Promise<State> {

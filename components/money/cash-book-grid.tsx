@@ -5,6 +5,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, ChevronDown, ChevronRight, Loader2, PencilLine } from "lucide-react";
 
 import { closeCashDayFromGrid, saveCashDay, type GridField } from "@/lib/cash-book/actions";
+import { GridDayLines } from "@/components/money/cash-grid-lines";
 import { dayLabel, fmt, missingLabel, signed, statusText } from "@/lib/cash-book/format";
 import { columnHelp } from "@/lib/cash-book/labels";
 import type { CashMonth, CashRow } from "@/lib/cash-book/queries";
@@ -61,13 +62,18 @@ export function SoftwareCell({ hide, row }: { hide: boolean; row: CashRow }) {
  * across, Esc undoes the cell. Saves for a day run one at a time with the
  * day's revision, so a second person's change is never overwritten silently.
  */
-export function CashBookGrid({ hideSoftware, month: initialMonth, selectedDate, storeId }: {
-  hideSoftware: boolean; month: CashMonth; selectedDate: string | null; storeId: string;
+export function CashBookGrid({ hideSoftware, isCashier = false, isOwner = false, month: initialMonth, otherStores = [], selectedDate, staff = [], storeId }: {
+  hideSoftware: boolean; isCashier?: boolean; isOwner?: boolean; month: CashMonth; otherStores?: Array<{ id: string; name: string }>;
+  selectedDate: string | null; staff?: Array<{ id: string; name: string }>; storeId: string;
 }) {
   const [month, setMonth] = useState(initialMonth);
   const [drafts, setDrafts] = useState<Record<string, Partial<Record<GridField, string>>>>({});
   const [rowSave, setRowSave] = useState<Record<string, RowSave>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [focusAdd, setFocusAdd] = useState<string | null>(null);
+  // Values already sent for a cell, so Enter and the blur that follows save once.
+  const sent = useRef<Record<string, string>>({});
+  const openLines = (date: string) => { setExpanded((current) => ({ ...current, [date]: true })); setFocusAdd(date); };
   const monthRef = useRef(month);
   const pending = useRef<Record<string, Partial<Record<GridField, string>>>>({});
   const saving = useRef<Record<string, boolean>>({});
@@ -107,6 +113,7 @@ export function CashBookGrid({ hideSoftware, month: initialMonth, selectedDate, 
       } catch {
         result = { ok: false, message: "Not saved: no connection. Your figure is kept; press Retry." };
       }
+      for (const field of Object.keys(values)) delete sent.current[`${date}:${field}`];
       if (result.month) { monthRef.current = result.month; setMonth(result.month); }
       if (result.ok) {
         setDrafts((current) => {
@@ -135,6 +142,9 @@ export function CashBookGrid({ hideSoftware, month: initialMonth, selectedDate, 
       });
       return;
     }
+    const cellKey = `${row.date}:${field}`;
+    if (sent.current[cellKey] === draft.trim()) return;
+    sent.current[cellKey] = draft.trim();
     pending.current[row.date] = { ...pending.current[row.date], [field]: draft.trim() };
     void flush(row.date);
   };
@@ -142,6 +152,7 @@ export function CashBookGrid({ hideSoftware, month: initialMonth, selectedDate, 
   const retry = (date: string) => {
     const values = drafts[date];
     if (!values) return;
+    for (const field of Object.keys(values)) delete sent.current[`${date}:${field}`];
     pending.current[date] = { ...values };
     void flush(date);
   };
@@ -175,7 +186,7 @@ export function CashBookGrid({ hideSoftware, month: initialMonth, selectedDate, 
           : errorCount ? <span className="inline-flex items-center gap-1 text-danger"><AlertTriangle className="size-3" />{errorCount} day{errorCount === 1 ? "" : "s"} not saved, see Status</span>
             : dirtyCount ? <span className="text-accent-ink">{dirtyCount} change{dirtyCount === 1 ? "" : "s"} not saved yet</span>
               : <span className="inline-flex items-center gap-1 text-success"><Check className="size-3" />All changes saved</span>}
-        <span className="font-normal text-muted">Type in the white cells · Tab → next column · Enter ↓ next day · Shift+Enter ↑ · Esc undoes · 0 means none, empty means not entered</span>
+        <span className="font-normal text-muted">Type in the white cells · Tab → next column · Enter ↓ next day · Shift+Enter ↑ · Esc undoes · 0 means none, empty means not entered · click Cash exp. or Other to add expenses and other cash</span>
       </div>
       <div className="overflow-x-auto rounded-2xl border border-border bg-card">
         <table className="w-full min-w-[1080px] border-collapse text-xs tabular-nums" ref={table}>
@@ -258,8 +269,20 @@ export function CashBookGrid({ hideSoftware, month: initialMonth, selectedDate, 
                     {cell("card")}
                     {cell("upi")}
                     {cell("deposit")}
-                    <td className="px-2 py-1 text-right">{row.exists ? fmt(row.cash_expenses) : "—"}</td>
-                    <td className="px-2 py-1 text-right">{row.exists ? signed(row.other_net) : "—"}</td>
+                    {(["cash_expenses", "other_net"] as const).map((key) => (
+                      <td className="px-1 py-1 text-right" key={key}>
+                        {row.can_edit || row.exists ? (
+                          <button
+                            className={`h-8 w-[5.5rem] rounded-lg px-2 text-right ${row.can_edit ? "border border-dashed border-border hover:border-primary hover:bg-primary-soft/40" : ""}`}
+                            onClick={() => openLines(row.date)}
+                            title={row.can_edit ? "Add or remove expenses and other cash for this day" : "Show this day's lines"}
+                            type="button"
+                          >
+                            {row.exists ? (key === "cash_expenses" ? fmt(row.cash_expenses) : signed(row.other_net)) : row.can_edit ? <span className="text-muted">+ add</span> : "—"}
+                          </button>
+                        ) : "—"}
+                      </td>
+                    ))}
                     <td className={`px-2 py-1 text-right font-semibold ${row.closing !== null && Number(row.closing) < 0 ? "text-danger" : ""}`}>{fmt(row.closing)}</td>
                     {cell("counted")}
                     <td className={`px-2 py-1 text-right font-semibold ${difference === null ? "" : Math.abs(difference) <= 10 ? "text-success" : difference < 0 ? "text-danger" : "text-accent-ink"}`}>
@@ -287,7 +310,7 @@ export function CashBookGrid({ hideSoftware, month: initialMonth, selectedDate, 
                       </div>
                     </td>
                     <td className="px-1 py-1">
-                      {row.exists ? (
+                      {row.exists || row.can_edit ? (
                         <button
                           aria-expanded={Boolean(expanded[row.date])}
                           aria-label={`Show the lines of ${row.date}`}
@@ -302,7 +325,24 @@ export function CashBookGrid({ hideSoftware, month: initialMonth, selectedDate, 
                   </tr>
                   {expanded[row.date] ? (
                     <tr className="bg-background">
-                      <td className="px-3 py-2" colSpan={colCount}><Breakdown hideSoftware={hideSoftware} row={row} /></td>
+                      <td className="px-3 py-2" colSpan={colCount}>
+                        <div className="grid gap-4 lg:grid-cols-[1fr_1.3fr]">
+                          <Breakdown hideSoftware={hideSoftware} row={row} />
+                          <GridDayLines
+                            canEdit={row.can_edit}
+                            date={row.date}
+                            focusAdd={focusAdd === row.date}
+                            isCashier={isCashier}
+                            isOwner={isOwner}
+                            key={`${row.date}:${row.can_edit}`}
+                            month={month.month}
+                            onMonth={(next) => { monthRef.current = next; setMonth(next); }}
+                            otherStores={otherStores}
+                            staff={staff}
+                            storeId={storeId}
+                          />
+                        </div>
+                      </td>
                     </tr>
                   ) : null}
                 </Fragment>

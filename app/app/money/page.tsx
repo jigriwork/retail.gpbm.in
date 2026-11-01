@@ -104,8 +104,8 @@ export default async function CashBookPage({ searchParams }: { searchParams: Pro
   const date = requestedDate && requestedDate.startsWith(monthKey) ? requestedDate : workDay(month);
   const day = date ? await getCashDay(store.id, date) : null;
   const [staff, otherStores, holidays, imports] = await Promise.all([
-    day?.can_edit ? getStoreStaff(store.id) : Promise.resolve([]),
-    day?.can_edit ? getOtherStores(store.id) : Promise.resolve([]),
+    day?.can_edit || month.access.enter ? getStoreStaff(store.id) : Promise.resolve([]),
+    day?.can_edit || month.access.enter ? getOtherStores(store.id) : Promise.resolve([]),
     isOwner ? getBankHolidays(addDays(today, -7)) : Promise.resolve([]),
     isOwner || isAccountant ? getCashImports(store.id) : Promise.resolve([]),
   ]);
@@ -167,7 +167,7 @@ export default async function CashBookPage({ searchParams }: { searchParams: Pro
       {month.start ? (
         <>
           <div className="hidden md:block">
-            <CashBookGrid hideSoftware={hideSoftware} month={month} selectedDate={date} storeId={store.id} />
+            <CashBookGrid hideSoftware={hideSoftware} isCashier={isCashier} isOwner={isOwner} month={month} otherStores={otherStores} selectedDate={date} staff={staff} storeId={store.id} />
           </div>
           <nav aria-label="Days" className="grid grid-cols-4 gap-1.5 sm:grid-cols-7 md:hidden">
             {month.days.map((item) => {
@@ -328,7 +328,7 @@ function DayPanel({ day, hideSoftware, isCashier, isManager, isOwner, monthKey, 
                   <CashDayForm key={`${day.date}:${day.revision}`} month={`${monthKey}-01`} row={day} storeId={store.id} />
                 </div>
               ) : null}
-              {day.can_edit ? <p className="hidden text-xs text-muted md:block">Type Book Sales, Card, UPI, bank deposit and counted cash in the table above. Add expenses and other cash below.</p> : null}
+              {day.can_edit ? <p className="hidden text-xs text-muted md:block">Type Book Sales, Card, UPI, bank deposit and counted cash in the table above. For expenses and other cash, click the day&apos;s Cash exp. or Other cell in the table, or use “Add a line” below.</p> : null}
               <p className="text-sm font-semibold">Lines ({day.entries.length})</p>
               {day.entries.length ? (
                 <ul className="space-y-2 text-sm">
@@ -368,6 +368,12 @@ function DayPanel({ day, hideSoftware, isCashier, isManager, isOwner, monthKey, 
           </div>
         )}
       </Panel>
+
+      {day.can_edit ? (
+        <Panel description="Expenses (with how they were paid), staff payments, owner/home cash, donations, transfers and cash received. Card and UPI collections are typed on the day, not here." title="Add a line">
+          <CashEntryForm action={addCashEntry} date={day.date} isOwner={isOwner} staff={staff} storeId={store.id} stores={otherStores} />
+        </Panel>
+      ) : null}
 
       {!hideSoftware && day.blocked !== "before_start" ? (
         <Panel description="From the current processed sales report for this store and day: bill lines with returns netted (summary lines only when the report has no bill lines). A correction changes the cash book comparison only, never the uploaded report." title="Software Sales">
@@ -434,11 +440,6 @@ function DayPanel({ day, hideSoftware, isCashier, isManager, isOwner, monthKey, 
         </Panel>
       ) : null}
 
-      {day.can_edit ? (
-        <Panel description="Expenses (with how they were paid), staff payments, owner/home cash, donations, transfers and cash received. Card and UPI collections are typed on the day, not here." title="Add a line">
-          <CashEntryForm action={addCashEntry} date={day.date} isOwner={isOwner} staff={staff} storeId={store.id} stores={otherStores} />
-        </Panel>
-      ) : null}
 
       {day.can_close ? (
         <Panel description="All figures are entered and the previous day is closed. Closing freezes the opening, the calculated closing and the Software Sales used." title="Close the day">
