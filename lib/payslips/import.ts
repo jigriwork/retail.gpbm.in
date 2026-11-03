@@ -13,6 +13,18 @@ export type PayrollUploadState = { ok: boolean; message: string; importId?: stri
 type Run = { id: string; status: string; batch_id?: string; file_path: string; comparison_token: string; comparison: PayrollComparison[]; proposed_rows: number; proposed_total: number };
 const hash = (bytes: ArrayBuffer) => createHash("sha256").update(new Uint8Array(bytes)).digest("hex");
 
+export function findUnlinkedPayrollRows(
+  rows: Array<{ staff_name?: string | null; store_id?: string | null }>,
+  employees: Array<{ store_id: string | null; normalized_staff_name: string; is_active?: boolean | null }>,
+) {
+  const directoryKeys = new Set(employees.filter(employee => employee.is_active !== false)
+    .map(employee => `${employee.store_id}:${employee.normalized_staff_name}`));
+  return rows.filter(row => {
+    const name = String(row.staff_name ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+    return !row.store_id || !name || !directoryKeys.has(`${row.store_id}:${name}`);
+  });
+}
+
 export async function processPayrollUpload(form: FormData): Promise<PayrollUploadState> {
   return withDirectUpload(form, "payroll", async (form) => {
   if (!(await requireOwner())) return { ok: false, message: "Only the owner can import payroll." };
@@ -45,6 +57,14 @@ export async function processPayrollUpload(form: FormData): Promise<PayrollUploa
     const rows = await parsePayslipWorkbook({ buffer, fileName: file.name, mimeType: file.type, salaryMonth: `${month}-01`,
       stores, fallbackStoreId: String(form.get("fallbackStoreId") ?? "") });
     if (!rows.length || rows.length > 5000) throw new Error("Invalid row count");
+    const invalidRows = rows.filter(row => !["ready", "total_mismatch", "generated"].includes(row.status ?? ""));
+    if (invalidRows.length) {
+      const examples = invalidRows.map(row => row.staff_name).filter(Boolean).slice(0, 5).join(", ");
+      return {
+        ok: false,
+        message: `Payroll has ${invalidRows.length} incomplete row(s)${examples ? `: ${examples}` : ""}. Fix or remove them in the workbook before importing; no payroll was created.`,
+      };
+    }
     // Legacy sources are evidence: compare bytes read-only, never infer duplicates
     // from names/months or rewrite the original batches to backfill fingerprints.
     const { data: legacy } = await completeQuery(client.from("payslip_batches")
@@ -57,6 +77,17 @@ export async function processPayrollUpload(form: FormData): Promise<PayrollUploa
         return { ok: false, message: "An existing payroll source could not be verified. Retry when the original is accessible; no new batch was created." };
       if (hash(await source.data.arrayBuffer()) === hash(buffer))
         return { ok: true, message: "Identical original workbook already imported. Existing payroll preserved.", batchId: batch.id };
+    }
+    const { data: employees, error: employeeError } = await client.from("employee_contacts")
+      .select("store_id,staff_name,normalized_staff_name,is_active");
+    if (employeeError) throw new Error("Staff directory unavailable");
+    const unlinked = findUnlinkedPayrollRows(rows, employees ?? []);
+    if (unlinked.length) {
+      const examples = unlinked.map(row => row.staff_name).filter(Boolean).slice(0, 8).join(", ");
+      return {
+        ok: false,
+        message: `Link or add ${unlinked.length} payroll staff name(s) in Staff before importing${examples ? `: ${examples}` : ""}. No duplicate employees were created.`,
+      };
     }
     const { data, error } = await client.rpc("prepare_payroll_import", { p_month: `${month}-01`,
       p_label: String(form.get("sourceLabel") ?? "monthly salary"), p_fingerprint: hash(buffer), p_file_name: file.name, p_rows: rows as Json });

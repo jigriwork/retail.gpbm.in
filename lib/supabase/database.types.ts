@@ -7686,6 +7686,7 @@ export type Database = {
       customer_list: { Args: { p_store: string | null; p_segment: string; p_search: string | null; p_limit: number; p_offset: number }; Returns: { mobile: string; name: string | null; first_visit: string | null; last_visit: string | null; bills: number; items: number; spend: number; store_count: number; marketing_consent: boolean; do_not_contact: boolean; birthday: string | null; last_message_at: string | null; uploaded: boolean; total_count: number }[] }
       current_payroll_employee_id: { Args: Record<PropertyKey, never>; Returns: string }
       link_staff_login_by_phone: { Args: { p_employee: string; p_auth_user: string; p_email: string; p_phone: string }; Returns: undefined }
+      merge_employee_contacts: { Args: { p_duplicate: string; p_canonical: string; p_use_duplicate_name?: boolean }; Returns: Json }
       start_customer_import: { Args: { p_store: string; p_file: string; p_consent: boolean }; Returns: string }
       import_customer_contacts: { Args: { p_batch: string; p_rows: Json }; Returns: Json }
       log_customer_message: { Args: { p_mobile: string; p_store: string; p_kind: string }; Returns: undefined }

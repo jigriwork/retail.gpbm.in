@@ -48,7 +48,7 @@ test('M06 ZIP reports every failed PDF instead of returning a partial archive',a
  assert.equal(result.ok,false);assert.deepEqual([...result.failures].sort(),['bad','missing']);assert.equal(result.bytes,undefined);
 });
 for(const source of ['identical','missing'])test(`H10 legacy source ${source} never creates another batch`,async()=>{
- const f=fixture({role:'owner',modules:{'@/lib/payslips/parser':{parsePayslipWorkbook:async()=>[{staff_name:'Fixture',store_id:'gp'}]}}});
+ const f=fixture({role:'owner',modules:{'@/lib/payslips/parser':{parsePayslipWorkbook:async()=>[{staff_name:'Fixture',store_id:'gp',status:'ready'}]}}});
  f.db.payslip_batches=[{id:'legacy',salary_month:'2026-07-01',status:'generated',payroll_import_id:null,source_file_path:'original.xlsx'}];
  if(source==='identical')f.files.set('original.xlsx','original fixture');
  let mutations=0;f.client.rpc=async()=>{mutations++;throw Error('Must not prepare');};
@@ -63,4 +63,19 @@ test('H06 payroll parser failure cannot prepare or publish a batch',async()=>{
  const form=new FormData();form.set('salaryMonth','2026-07');form.set('file',new File(['hostile'],'bad.xlsx'));
  assert.equal((await f.load('@/lib/payslips/import').processPayrollUpload(form)).ok,false);assert.equal(calls,0);
  assert.equal(f.calls.filter(c=>c.operation==='insert'||c.operation==='upload').length,0);
+});
+test('payroll import rejects incomplete workbook rows before storage or database mutation',async()=>{
+ const f=fixture({role:'owner',modules:{'@/lib/payslips/parser':{parsePayslipWorkbook:async()=>[
+  {staff_name:'Salary pending note',store_id:'gp',status:'missing_salary_amount'},
+ ]}}});let calls=0;f.client.rpc=async()=>{calls++;throw Error('Must not prepare');};
+ const form=new FormData();form.set('salaryMonth','2026-07');form.set('file',new File(['fixture'],'salary.xlsx'));
+ const result=await f.load('@/lib/payslips/import').processPayrollUpload(form);
+ assert.equal(result.ok,false);assert.match(result.message,/1 incomplete row.*Salary pending note/);assert.equal(calls,0);
+ assert.equal(f.calls.filter(c=>c.operation==='insert'||c.operation==='upload').length,0);
+});
+test('payroll identity check catches an unlinked spelling instead of accepting a duplicate',()=>{
+ const f=fixture({role:'owner'});const {findUnlinkedPayrollRows}=f.load('@/lib/payslips/import');
+ const rows=[{staff_name:'Alice Full Name',store_id:'gp'},{staff_name:' Alice ',store_id:'gp'}];
+ const employees=[{staff_name:'Alice',normalized_staff_name:'alice',store_id:'gp',is_active:true}];
+ assert.deepEqual(findUnlinkedPayrollRows(rows,employees).map(row=>row.staff_name),['Alice Full Name']);
 });
